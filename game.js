@@ -26,6 +26,23 @@ let hearts = 0;
 let isGameOver = false;
 let currentMode = 'farm'; 
 
+// Score: Suika-style triangular points for every merge, best kept across games
+const BEST_KEY = 'happyFruitMerge.best';
+let score = 0;
+let bestScore = 0;
+try { bestScore = parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) {}
+let isNewBest = false;
+
+function addScore(tier) {
+    score += (tier * (tier + 1) / 2) * 10;
+    if (score > bestScore) {
+        if (!isNewBest && bestScore > 0) toast('🏆 New best score!');
+        isNewBest = true;
+        bestScore = score;
+        try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {}
+    }
+}
+
 // UI Elements
 const fertEl = document.getElementById('fert-val');
 const wheatEl = document.getElementById('wheat-val');
@@ -35,6 +52,8 @@ const waterEl = document.getElementById('water-val');
 const nectarEl = document.getElementById('nectar-val');
 const moneyEl = document.getElementById('money-val');
 const heartsEl = document.getElementById('hearts-val');
+const scoreEl = document.getElementById('score-val');
+const bestEl = document.getElementById('best-val');
 
 const btnFarm = document.getElementById('btn-farm');
 const btnHay = document.getElementById('btn-hay');
@@ -240,6 +259,8 @@ function updateUI() {
     nectarEl.textContent = nectar;
     moneyEl.textContent = money;
     heartsEl.textContent = hearts;
+    scoreEl.textContent = score;
+    bestEl.textContent = bestScore;
     
     if (currentMode === 'shop') {
         renderShop(); 
@@ -318,6 +339,7 @@ function setupWorld(containerEl, modeName, bgColor) {
 
     const runner = Runner.create();
     Runner.run(runner, engine);
+    runners.push({ runner, engine });
 
     const wallOptions = { isStatic: true, render: { fillStyle: '#34495e' } };
     const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 25, GAME_WIDTH, 50, wallOptions);
@@ -349,6 +371,12 @@ function setupWorld(containerEl, modeName, bgColor) {
                 }
             }
 
+            // Fallback for a drop wedged against a wall: once it has fallen for a second and stopped, it counts as landed
+            if (body.isDropping) {
+                body.dropAge = (body.dropAge || 0) + 1;
+                if (body.dropAge > 60 && body.speed < 0.3) body.isDropping = false;
+            }
+
             if (body.tier !== undefined && !body.isGrowing) {
                 if (body.position.y - body.currentRadius < DANGER_Y) {
                     if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
@@ -362,7 +390,8 @@ function setupWorld(containerEl, modeName, bgColor) {
             dangerTimer++;
             if (dangerTimer > 180) { 
                 isGameOver = true;
-                document.getElementById('gameover-text').textContent = `Your ${modeName.toUpperCase()} board overflowed.`;
+                document.getElementById('gameover-text').textContent =
+                    `Your ${modeName.toUpperCase()} board overflowed. Score: ${score}` + (isNewBest ? ' 🏆 New best!' : ` (Best: ${bestScore})`);
                 document.getElementById('gameover').style.display = 'flex';
             }
         } else {
@@ -371,7 +400,7 @@ function setupWorld(containerEl, modeName, bgColor) {
     });
 
     containerEl.addEventListener('pointerdown', (e) => {
-        if (isGameOver) return;
+        if (isGameOver || Ads.isShowing()) return;
         
         if (modeName === 'farm') {
             if (fertilizer <= 0) { toast("Not enough ✨ Fertilizer! Buy some in the Shop."); return; }
@@ -401,15 +430,26 @@ function setupWorld(containerEl, modeName, bgColor) {
         const safeX = Math.max(TIERS[0], Math.min(GAME_WIDTH - TIERS[0], clickX));
         
         spawnItem(engine.world, safeX, 50, 0, modeName, false);
+        Ads.onDrop();
     });
 
-    Events.on(engine, 'collisionStart', (event) => {
+    // A dropped item lands when it touches the floor or an item that has already landed.
+    // Only landed items may merge, so spamming drops can't merge items in mid-air at the top.
+    function isLanded(body) {
+        return body === ground || (body.tier !== undefined && !body.isDropping);
+    }
+
+    function handleCollisions(event) {
         if (isGameOver) return;
         const pairs = event.pairs;
         
         for (let i = 0; i < pairs.length; i++) {
             const bodyA = pairs[i].bodyA;
             const bodyB = pairs[i].bodyB;
+
+            if (bodyA.isDropping && isLanded(bodyB)) bodyA.isDropping = false;
+            if (bodyB.isDropping && isLanded(bodyA)) bodyB.isDropping = false;
+            if (bodyA.isDropping || bodyB.isDropping) continue;
             
             if (bodyA.tier !== undefined && bodyB.tier !== undefined) {
                 if (bodyA.tier === bodyB.tier && bodyA.mode === bodyB.mode && bodyA.tier < TIERS.length - 1) {
@@ -432,6 +472,7 @@ function setupWorld(containerEl, modeName, bgColor) {
                     else if (mode === 'fert') fertilizer += rewardAmount;
                     else if (mode === 'aqua') water += rewardAmount;
                     else if (mode === 'flower') nectar += rewardAmount;
+                    addScore(nextTier);
                     updateUI();
                     
                     const midX = (bodyA.position.x + bodyB.position.x) / 2;
@@ -442,7 +483,10 @@ function setupWorld(containerEl, modeName, bgColor) {
                 }
             }
         }
-    });
+    }
+    // collisionActive too: two drops that met in mid-air may merge once they're resting on the pile
+    Events.on(engine, 'collisionStart', handleCollisions);
+    Events.on(engine, 'collisionActive', handleCollisions);
 
     return engine;
 }
@@ -479,6 +523,7 @@ function spawnItem(world, x, y, tier, mode, animateGrowth) {
     });
     
     if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 }); // slight downward push (dev plan §4)
+    body.isDropping = !animateGrowth; // merge results are already in the pile
     body.isGrowing = animateGrowth;
     body.currentRadius = startRadius;
     body.targetRadius = targetRadius;
@@ -505,7 +550,15 @@ function syncSprite(body) {
     });
 });
 
-document.getElementById('btn-restart').addEventListener('click', () => location.reload());
+document.getElementById('btn-restart').addEventListener('click', () => {
+    Ads.showInterstitial(() => location.reload());
+});
+
+// Physics is paused while an ad is on screen
+const runners = [];
+function pauseGame() { runners.forEach(r => Runner.stop(r.runner)); }
+function resumeGame() { runners.forEach(r => Runner.run(r.runner, r.engine)); }
+Ads.init({ onPause: pauseGame, onResume: resumeGame });
 
 // Initialize Everything
 const farmEngine = setupWorld(contFarm, 'farm', '#e8f8f5');

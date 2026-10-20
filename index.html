@@ -67,6 +67,20 @@
             position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
             flex-direction: column; justify-content: center; align-items: center; z-index: 200;
         }
+        #ad-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none;
+            flex-direction: column; justify-content: center; align-items: center; z-index: 300;
+        }
+        #ad-box {
+            width: min(90vw, 360px); aspect-ratio: 3/4; background: linear-gradient(160deg, #f9e79f, #f5b041);
+            border-radius: 12px; display: flex; flex-direction: column; justify-content: center;
+            align-items: center; color: #2c3e50; text-align: center; padding: 20px; box-sizing: border-box;
+        }
+        #ad-close {
+            margin-top: 14px; background: #7f8c8d; color: white; border: none; padding: 10px 22px;
+            border-radius: 20px; font-size: 15px; font-weight: bold;
+        }
+        #ad-close:enabled { background: #e74c3c; cursor: pointer; }
         #gameover button {
             margin-top: 12px; background: #27ae60; color: white; border: none; padding: 12px 24px;
             border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;
@@ -95,6 +109,10 @@
             <div>🍯 Nectar: <span id="nectar-val">0</span></div>
             <div style="color: #f1c40f;">💵 Money: <span id="money-val">50</span></div>
             <div style="color: #e74c3c;">❤️ Hearts: <span id="hearts-val">0</span></div>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 30px; margin-top: 5px; font-size: 15px;">
+            <div>⭐ Score: <span id="score-val">0</span></div>
+            <div style="color: #f39c12;">🏆 Best: <span id="best-val">0</span></div>
         </div>
     </div>
     
@@ -153,6 +171,18 @@
         <button id="btn-restart">Play Again</button>
     </div>
 
+    <!-- Ad break. Replaced by a real ad when an ad network is configured (see ads.js / README) -->
+    <div id="ad-overlay">
+        <div style="font-size: 12px; opacity: 0.7; margin-bottom: 6px;">Advertisement</div>
+        <div id="ad-box">
+            <img src="assets/farm/11_sunflower.png" alt="" style="width: 45%;">
+            <h2 style="margin: 10px 0 4px;">Your ad here</h2>
+            <div style="font-size: 14px;">Ad placeholder until an ad network is connected.</div>
+        </div>
+        <button id="ad-close" disabled>Close in 5</button>
+    </div>
+
+    <script src="ads.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
