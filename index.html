@@ -49,12 +49,13 @@
             border-right: 1px solid rgba(0,0,0,0.1);
             border-bottom: 1px solid rgba(0,0,0,0.1);
         }
-        #drop-guide {
+        .drop-guide {
             position: absolute; top: 2.5%; width: 9%; aspect-ratio: 1;
             transform: translateX(-50%); left: 50%;
-            background: url('assets/farm/01_seed.png') center/contain no-repeat;
+            background: center/contain no-repeat;
             opacity: 0.55; pointer-events: none; z-index: 11;
         }
+        .hud-icon { height: 16px; vertical-align: -3px; }
         #toast {
             position: fixed; left: 50%; bottom: 30px; transform: translate(-50%, 20px);
             background: rgba(0,0,0,0.8); color: white; padding: 10px 16px; border-radius: 20px;
@@ -86,7 +87,7 @@
         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
             <div>✨ Fert: <span id="fert-val">0</span></div>
             <div>🌾 Wheat: <span id="wheat-val">0</span></div>
-            <div>🌿 Feed: <span id="feed-val">0</span></div>
+            <div><img class="hud-icon" src="assets/barn/00_feed_bush.png" alt=""> Feed: <span id="feed-val">0</span></div>
             <div>💩 Raw: <span id="raw-val">0</span></div>
         </div>
         <div style="display: flex; justify-content: space-between;">
@@ -111,13 +112,14 @@
 
     <!-- Game Boards -->
     <div id="farm-container" class="game-board">
-        <div id="drop-guide"></div>
+        <div class="drop-guide" style="background-image: url('assets/farm/01_seed.png');"></div>
         <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
     </div>
     <div id="hay-container" class="game-board" style="display: none;">
         <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
     </div>
     <div id="barn-container" class="game-board" style="display: none;">
+        <div class="drop-guide" style="background-image: url('assets/barn/01_egg.png');"></div>
         <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
     </div>
     <div id="fert-container" class="game-board" style="display: none;">

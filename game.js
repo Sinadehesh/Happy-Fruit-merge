@@ -60,23 +60,32 @@ const shopList = document.getElementById('shop-list');
 const NAMES = {
     'farm': ['Seed', 'Sprout', 'Strawberry', 'Tomato', 'Corn', 'Carrot', 'Cabbage', 'Pumpkin', 'Watermelon', 'Golden Apple', 'Giant Sun'],
     'hay': ['Stalk', 'Bundle', 'Small Bale', 'Medium Bale', 'Large Bale', 'Hay Stack', 'Hay Tower', 'Hay Silo', 'Golden Hay', 'Magic Hay', 'Infinite Hay'],
-    'barn': ['Egg', 'Chick', 'Chicken', 'Piglet', 'Pig', 'Calf', 'Cow', 'Horse', 'Bear', 'Elephant', 'Blue Whale'],
+    'barn': ['Egg', 'Chick', 'Chicken', 'Piglet', 'Pig', 'Calf', 'Cow', 'Horse', 'Alpaca', 'Bull', 'Unicorn'],
     'fert': ['Dust', 'Ash', 'Scraps', 'Compost', 'Manure', 'Basic Fert', 'Quality Fert', 'Speed-Gro', 'Deluxe Fert', 'Magic Fert', 'Iridium Fert'],
     'aqua': ['Algae', 'Plankton', 'Shrimp', 'Goldfish', 'Clownfish', 'Turtle', 'Squid', 'Dolphin', 'Shark', 'Whale Shark', 'Kraken'],
     'flower': ['Seedling', 'Bud', 'Daisy', 'Tulip', 'Rose', 'Lily', 'Orchid', 'Lotus', 'Rafflesia', 'Crystal Flower', 'Tree of Life']
 };
 const TIERS = [20, 30, 40, 55, 70, 85, 100, 120, 145, 170, 200];
 
-// Farm sprites cut from assets/farm/source_sheet.webp (index = tier)
-const FARM_SPRITES = [
-    'assets/farm/01_seed.png', 'assets/farm/02_sprout.png', 'assets/farm/03_strawberry.png',
-    'assets/farm/04_tomato.png', 'assets/farm/05_corn.png', 'assets/farm/06_carrot.png',
-    'assets/farm/07_cabbage.png', 'assets/farm/08_pumpkin.png', 'assets/farm/09_watermelon.png',
-    'assets/farm/10_golden_apple.png', 'assets/farm/11_sunflower.png'
-];
+// Sprites cut from assets/<mode>/source_sheet.webp (index = tier).
+// Boards without art fall back to coloured circles.
+const SPRITES = {
+    'farm': [
+        'assets/farm/01_seed.png', 'assets/farm/02_sprout.png', 'assets/farm/03_strawberry.png',
+        'assets/farm/04_tomato.png', 'assets/farm/05_corn.png', 'assets/farm/06_carrot.png',
+        'assets/farm/07_cabbage.png', 'assets/farm/08_pumpkin.png', 'assets/farm/09_watermelon.png',
+        'assets/farm/10_golden_apple.png', 'assets/farm/11_sunflower.png'
+    ],
+    'barn': [
+        'assets/barn/01_egg.png', 'assets/barn/02_chick.png', 'assets/barn/03_chicken.png',
+        'assets/barn/04_piglet.png', 'assets/barn/05_pig.png', 'assets/barn/06_calf.png',
+        'assets/barn/08_cow.png', 'assets/barn/09_horse.png', 'assets/barn/10_alpaca.png',
+        'assets/barn/11_bull.png', 'assets/barn/12_unicorn.png'
+    ]
+};
 const SPRITE_SIZE = 256;   // px, every sprite is a 256x256 square
 const SPRITE_FIT = 1.08;   // draw slightly bigger than the collider so art touches neighbours
-FARM_SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
+Object.values(SPRITES).flat().forEach(src => { const img = new Image(); img.src = src; }); // preload
 
 function spriteScale(radius) {
     return (radius * 2 * SPRITE_FIT) / SPRITE_SIZE;
@@ -455,9 +464,9 @@ function spawnItem(world, x, y, tier, mode, animateGrowth) {
         strokeStyle: `hsl(${hue}, 80%, 40%)`,
         lineWidth: Math.max(1, 4 * (startRadius / targetRadius))
     };
-    if (mode === 'farm') {
+    if (SPRITES[mode]) {
         const scale = spriteScale(startRadius);
-        renderOpts = { sprite: { texture: FARM_SPRITES[tier], xScale: scale, yScale: scale } };
+        renderOpts = { sprite: { texture: SPRITES[mode][tier], xScale: scale, yScale: scale } };
     }
 
     const body = Bodies.circle(x, y, startRadius, {
@@ -485,13 +494,15 @@ function syncSprite(body) {
     }
 }
 
-// Drop preview: the seed follows the pointer along the top of the Farm board
-const dropGuide = document.getElementById('drop-guide');
-contFarm.addEventListener('pointermove', (e) => {
-    const rect = contFarm.getBoundingClientRect();
-    const r = TIERS[0] * (rect.width / GAME_WIDTH);
-    const x = Math.max(r, Math.min(rect.width - r, e.clientX - rect.left));
-    dropGuide.style.left = `${x}px`;
+// Drop preview: the tier-0 item follows the pointer along the top of each sprite board
+[contFarm, contBarn].forEach(cont => {
+    const guide = cont.querySelector('.drop-guide');
+    cont.addEventListener('pointermove', (e) => {
+        const rect = cont.getBoundingClientRect();
+        const r = TIERS[0] * (rect.width / GAME_WIDTH);
+        const x = Math.max(r, Math.min(rect.width - r, e.clientX - rect.left));
+        guide.style.left = `${x}px`;
+    });
 });
 
 document.getElementById('btn-restart').addEventListener('click', () => location.reload());
