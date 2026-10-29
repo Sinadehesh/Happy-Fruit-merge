@@ -152,8 +152,10 @@ Events.on(engine, 'beforeUpdate', () => {
             if (body.dropAge > 60 && body.speed < 0.3) body.isDropping = false;
         }
 
+        // Touching or crossing the line is fine; you lose only when a landed item is
+        // entirely above it (its lowest point is above the line)
         if (body.tier !== undefined && !body.isGrowing && !body.isDropping) {
-            if (body.bounds.min.y < DANGER_Y) {
+            if (body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
                 }

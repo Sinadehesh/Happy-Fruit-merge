@@ -9,7 +9,7 @@ A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Ma
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
   - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
 - Items only merge after they land, so dropping fast doesn't merge things at the top.
-- If items stay above the red dashed line for 3 seconds the box is full and it's game over.
+- Items may touch or cross the red dashed line. If an item has landed completely above it for 3 seconds, the box is full and it's game over.
 
 ## Run locally
 Any static server works, e.g. `python3 -m http.server` and open http://localhost:8000.
