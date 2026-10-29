@@ -3,11 +3,12 @@
 A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Matter.js](https://brm.io/matter-js/), based on `development_plan.md`.
 
 ## How to play
-- Pick a mode at the top: **🍓 Fruit** or **🐷 Animals** (or open `index.html?mode=fruit` / `?mode=animal`).
+- Pick a mode at the top: **🍓 Fruit**, **🐷 Animals** or **🚗 Cars** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars`).
 - Tap/click the box to drop the item shown at the top. **Next** shows what comes after it.
 - Two identical items touching merge into the next one:
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
   - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
+  - Cars (12 levels): Toyota Corolla → Fiat 500 → VW Bus → Jeep Wrangler → Ford Mustang → Toyota Supra → Nissan GT-R → Mercedes G-Class → Porsche 911 → Lamborghini Aventador → Ferrari LaFerrari → Bugatti Chiron
 - Items only merge after they land, so dropping fast doesn't merge things at the top.
 - Items may touch or cross the red dashed line. If an item has landed completely above it for 3 seconds, the box is full and it's game over.
 
@@ -43,5 +44,5 @@ Until an ad network is connected it shows a placeholder ad. To show real ads on 
 Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest against each other where the art touches instead of overlapping. If you change or add sprites, regenerate it with:
 
 ```
-python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png
+python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars/[01]*.png
 ```

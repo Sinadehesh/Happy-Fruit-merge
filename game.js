@@ -15,10 +15,13 @@ const GAME_HEIGHT = 640;   // 20% shorter than the original 800
 const DANGER_Y = 150;      // keep in sync with .danger-line in index.html
 const DROP_TIERS = 5;      // random drops come from the 5 smallest items
 
-// Two modes, picked with ?mode=fruit / ?mode=animal. Sprite index = tier.
+// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars. Sprite index = tier.
+// `tiers` is the size (radius) of each tier; its length is the number of merge levels.
+const ELEVEN_TIERS = [20, 30, 40, 55, 70, 85, 100, 120, 145, 170, 200];
 const MODES = {
     'fruit': {
         background: '#e8f8f5',
+        tiers: ELEVEN_TIERS,
         sprites: [
             'assets/farm/01_seed.png', 'assets/farm/02_sprout.png', 'assets/farm/03_strawberry.png',
             'assets/farm/04_tomato.png', 'assets/farm/05_corn.png', 'assets/farm/06_carrot.png',
@@ -28,17 +31,28 @@ const MODES = {
     },
     'animal': {
         background: '#fdedec',
+        tiers: ELEVEN_TIERS,
         sprites: [
             'assets/barn/01_egg.png', 'assets/barn/02_chick.png', 'assets/barn/03_chicken.png',
             'assets/barn/04_piglet.png', 'assets/barn/05_pig.png', 'assets/barn/06_calf.png',
             'assets/barn/08_cow.png', 'assets/barn/09_horse.png', 'assets/barn/10_alpaca.png',
             'assets/barn/11_bull.png', 'assets/barn/12_unicorn.png'
         ]
+    },
+    'cars': {
+        background: '#eaf2f8',
+        tiers: [22, 30, 40, 52, 64, 78, 92, 108, 125, 145, 168, 195],
+        sprites: [
+            'assets/cars/01_toyota_corolla.png', 'assets/cars/02_fiat_500.png', 'assets/cars/03_vw_bus.png',
+            'assets/cars/04_jeep_wrangler.png', 'assets/cars/05_ford_mustang.png', 'assets/cars/06_toyota_supra.png',
+            'assets/cars/07_nissan_gtr.png', 'assets/cars/08_mercedes_g_class.png', 'assets/cars/09_porsche_911.png',
+            'assets/cars/10_lamborghini_aventador.png', 'assets/cars/11_ferrari_laferrari.png', 'assets/cars/12_bugatti_chiron.png'
+        ]
     }
 };
 const MODE = MODES[new URLSearchParams(location.search).get('mode')] ? new URLSearchParams(location.search).get('mode') : 'fruit';
 const SPRITES = MODES[MODE].sprites;
-const TIERS = [20, 30, 40, 55, 70, 85, 100, 120, 145, 170, 200];
+const TIERS = MODES[MODE].tiers;
 const SPRITE_SIZE = 256;   // px, every sprite is a 256x256 square
 const SPRITE_FIT = 1.08;   // draw slightly bigger than the collider so art touches neighbours
 SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
