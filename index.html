@@ -21,7 +21,7 @@
         }
         h1 { margin: 5px 0; font-size: 20px; }
         .hud {
-            width: min(100%, 450px, calc((100vh - 150px) * 450 / 640)); background: #34495e; padding: 8px 12px;
+            width: min(100%, 450px, calc((100vh - 185px) * 450 / 640)); background: #34495e; padding: 8px 12px;
             border-radius: 8px 8px 0 0; box-sizing: border-box; font-weight: bold;
             display: flex; justify-content: space-between; align-items: center; font-size: 16px;
         }
@@ -32,11 +32,17 @@
         }
         .mode-btn.active { opacity: 1; background: #27ae60; }
         #btn-size.active { background: #8e44ad; }
+        #car-styles { display: none; gap: 6px; margin-bottom: 6px; align-items: center; font-size: 13px; font-weight: bold; }
+        #car-styles a {
+            padding: 4px 10px; border-radius: 12px; background: #1a252f; color: white;
+            text-decoration: none; opacity: 0.6;
+        }
+        #car-styles a.active { opacity: 1; background: #2980b9; }
         #next-img { width: 34px; height: 34px; vertical-align: middle; }
         .game-board {
             position: relative;
             /* fit the screen height too, keeping the 450x640 shape */
-            width: min(100%, 450px, calc((100vh - 150px) * 450 / 640));
+            width: min(100%, 450px, calc((100vh - 185px) * 450 / 640));
             aspect-ratio: 450/640;
             border: 6px solid #34495e;
             box-sizing: border-box;
@@ -95,6 +101,11 @@
         <a class="mode-btn" data-mode="animal" href="?mode=animal">🐷 Animals</a>
         <a class="mode-btn" data-mode="cars" href="?mode=cars">🚗 Cars</a>
         <a id="btn-size" class="mode-btn" href="?size=reverse" title="Reverse size: higher levels are smaller">↕️ Reverse</a>
+    </div>
+    <div id="car-styles">
+        🎨 <a data-style="cars" href="?mode=cars">Original</a>
+        <a data-style="cars-flat" href="?mode=cars-flat">Flat</a>
+        <a data-style="cars-candy" href="?mode=cars-candy">Candy</a>
     </div>
 
     <div class="hud">

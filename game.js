@@ -15,9 +15,12 @@ const GAME_HEIGHT = 640;   // 20% shorter than the original 800
 const DANGER_Y = 150;      // keep in sync with .danger-line in index.html
 const DROP_TIERS = 5;      // random drops come from the 5 smallest items
 
-// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars. Sprite index = tier.
+// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars (cars-flat, cars-candy are other car art styles).
+// Sprite index = tier.
 // `tiers` is the size (radius) of each tier; its length is the number of merge levels.
 const ELEVEN_TIERS = [20, 30, 40, 55, 70, 85, 100, 120, 145, 170, 200];
+const CAR_TIERS = [22, 30, 40, 52, 64, 78, 92, 108, 125, 145, 168, 195];
+const CAR_SPRITES = ['01_toyota_corolla', '02_fiat_500', '03_vw_bus', '04_jeep_wrangler', '05_ford_mustang', '06_toyota_supra', '07_nissan_gtr', '08_mercedes_g_class', '09_porsche_911', '10_lamborghini_aventador', '11_ferrari_laferrari', '12_bugatti_chiron'];
 const MODES = {
     'fruit': {
         background: '#e8f8f5',
@@ -41,13 +44,18 @@ const MODES = {
     },
     'cars': {
         background: '#eaf2f8',
-        tiers: [22, 30, 40, 52, 64, 78, 92, 108, 125, 145, 168, 195],
-        sprites: [
-            'assets/cars/01_toyota_corolla.png', 'assets/cars/02_fiat_500.png', 'assets/cars/03_vw_bus.png',
-            'assets/cars/04_jeep_wrangler.png', 'assets/cars/05_ford_mustang.png', 'assets/cars/06_toyota_supra.png',
-            'assets/cars/07_nissan_gtr.png', 'assets/cars/08_mercedes_g_class.png', 'assets/cars/09_porsche_911.png',
-            'assets/cars/10_lamborghini_aventador.png', 'assets/cars/11_ferrari_laferrari.png', 'assets/cars/12_bugatti_chiron.png'
-        ]
+        tiers: CAR_TIERS,
+        sprites: CAR_SPRITES.map(name => `assets/cars/${name}.png`)
+    },
+    'cars-flat': {
+        background: '#eaf2f8',
+        tiers: CAR_TIERS,
+        sprites: CAR_SPRITES.map(name => `assets/cars_flat/${name}.png`)
+    },
+    'cars-candy': {
+        background: '#fdf2f8',
+        tiers: CAR_TIERS,
+        sprites: CAR_SPRITES.map(name => `assets/cars_candy/${name}.png`)
     }
 };
 const params = new URLSearchParams(location.search);
@@ -319,9 +327,16 @@ Ads.init({
 
 // Mode links keep the size setting; the size button flips it and keeps the mode
 const sizeQuery = REVERSE ? '&size=reverse' : '';
-document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === MODE);
+document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === MODE.split('-')[0]);
     btn.href = `?mode=${btn.dataset.mode}${sizeQuery}`;
+});
+// Car art style picker, only shown while playing Cars
+const carStyles = document.getElementById('car-styles');
+carStyles.style.display = MODE.startsWith('cars') ? 'flex' : 'none';
+carStyles.querySelectorAll('a').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.style === MODE);
+    btn.href = `?mode=${btn.dataset.style}${sizeQuery}`;
 });
 const sizeBtn = document.getElementById('btn-size');
 sizeBtn.classList.toggle('active', REVERSE);
