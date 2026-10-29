@@ -3,11 +3,12 @@
 A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Matter.js](https://brm.io/matter-js/), based on `development_plan.md`.
 
 ## How to play
-- Pick a mode at the top: **🍓 Fruit**, **🐷 Animals** or **🚗 Cars** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars`).
+- Pick a mode at the top: **🍓 Fruit**, **🐷 Animals**, **🚗 Cars** or **⛏️ Rocks** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks`).
 - Tap/click the box to drop the item shown at the top. **Next** shows what comes after it.
 - Two identical items touching merge into the next one:
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
   - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
+  - Rocks (12 levels): Pebble → Sandstone → Coal → Malachite → Rose Quartz → Amethyst Geode → Turquoise → Gold Nugget → Ruby → Opal → Star Sapphire → Diamond
   - Cars (12 levels, 3 art styles to pick from with 🎨 Original / Flat / Candy): Toyota Corolla → Fiat 500 → VW Bus → Jeep Wrangler → Ford Mustang → Toyota Supra → Nissan GT-R → Mercedes G-Class → Porsche 911 → Lamborghini Aventador → Ferrari LaFerrari → Bugatti Chiron
 - Tap **↕️ Reverse** to flip the sizes: level 1 is the biggest and every merge makes a smaller item. Tap it again to go back. Reverse has its own best score.
 - Items only merge after they land, so dropping fast doesn't merge things at the top.
@@ -45,5 +46,5 @@ Until an ad network is connected it shows a placeholder ad. To show real ads on 
 Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest against each other where the art touches instead of overlapping. If you change or add sprites, regenerate it with:
 
 ```
-python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars/[01]*.png assets/cars_flat/[01]*.png assets/cars_candy/[01]*.png
+python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png
 ```

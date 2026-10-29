@@ -15,7 +15,8 @@ const GAME_HEIGHT = 640;   // 20% shorter than the original 800
 const DANGER_Y = 150;      // keep in sync with .danger-line in index.html
 const DROP_TIERS = 5;      // random drops come from the 5 smallest items
 
-// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars (cars-flat, cars-candy are other car art styles).
+// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars / ?mode=rocks
+// (cars-flat, cars-candy are other car art styles).
 // Sprite index = tier.
 // `tiers` is the size (radius) of each tier; its length is the number of merge levels.
 const ELEVEN_TIERS = [20, 30, 40, 55, 70, 85, 100, 120, 145, 170, 200];
@@ -56,6 +57,17 @@ const MODES = {
         background: '#fdf2f8',
         tiers: CAR_TIERS,
         sprites: CAR_SPRITES.map(name => `assets/cars_candy/${name}.png`)
+    },
+    'rocks': {
+        background: '#f4ecf7',
+        // rocks fill their whole picture, so they're drawn a bit smaller than the fruit for the same level
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: [
+            'assets/rocks/01_pebble.png', 'assets/rocks/02_sandstone.png', 'assets/rocks/03_coal.png',
+            'assets/rocks/04_malachite.png', 'assets/rocks/05_rose_quartz.png', 'assets/rocks/06_amethyst_geode.png',
+            'assets/rocks/07_turquoise.png', 'assets/rocks/08_gold_nugget.png', 'assets/rocks/09_ruby.png',
+            'assets/rocks/10_opal.png', 'assets/rocks/11_star_sapphire.png', 'assets/rocks/12_diamond.png'
+        ]
     }
 };
 const params = new URLSearchParams(location.search);
