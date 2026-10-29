@@ -18,7 +18,7 @@ Any static server works, e.g. `python3 -m http.server` and open http://localhost
 `assets/farm/` holds the 12 sprites cut from `assets/farm/source_sheet.webp`
 (`00_seed_bag.png` is the logo; `01`–`11` are the farm tiers).
 `assets/barn/` holds the animals cut from `assets/barn/source_sheet.webp`
-(`00_feed_bush.png` is the Feed icon; `07_highland_calf.png` is a spare not used in the chain).
+(`00_feed_bush.png` and `07_highland_calf.png` are spares not used in the game).
 
 ## Score
 Every merge adds points (bigger items are worth more). Your best score is saved in the browser (separately for each mode) and shown next to the current score.
