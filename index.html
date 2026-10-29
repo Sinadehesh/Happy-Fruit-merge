@@ -25,12 +25,13 @@
             border-radius: 8px 8px 0 0; box-sizing: border-box; font-weight: bold;
             display: flex; justify-content: space-between; align-items: center; font-size: 16px;
         }
-        .modes { display: flex; gap: 8px; margin-bottom: 6px; }
+        .modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 6px; }
         .mode-btn {
-            padding: 6px 16px; border-radius: 16px; background: #1a252f; color: white;
+            padding: 6px 12px; border-radius: 16px; background: #1a252f; color: white;
             text-decoration: none; font-weight: bold; font-size: 14px; opacity: 0.6;
         }
         .mode-btn.active { opacity: 1; background: #27ae60; }
+        #btn-size.active { background: #8e44ad; }
         #next-img { width: 34px; height: 34px; vertical-align: middle; }
         .game-board {
             position: relative;
@@ -93,6 +94,7 @@
         <a class="mode-btn" data-mode="fruit" href="?mode=fruit">🍓 Fruit</a>
         <a class="mode-btn" data-mode="animal" href="?mode=animal">🐷 Animals</a>
         <a class="mode-btn" data-mode="cars" href="?mode=cars">🚗 Cars</a>
+        <a id="btn-size" class="mode-btn" href="?size=reverse" title="Reverse size: higher levels are smaller">↕️ Reverse</a>
     </div>
 
     <div class="hud">

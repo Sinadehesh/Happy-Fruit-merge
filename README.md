@@ -9,6 +9,7 @@ A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Ma
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
   - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
   - Cars (12 levels): Toyota Corolla → Fiat 500 → VW Bus → Jeep Wrangler → Ford Mustang → Toyota Supra → Nissan GT-R → Mercedes G-Class → Porsche 911 → Lamborghini Aventador → Ferrari LaFerrari → Bugatti Chiron
+- Tap **↕️ Reverse** to flip the sizes: level 1 is the biggest and every merge makes a smaller item. Tap it again to go back. Reverse has its own best score.
 - Items only merge after they land, so dropping fast doesn't merge things at the top.
 - Items may touch or cross the red dashed line. If an item has landed completely above it for 3 seconds, the box is full and it's game over.
 

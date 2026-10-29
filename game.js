@@ -50,9 +50,21 @@ const MODES = {
         ]
     }
 };
-const MODE = MODES[new URLSearchParams(location.search).get('mode')] ? new URLSearchParams(location.search).get('mode') : 'fruit';
+const params = new URLSearchParams(location.search);
+const MODE = MODES[params.get('mode')] ? params.get('mode') : 'fruit';
 const SPRITES = MODES[MODE].sprites;
-const TIERS = MODES[MODE].tiers;
+
+// Reverse size (?size=reverse): the higher the level, the smaller the item.
+// Not a plain flip of the normal sizes, which would make the dropped items nearly box-wide:
+// level 1 starts at a normal drop size and each level shrinks by the same ratio down to the last.
+const REVERSE = params.get('size') === 'reverse';
+const REVERSE_LARGEST = 80;
+const REVERSE_SMALLEST = 18;
+function reverseTiers(count) {
+    return Array.from({ length: count }, (_, i) =>
+        Math.round(REVERSE_LARGEST * Math.pow(REVERSE_SMALLEST / REVERSE_LARGEST, i / (count - 1))));
+}
+const TIERS = REVERSE ? reverseTiers(MODES[MODE].tiers.length) : MODES[MODE].tiers;
 const SPRITE_SIZE = 256;   // px, every sprite is a 256x256 square
 const SPRITE_FIT = 1.08;   // draw slightly bigger than the collider so art touches neighbours
 SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
@@ -68,7 +80,7 @@ let nextTier = randomDropTier();
 let dropX = GAME_WIDTH / 2;
 
 // Score: Suika-style triangular points for every merge, best kept across games
-const BEST_KEY = MODE === 'fruit' ? 'happyFruitMerge.best' : `happyFruitMerge.best.${MODE}`;
+const BEST_KEY = (MODE === 'fruit' ? 'happyFruitMerge.best' : `happyFruitMerge.best.${MODE}`) + (REVERSE ? '.reverse' : '');
 let score = 0;
 let bestScore = 0;
 try { bestScore = parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) {}
@@ -305,9 +317,15 @@ Ads.init({
     onResume: () => Runner.run(runner, engine)
 });
 
+// Mode links keep the size setting; the size button flips it and keeps the mode
+const sizeQuery = REVERSE ? '&size=reverse' : '';
 document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === MODE);
+    btn.href = `?mode=${btn.dataset.mode}${sizeQuery}`;
 });
+const sizeBtn = document.getElementById('btn-size');
+sizeBtn.classList.toggle('active', REVERSE);
+sizeBtn.href = `?mode=${MODE}${REVERSE ? '' : '&size=reverse'}`;
 
 window.addEventListener('resize', updateUI);
 updateUI();
