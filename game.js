@@ -13,7 +13,6 @@ const Engine = Matter.Engine,
 const GAME_WIDTH = 450;
 const GAME_HEIGHT = 640;   // 20% shorter than the original 800
 const DANGER_Y = 150;      // keep in sync with .danger-line in index.html
-const DROP_COOLDOWN_MS = 500;
 const DROP_TIERS = 5;      // random drops come from the 5 smallest items
 
 // Two modes, picked with ?mode=fruit / ?mode=animal. Sprite index = tier.
@@ -52,7 +51,6 @@ function spriteScale(radius) {
 let isGameOver = false;
 let currentTier = randomDropTier();
 let nextTier = randomDropTier();
-let lastDropAt = 0;
 let dropX = GAME_WIDTH / 2;
 
 // Score: Suika-style triangular points for every merge, best kept across games
@@ -94,7 +92,6 @@ function updateUI() {
     dropGuide.style.width = `${r * 2 * scale}px`;
     dropGuide.style.top = `${(spawnY(currentTier) - r) * scale}px`;
     dropGuide.style.left = `${dropX * scale}px`;
-    dropGuide.style.visibility = Date.now() - lastDropAt < DROP_COOLDOWN_MS ? 'hidden' : 'visible';
 }
 
 function spawnY(tier) {
@@ -191,8 +188,6 @@ board.addEventListener('pointermove', (e) => {
 
 board.addEventListener('pointerdown', (e) => {
     if (isGameOver || Ads.isShowing()) return;
-    if (Date.now() - lastDropAt < DROP_COOLDOWN_MS) return;
-    lastDropAt = Date.now();
 
     dropX = clampX(pointerToGameX(e), currentTier);
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
@@ -201,7 +196,6 @@ board.addEventListener('pointerdown', (e) => {
     nextTier = randomDropTier();
     dropX = clampX(dropX, currentTier);
     updateUI();
-    setTimeout(updateUI, DROP_COOLDOWN_MS);
 
     Ads.onDrop();
 });
