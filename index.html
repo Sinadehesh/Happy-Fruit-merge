@@ -17,16 +17,29 @@
             height: 100vh;
             color: white;
             font-family: sans-serif;
+            touch-action: none;
         }
         h1 { margin: 5px 0; font-size: 20px; }
+        .hud {
+            width: min(100%, 450px, calc((100vh - 150px) * 450 / 640)); background: #34495e; padding: 8px 12px;
+            border-radius: 8px 8px 0 0; box-sizing: border-box; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center; font-size: 16px;
+        }
+        .modes { display: flex; gap: 8px; margin-bottom: 6px; }
+        .mode-btn {
+            padding: 6px 16px; border-radius: 16px; background: #1a252f; color: white;
+            text-decoration: none; font-weight: bold; font-size: 14px; opacity: 0.6;
+        }
+        .mode-btn.active { opacity: 1; background: #27ae60; }
+        #next-img { width: 34px; height: 34px; vertical-align: middle; }
         .game-board {
             position: relative;
-            width: 100%;
-            max-width: 450px;
-            aspect-ratio: 9/16;
+            /* fit the screen height too, keeping the 450x640 shape */
+            width: min(100%, 450px, calc((100vh - 150px) * 450 / 640));
+            aspect-ratio: 450/640;
             border: 6px solid #34495e;
             box-sizing: border-box;
-            border-radius: 8px;
+            border-radius: 0 0 8px 8px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5);
         }
         canvas {
@@ -35,37 +48,25 @@
             height: 100%;
             border-radius: 4px;
         }
-        .nav-btn {
-            flex: 1 0 25%; /* 4 buttons per row */
-            padding: 8px 0;
-            border: none;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            opacity: 0.6;
-            transition: opacity 0.2s;
-            font-size: 11px;
-            box-sizing: border-box;
-            border-right: 1px solid rgba(0,0,0,0.1);
-            border-bottom: 1px solid rgba(0,0,0,0.1);
+        /* Fail line: DANGER_Y / GAME_HEIGHT = 150 / 640 */
+        .danger-line {
+            position: absolute; top: 23.4375%; width: 100%;
+            border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;
         }
-        .drop-guide {
-            position: absolute; top: 2.5%; width: 9%; aspect-ratio: 1;
-            transform: translateX(-50%); left: 50%;
+        #drop-guide {
+            position: absolute; top: 0; left: 50%; aspect-ratio: 1;
+            transform: translateX(-50%);
             background: center/contain no-repeat;
-            opacity: 0.55; pointer-events: none; z-index: 11;
+            opacity: 0.6; pointer-events: none; z-index: 11;
         }
-        .hud-icon { height: 16px; vertical-align: -3px; }
-        #toast {
-            position: fixed; left: 50%; bottom: 30px; transform: translate(-50%, 20px);
-            background: rgba(0,0,0,0.8); color: white; padding: 10px 16px; border-radius: 20px;
-            font-size: 14px; font-weight: bold; opacity: 0; transition: opacity .2s, transform .2s;
-            pointer-events: none; z-index: 100; max-width: 90vw; text-align: center;
-        }
-        #toast.show { opacity: 1; transform: translate(-50%, 0); }
         #gameover {
             position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
             flex-direction: column; justify-content: center; align-items: center; z-index: 200;
+            text-align: center;
+        }
+        #gameover button {
+            margin-top: 12px; background: #27ae60; color: white; border: none; padding: 12px 24px;
+            border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;
         }
         #ad-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none;
@@ -81,90 +82,29 @@
             border-radius: 20px; font-size: 15px; font-weight: bold;
         }
         #ad-close:enabled { background: #e74c3c; cursor: pointer; }
-        #gameover button {
-            margin-top: 12px; background: #27ae60; color: white; border: none; padding: 12px 24px;
-            border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;
-        }
-        .nav-btn.active {
-            opacity: 1;
-            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.3);
-        }
     </style>
     <!-- Include Matter.js for 2D Physics -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
     <h1><img src="assets/farm/00_seed_bag.png" alt="" style="height: 26px; vertical-align: middle;"> Happy Fruit Merge</h1>
-    
-    <!-- Resources Bar (2 Rows) -->
-    <div style="width: 100%; max-width: 450px; background: #34495e; padding: 8px; border-radius: 8px 8px 0 0; box-sizing: border-box; font-size: 13px; font-weight: bold;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <div>✨ Fert: <span id="fert-val">0</span></div>
-            <div>🌾 Wheat: <span id="wheat-val">0</span></div>
-            <div><img class="hud-icon" src="assets/barn/00_feed_bush.png" alt=""> Feed: <span id="feed-val">0</span></div>
-            <div>💩 Raw: <span id="raw-val">0</span></div>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-            <div>💧 Water: <span id="water-val">0</span></div>
-            <div>🍯 Nectar: <span id="nectar-val">0</span></div>
-            <div style="color: #f1c40f;">💵 Money: <span id="money-val">50</span></div>
-            <div style="color: #e74c3c;">❤️ Hearts: <span id="hearts-val">0</span></div>
-        </div>
-        <div style="display: flex; justify-content: center; gap: 30px; margin-top: 5px; font-size: 15px;">
-            <div>⭐ Score: <span id="score-val">0</span></div>
-            <div style="color: #f39c12;">🏆 Best: <span id="best-val">0</span></div>
-        </div>
-    </div>
-    
-    <!-- Navigation Tabs (Wrapping into 2 rows of 4) -->
-    <div style="width: 100%; max-width: 450px; display: flex; flex-wrap: wrap; background: #1a252f; border-radius: 0 0 8px 8px; overflow: hidden; margin-bottom: 5px;">
-        <button class="nav-btn" id="btn-barn" style="background: #c0392b;">Barn</button>
-        <button class="nav-btn" id="btn-hay" style="background: #f39c12; display: none;">Hay</button>
-        <button class="nav-btn active" id="btn-farm" style="background: #27ae60;">Farm</button>
-        <button class="nav-btn" id="btn-fert" style="background: #8e44ad; display: none;">Fert</button>
-        <button class="nav-btn" id="btn-aqua" style="background: #2980b9; display: none;">Aqua</button>
-        <button class="nav-btn" id="btn-flower" style="background: #e84393; display: none;">Flower</button>
-        <button class="nav-btn" id="btn-town" style="background: #34495e;">Town</button>
-        <button class="nav-btn" id="btn-shop" style="background: #f1c40f; color: #2c3e50;">Shop</button>
+
+    <div class="modes">
+        <a class="mode-btn" data-mode="fruit" href="?mode=fruit">🍓 Fruit</a>
+        <a class="mode-btn" data-mode="animal" href="?mode=animal">🐷 Animals</a>
     </div>
 
-    <!-- Game Boards -->
-    <div id="farm-container" class="game-board">
-        <div class="drop-guide" style="background-image: url('assets/farm/01_seed.png');"></div>
-        <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
-    </div>
-    <div id="hay-container" class="game-board" style="display: none;">
-        <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
-    </div>
-    <div id="barn-container" class="game-board" style="display: none;">
-        <div class="drop-guide" style="background-image: url('assets/barn/01_egg.png');"></div>
-        <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
-    </div>
-    <div id="fert-container" class="game-board" style="display: none;">
-        <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
-    </div>
-    <div id="aqua-container" class="game-board" style="display: none;">
-        <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
-    </div>
-    <div id="flower-container" class="game-board" style="display: none;">
-        <div style="position: absolute; top: 150px; width: 100%; border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;"></div>
-    </div>
-    
-    <!-- Town Bulletin Board -->
-    <div id="town-container" class="game-board" style="display: none; background: #ecf0f1; padding: 15px; overflow-y: auto;">
-        <h2 style="color: #2c3e50; margin-top: 0;">Townspeople</h2>
-        <p style="color: #7f8c8d; font-size: 14px; margin-top: -10px;">Build relationships by delivering items to the townsfolk.</p>
-        <div id="missions-list" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;"></div>
+    <div class="hud">
+        <div>⭐ <span id="score-val">0</span></div>
+        <div style="color: #f39c12;">🏆 <span id="best-val">0</span></div>
+        <div>Next <img id="next-img" alt=""></div>
     </div>
 
-    <!-- Shop -->
-    <div id="shop-container" class="game-board" style="display: none; background: #ecf0f1; padding: 15px; overflow-y: auto;">
-        <h2 style="color: #2c3e50; margin-top: 0;">Market & Upgrades</h2>
-        <p style="color: #7f8c8d; font-size: 14px; margin-top: -10px;">Spend Money to unlock new environments.</p>
-        <div id="shop-list" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px;"></div>
+    <div id="board" class="game-board">
+        <div id="drop-guide"></div>
+        <div class="danger-line"></div>
     </div>
 
-    <div id="toast"></div>
     <div id="gameover">
         <h2 style="margin: 0;">Game Over</h2>
         <div id="gameover-text"></div>

@@ -1,15 +1,15 @@
 # Happy Fruit Merge
 
-A physics merge game (Suika-style) built with HTML5 Canvas + [Matter.js](https://brm.io/matter-js/), based on `development_plan.md`.
+A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Matter.js](https://brm.io/matter-js/), based on `development_plan.md`.
 
 ## How to play
-- Tap/click the **Farm** board to drop a seed (costs 1 ✨ Fertilizer).
+- Pick a mode at the top: **🍓 Fruit** or **🐷 Animals** (or open `index.html?mode=fruit` / `?mode=animal`).
+- Tap/click the box to drop the item shown at the top. **Next** shows what comes after it.
 - Two identical items touching merge into the next one:
-  Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun.
-- The **Barn** works the same way with 🌿 Feed: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn.
-- Farm merges earn 🌾 Wheat, Barn merges earn 💩 Raw Fertilizer. Sell it, buy more Fertilizer, unlock higher tiers and new boards in the **Shop**.
-- Deliver items to the **Town** folks for money and hearts.
-- Don't let items stay above the red dashed line for 3 seconds.
+  - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
+  - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
+- Items only merge after they land, so dropping fast doesn't merge things at the top.
+- If items stay above the red dashed line for 3 seconds the box is full and it's game over.
 
 ## Run locally
 Any static server works, e.g. `python3 -m http.server` and open http://localhost:8000.
@@ -21,7 +21,7 @@ Any static server works, e.g. `python3 -m http.server` and open http://localhost
 (`00_feed_bush.png` is the Feed icon; `07_highland_calf.png` is a spare not used in the chain).
 
 ## Score
-Every merge adds points (bigger items are worth more). Your best score is saved in the browser and shown next to the current score.
+Every merge adds points (bigger items are worth more). Your best score is saved in the browser (separately for each mode) and shown next to the current score.
 
 ## Ads
 `ads.js` shows an ad break every 25 drops (or at the next drop after 2 minutes) and again when you press **Play Again**. Physics is paused while it is on screen. Change `AD_EVERY_DROPS`, `AD_EVERY_MS` and `AD_CLOSE_DELAY_S` at the top of `ads.js`.
