@@ -38,3 +38,10 @@ Until an ad network is connected it shows a placeholder ad. To show real ads on 
 ```
 
 `ads.js` detects `adBreak` and uses it automatically. For the Android/iOS build (Capacitor) the same `showInterstitial()` hook can call the AdMob plugin instead.
+
+## Hitboxes
+Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest against each other where the art touches instead of overlapping. If you change or add sprites, regenerate it with:
+
+```
+python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png
+```

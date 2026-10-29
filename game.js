@@ -7,7 +7,8 @@ const Engine = Matter.Engine,
       Bodies = Matter.Bodies,
       Body = Matter.Body,
       Composite = Matter.Composite,
-      Events = Matter.Events;
+      Events = Matter.Events,
+      Vertices = Matter.Vertices;
 
 const GAME_WIDTH = 450;
 const GAME_HEIGHT = 640;   // 20% shorter than the original 800
@@ -106,7 +107,8 @@ function clampX(x, tier) {
 
 // --- WORLD ---
 
-const engine = Engine.create();
+// Extra solver iterations so heavy piles don't sink into each other
+const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 });
 const render = Render.create({
     element: board,
     engine: engine,
@@ -154,7 +156,7 @@ Events.on(engine, 'beforeUpdate', () => {
         }
 
         if (body.tier !== undefined && !body.isGrowing && !body.isDropping) {
-            if (body.position.y - body.currentRadius < DANGER_Y) {
+            if (body.bounds.min.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
                 }
@@ -250,13 +252,21 @@ function spawnItem(x, y, tier, animateGrowth) {
     const startRadius = animateGrowth ? Math.max(targetRadius * 0.3, 10) : targetRadius;
     const scale = spriteScale(startRadius);
 
-    const body = Bodies.circle(x, y, startRadius, {
+    // Hitbox = the sprite's own outline (shapes.js), so items touch where the art touches.
+    // Matter centres the body on the outline's centroid; offset the sprite to match.
+    const outline = SHAPES[SPRITES[tier]].map(([px, py]) => ({ x: px, y: py }));
+    const centre = Vertices.centre(outline);
+    const body = Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
         restitution: 0.15,
         friction: 0.5,
         density: 0.001 * (tier + 1),
+        slop: 0.01,
         render: { sprite: { texture: SPRITES[tier], xScale: scale, yScale: scale } },
         tier: tier
     });
+    // Set after creation: Matter rewrites sprite offsets from the hitbox bounds while creating the body
+    body.render.sprite.xOffset = centre.x / SPRITE_SIZE;
+    body.render.sprite.yOffset = centre.y / SPRITE_SIZE;
 
     if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 }); // slight downward push (dev plan §4)
     body.isDropping = !animateGrowth; // merge results are already in the pile
