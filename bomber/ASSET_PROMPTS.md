@@ -60,9 +60,9 @@ A wide side-view game background for a mobile game, 3:2 landscape. Dusk sky goin
 These are drawn in code until the art exists. Same style as the first zombie sheet so they match.
 
 ```
-A sprite sheet of 8 cartoon zombies for a mobile game, in a neat grid of 2 rows and 4 columns on a plain pure white background, each separate with clear space around it. All zombies are shown full body from the SIDE, walking toward the LEFT with arms reaching forward.
+A full-color sprite sheet of 8 cartoon zombie characters for a mobile game, in a neat grid of 2 rows and 4 columns on a plain pure white background, each separate with clear space around it. All zombies are shown full body in side view, walking toward the LEFT with arms reaching forward.
 
-STYLE: cute-creepy chunky cartoon, glossy saturated colors, thick soft outlines, big heads, small bodies, glowing eyes, torn clothes, fun rather than gory. Clean premium mobile-game art. Every zombie has a different silhouette and main color.
+STYLE: fully colored and shaded, vibrant saturated colors, cute-creepy chunky cartoon, thick soft outlines, big heads, small bodies, glowing eyes, torn clothes, fun rather than gory. Clean premium mobile-game art, same style as cartoon zombie game characters. Every zombie has a different body shape and a different main color, with clearly visible faces, skin, clothes and details.
 
 1. Trooper: grey-green skin, torn army uniform, dented army helmet
 2. Sprinter: lime skin, hot-pink tank top, red spiky mohawk, skinny, leaning forward running
@@ -73,8 +73,10 @@ STYLE: cute-creepy chunky cartoon, glossy saturated colors, thick soft outlines,
 7. Juggernaut: huge zombie in grey metal armor plates and a metal helmet with a red visor slit
 8. Titan: gigantic teal zombie with big horns, purple tattered cape, glowing eyes, the biggest and scariest
 
-AVOID: blood, gore, text, background scenery, shadows on the background, items touching.
+AVOID: black shapes, single-color shapes, dark outlines-only drawings, blood, gore, text, background scenery, shadows on the background, items touching.
 ```
+
+Tip for Ludo.ai: set the Art Style to Cartoonish and use the first zombie sheet (`assets/bomber/zombies/source_sheet.webp`) as a reference image so the new zombies match the old ones.
 
 ## 6. Soldier
 
