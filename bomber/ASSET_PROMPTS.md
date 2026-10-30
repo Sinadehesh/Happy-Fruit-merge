@@ -105,3 +105,70 @@ ITEMS, from junk to treasure:
 
 AVOID: text, numbers, logos, grid lines, shadows or glows on the background, realistic style, items touching, items cut off.
 ```
+
+## 8. Soldier upgrades (4 looks)
+
+The soldiers change look as you unlock Armory upgrades (starting soldier → faster shooting → double damage → +2 soldiers).
+
+```
+A sprite sheet of 4 cartoon soldiers for a mobile game, in one row of 4 on a plain pure white background, each separate with clear space around it, all the same height. Every soldier is shown full body from the SIDE, facing RIGHT, aiming their weapon to the right.
+
+STYLE: chunky cute proportions with big heads, glossy saturated candy colors, thick soft outlines in a darker shade of each color, big shiny highlights, brave determined faces. Clean premium mobile-game art. Each soldier clearly looks stronger than the one before.
+
+1. Rifleman: olive-green uniform, round army helmet, simple rifle
+2. Machine gunner: darker green vest with ammo belts across the chest, headset, chunky machine gun
+3. Heavy gunner: bulky armor vest and shoulder pads, visor helmet, big minigun with glowing barrels
+4. Elite commando: black and gold armor, red beret, glowing blue energy rifle, small cape
+
+AVOID: text, numbers, logos, background, shadows on the background, blood, items touching.
+```
+
+## 9. Bullets (4 types, one per soldier look)
+
+```
+A sprite sheet of 4 cartoon projectiles for a mobile game, in one row of 4 on a plain pure white background, each separate with lots of space around it. All are drawn horizontal, flying to the RIGHT, with a short trail behind them.
+
+STYLE: glossy saturated candy style, thick soft outlines, big shiny highlights, each one bigger and flashier than the one before.
+
+1. Small golden rifle bullet with a short yellow trail
+2. Orange glowing tracer round with a longer streak
+3. Fat red-hot heavy shell with a fiery trail
+4. Blue energy plasma bolt with a crackling cyan glow
+
+AVOID: text, background, shadows on the background, items touching.
+```
+
+## 10. Base (4 stages)
+
+The base grows as you unlock base HP upgrades.
+
+```
+A sprite sheet of 4 cartoon military base defenses for a mobile game, in one row of 4 on a plain pure white background, each separate with clear space around it, all drawn from the SIDE, standing on a flat bottom edge. Each stage is clearly bigger and stronger than the one before.
+
+STYLE: chunky cute cartoon, glossy saturated colors, thick soft outlines, big shiny highlights, clean premium mobile-game art. No people.
+
+1. Small wooden watchtower on stilts with a green flag, and a little pile of sandbags in front
+2. Sandbag bunker with a wooden lookout tower, camouflage net and a flag
+3. Concrete fort with a short tower, metal plates, hazard stripes and spotlights
+4. Steel fortress with a tall armored tower, glowing lights, satellite dish and a big flag
+
+AVOID: text, numbers, logos, people, background scenery, shadows on the background, items touching.
+```
+
+## 11. UI kit
+
+```
+A mobile game UI kit sheet on a plain pure white background, every element separate with clear space around it, nothing touching. Military-candy style matching a cartoon zombie game: glossy saturated colors, thick soft dark outlines, big shiny highlights, chunky rounded shapes.
+
+Include:
+- 4 big rounded buttons with no text: green, orange, red, purple
+- 1 round "play" button with a white triangle
+- Square icon buttons: sound on (speaker), sound off (speaker with X), city skyline icon, pause icon
+- Icons: gift box (loot), gold star (upgrades), red heart (base health), green zombie head, bomb, gold coin, trophy, lock
+- An empty horizontal health bar frame and a separate green fill bar
+- An empty horizontal timer bar frame and a separate orange fill bar
+- An empty ribbon banner (for titles like "LEVEL 1"), red with gold edges
+- An empty rounded panel frame (dark purple with a metal riveted border)
+
+AVOID: any text or letters, numbers, logos, background, shadows on the background, elements touching.
+```
