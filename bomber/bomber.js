@@ -50,7 +50,7 @@ const BOMBS = [
     { name: 'Mega Nuke',     body: '#f9ca24', band: '#2d3436', icon: 'rad' },
     { name: 'Black Hole',    body: '#1e1336', band: '#e056fd', icon: 'void' }
 ];
-const BOMB_R = [19, 25, 32, 41, 50, 61, 73, 86, 100, 116, 132, 150];  // radius in the bay
+const BOMB_R = [22, 27, 33, 39, 46, 53, 61, 69, 78, 87, 97, 108];   // radius in the bay; even steps so no level dwarfs the rest
 const blastRadius = t => (22 + t * 16) * perks().blastMul;          // on the battlefield
 const blastDamage = t => Math.round(2 * Math.pow(1.75, t));
 
@@ -160,6 +160,7 @@ function resize() {
     canvas.width = Math.round(W * viewScale * dpr);
     canvas.height = Math.round(H * viewScale * dpr);
     ctx.setTransform(viewScale * dpr, 0, 0, viewScale * dpr, 0, 0);
+    ctx.imageSmoothingQuality = 'high';
 }
 window.addEventListener('resize', resize);
 resize();
@@ -307,6 +308,7 @@ function spawnBayBomb(x, y, tier, merged) {
     body.isGrowing = merged;
     body.isDropping = !merged;
     if (merged) Body.setVelocity(body, { x: 0, y: 2 });
+    Body.setInertia(body, Infinity);  // bombs stay upright (fuse up) instead of tumbling
     Composite.add(engine.world, body);
     return body;
 }
@@ -316,6 +318,7 @@ Events.on(engine, 'beforeUpdate', () => {
         if (b.isGrowing) {
             const next = Math.min(b.targetRadius, b.currentRadius + b.targetRadius / 18);
             Body.scale(b, next / b.currentRadius, next / b.currentRadius);
+            Body.setInertia(b, Infinity);  // scaling resets inertia; keep it upright
             b.currentRadius = next;
             if (next >= b.targetRadius) b.isGrowing = false;
         }
@@ -719,7 +722,7 @@ function update(dt) {
 
     // bombs falling from the plane
     for (const p of projectiles) {
-        p.vy += 1100 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 6;
+        p.vy += 1100 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot = Math.sin(time * 9) * 0.12;  // falls upright with a little wobble
         if (Math.random() < 0.6) particles.push({ x: p.x, y: p.y, kind: 'smoke', t: 0, vx: 0, vy: -10, life: 0.35, size: 3 + p.tier * 0.5, g: 0, drag: 1 });
         if (p.y >= IMPACT_Y) { p.done = true; explode(p.x, p.tier); }
     }
@@ -794,7 +797,7 @@ function drawBattlefield() {
     ctx.fillStyle = 'rgba(0,0,0,0.18)'; ellipse(plane.x, GROUND_Y + 8, 26, 4); ctx.fill();
 
     [...zombies].sort((a, b) => a.y - b.y).forEach(drawZombie);
-    for (const p of projectiles) drawBomb(p.x, p.y, 7 + p.tier * 1.4, p.tier, p.rot);
+    for (const p of projectiles) drawBomb(p.x, p.y, 10 + p.tier * 1.6, p.tier, p.rot);
     for (const e of explosions) drawExplosion(e);
     drawPlane();
     ctx.restore();
