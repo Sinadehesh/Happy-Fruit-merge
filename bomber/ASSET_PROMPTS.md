@@ -226,3 +226,27 @@ STYLE: fully colored and shaded, vibrant saturated colors, cute-creepy cartoon, 
 
 AVOID: chibi proportions, big heads, small bodies, glowing red eyes, glossy shine, thick soft outlines, black shapes, single-color shapes, blood, gore, text, background scenery, shadows on the background, items touching.
 ```
+
+## 13. Shooting effects (one per soldier, same style as the soldiers)
+
+Each soldier level fires its own projectile with its own muzzle flash, so buying a Soldiers level changes how they shoot too.
+
+```
+A sprite sheet of shooting effects for a mobile game, in a neat grid of 2 rows and 8 columns on a plain pure white background, every item separate with clear space around it, nothing touching. Top row: 8 projectiles flying to the RIGHT. Bottom row: the matching 8 muzzle flashes, each pointing to the RIGHT, directly under its projectile.
+
+STYLE (match exactly): flat cel-shaded 2D cartoon, like a Western TV cartoon or a classic flash game. One base color plus one darker hard-edged shade per area, no gradients, no glossy highlights, matte finish, thin even near-black outlines, saturated but slightly muted colors. Fire and energy are drawn as flat cartoon shapes with jagged edges, not soft glows.
+
+Projectiles (top row), each clearly stronger than the one before:
+1. Small brass pistol bullet with a short streak
+2. Brass rifle bullet with a longer streak
+3. Round green grenade with a small smoke puff behind it
+4. Bright orange machine-gun tracer streak
+5. Long thin sniper round with a white speed line
+6. Burst of orange and yellow cartoon flame
+7. Row of three chunky minigun bullets
+8. Blue energy bolt with jagged cartoon lightning edges
+
+Muzzle flashes (bottom row): matching star-shaped flashes, small yellow for the pistol, bigger and wider for each next weapon, a flame jet for the flamethrower, a blue electric flash for the energy rifle.
+
+AVOID: black shapes, soft glows, glossy shine, gradients, text, background, shadows on the background, items touching.
+```

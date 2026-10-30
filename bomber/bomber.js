@@ -20,10 +20,11 @@ const IMPACT_Y = GROUND_Y + 22;
 const PHASE_BAR = { y: 350, h: 28 };
 const BAY = { x: 12, y: 384, w: 426, h: 406 };
 const BAY_LINE = 70;             // overflow line, in bay coordinates
-const BASE_X = 48;               // zombies reaching this x hit your base
-// Where soldiers stand: on the tower, then along the sandbags
-const SOLDIER_SPOTS = [{ x: 26, y: GROUND_Y - 74 }, { x: 40, y: LANE_BOTTOM - 22 }, { x: 22, y: LANE_BOTTOM - 22 },
-    { x: 52, y: LANE_BOTTOM - 6 }, { x: 14, y: LANE_BOTTOM - 4 }];
+const BASE_X = 96;               // zombies reaching this x hit your base
+const BASE_ART_SCALE = 0.42;     // base art is drawn at this many canvas px per sheet px (keeps the stages' relative sizes)
+// Where soldiers stand: on the ground in front of the base, back and front rows
+const SOLDIER_SPOTS = [{ x: 92, y: LANE_BOTTOM }, { x: 79, y: LANE_TOP + 12 }, { x: 66, y: LANE_BOTTOM },
+    { x: 53, y: LANE_TOP + 12 }, { x: 40, y: LANE_BOTTOM }];
 const SOLDIER_RANGE = 220;
 const COIN_HUD = { x: 150, y: 30 };   // where dropped coins fly to
 
@@ -76,9 +77,12 @@ const BULLET_SPRITES = ['rifle', 'tracer', 'heavy', 'plasma'].map((n, i) => `../
 const UI_SPRITES = ['btn_green_long', 'btn_sound_on', 'btn_sound_off', 'btn_city', 'btn_play', 'ribbon',
     'icon_gift', 'icon_star', 'icon_heart', 'icon_zombie', 'icon_bomb', 'icon_trophy', 'icon_coin', 'panel', 'btn_purple_long'];
 const PLANE_SPRITE = '../assets/bomber/plane.png';
-// Soldier art, one image per Soldiers upgrade level (8). Empty until the sheet exists; drawn in code meanwhile.
-const SOLDIER_SPRITES = [];
-// Drawn soldiers until then: each upgrade level gets its own colors and a longer gun
+// Soldier art, one image per Soldiers upgrade level (cut from assets/bomber/soldiers/source_sheet.webp)
+const SOLDIER_SPRITES = ['recruit', 'rifleman', 'grenadier', 'machine_gunner', 'sniper', 'flamethrower', 'heavy_gunner', 'elite']
+    .map((n, i) => `../assets/bomber/soldiers/0${i + 1}_${n}.png`);
+// Base art, one image per stage (2 Base upgrade levels per stage), tight-cropped at sheet resolution
+const BASE_SPRITES = ['outpost', 'bunker', 'fort', 'fortress'].map((n, i) => `../assets/bomber/base/0${i + 1}_${n}.png`);
+// Drawn soldiers if the art can't load: each upgrade level gets its own colors and a longer gun
 const SOLDIER_LOOKS = [
     { body: '#7a8f4a', helmet: '#5b6e33', gun: 9,  gunColor: '#2d3436' },
     { body: '#5a7d3a', helmet: '#4b6b2f', gun: 13, gunColor: '#2d3436' },
@@ -155,7 +159,7 @@ function stats(up = save.up) {
         fireRate: 1 + 0.12 * (up.weapons - 1),
         bulletTier: Math.min(3, Math.floor((up.weapons - 1) / 2)),     // rifle, tracer, heavy, plasma
         baseHp: 10 + 8 * (up.base - 1),
-        baseStage: Math.min(3, Math.floor((up.base - 1) / 2)),          // for the 4-stage base art, once it exists
+        baseStage: Math.min(3, Math.floor((up.base - 1) / 2)),          // which base art to draw
         dropMin: Math.floor((up.bombs - 1) / 3),                        // smallest bomb you drop
         blastMul: 1 + 0.08 * (up.bombs - 1)
     };
@@ -200,6 +204,7 @@ const zombieImgs = Object.fromEntries(Object.entries(ZOMBIE_SPRITES).map(([k, sr
 const planeImg = loadImages([PLANE_SPRITE])[0];
 const bulletImgs = loadImages(BULLET_SPRITES);
 const soldierImgs = loadImages(SOLDIER_SPRITES);
+const baseImgs = loadImages(BASE_SPRITES);
 const uiImgs = Object.fromEntries(UI_SPRITES.map(n => [n, loadImages([`../assets/bomber/ui/${n}.png`])[0]]));
 // Draw a UI image fitted (keeping its shape) into a box centred on (cx, cy); returns false if not loaded
 function drawUi(name, cx, cy, w, h) {
@@ -553,7 +558,7 @@ function soldierShoot(s, target) {
     s.recoil = 1;
     s.aim = Math.atan2(target.y - 22 * target.type.size - s.y, target.x - s.x);
     const st = stats();
-    bullets.push({ x: s.x + 12, y: s.y - 16, target, dmg: 0.5 * st.soldierDmg * levelHpMul(level), tier: st.bulletTier, dy: rand(-6, 6) });
+    bullets.push({ x: s.x + 15, y: s.y - 29, target, dmg: 0.5 * st.soldierDmg * levelHpMul(level), tier: st.bulletTier, dy: rand(-6, 6) });
     Sound.shot();
 }
 
@@ -797,7 +802,17 @@ function drawDrawnBackground() {
 function drawBase() {
     ctx.save();
     if (baseFlash > 0) ctx.translate(rand(-2, 2), 0);
-    // watchtower
+    const img = baseImgs[stats().baseStage];
+    if (imgReady(img)) {
+        const w = img.naturalWidth * BASE_ART_SCALE, h = img.naturalHeight * BASE_ART_SCALE;
+        if (baseFlash > 0) ctx.filter = 'brightness(1.8) saturate(0.6)';
+        ctx.drawImage(img, -4, LANE_BOTTOM + 4 - h, w, h);
+        ctx.filter = 'none';
+        for (const s of soldiers) drawSoldier(s);
+        ctx.restore();
+        return;
+    }
+    // watchtower (drawn if the base art can't load)
     ctx.fillStyle = '#5d4037'; ctx.fillRect(12, GROUND_Y - 62, 6, 64); ctx.fillRect(34, GROUND_Y - 62, 6, 64);
     ctx.fillStyle = '#795548'; rrect(6, GROUND_Y - 74, 40, 16, 3); ctx.fill();
     ctx.strokeStyle = '#4e342e'; ctx.lineWidth = 2; ctx.beginPath();
@@ -819,7 +834,7 @@ function drawBase() {
     ctx.restore();
 }
 
-function drawSoldier(s, scale = 1.35) {
+function drawSoldier(s, scale = 1.25) {
     const look = SOLDIER_LOOKS[s.look || 0];
     ctx.save();
     ctx.translate(s.x - s.recoil * 2, s.y);
@@ -828,7 +843,7 @@ function drawSoldier(s, scale = 1.35) {
     if (imgReady(img)) {
         const h = 34, w = h * img.naturalWidth / img.naturalHeight;
         ctx.drawImage(img, -w / 2, -h, w, h);
-        if (s.recoil > 0.6) { ctx.fillStyle = '#fff3a0'; circle(w / 2, -h * 0.55, 3 * s.recoil); ctx.fill(); }
+        if (s.recoil > 0.6) { ctx.fillStyle = '#fff3a0'; circle(w * 0.36, -h * 0.68, 3 * s.recoil); ctx.fill(); }
         ctx.restore();
         return;
     }
@@ -1133,17 +1148,23 @@ function drawShop() {
         if (afford) { ctx.strokeStyle = `rgba(123, 237, 159, ${0.5 + 0.4 * Math.sin(time * 5)})`; ctx.lineWidth = 3; rrect(c.x + 2, c.y + 2, c.w - 4, c.h - 4, 14); ctx.stroke(); }
         // picture of what you're upgrading
         const px = c.x + c.w / 2, py = c.y + 50;
+        const nextSt = maxed ? st : stats({ ...save.up, [c.key]: lv + 1 });   // cards show what you're buying
         if (c.key === 'soldiers') {
-            ctx.save(); ctx.translate(px - 6, py + 26); ctx.scale(2.1, 2.1);
-            drawSoldier({ x: 0, y: 0, recoil: 0, aim: 0, look: st.soldierLook }, 1);
+            ctx.save(); ctx.translate(px - 8, py + 28); ctx.scale(2.1, 2.1);
+            drawSoldier({ x: 0, y: 0, recoil: 0, aim: 0, look: nextSt.soldierLook }, 1);
             ctx.restore();
-            text(`x${st.soldiers}`, px + 40, py + 14, 18, '#fff');
+            text(`x${nextSt.soldiers}`, px + 46, py + 16, 18, '#fff');
         } else if (c.key === 'weapons') {
             const img = bulletImgs[st.bulletTier];
             if (imgReady(img)) { const w = 84, h = w * img.naturalHeight / img.naturalWidth; ctx.drawImage(img, px - w / 2, py - h / 2, w, h); }
         } else if (c.key === 'base') {
-            drawUi('icon_heart', px, py - 4, 54, 54);
-            text(`${st.baseHp}`, px, py - 2, 18, '#fff');
+            const img = baseImgs[nextSt.baseStage];
+            if (imgReady(img)) {
+                const k = Math.min(110 / img.naturalWidth, 66 / img.naturalHeight);
+                ctx.drawImage(img, px - 10 - img.naturalWidth * k / 2, py + 28 - img.naturalHeight * k, img.naturalWidth * k, img.naturalHeight * k);
+            }
+            drawUi('icon_heart', px + 54, py - 14, 30, 30);
+            text(`${nextSt.baseHp}`, px + 54, py - 13, 12, '#fff');
         } else {
             drawBomb(px, py + 2, 30, Math.min(BOMBS.length - 1, st.dropMin + 2), 0);
         }
