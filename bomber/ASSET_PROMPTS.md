@@ -108,21 +108,25 @@ ITEMS, from junk to treasure:
 AVOID: text, numbers, logos, grid lines, shadows or glows on the background, realistic style, items touching, items cut off.
 ```
 
-## 8. Soldier upgrades (4 looks)
+## 8. Soldier upgrades (8 looks)
 
-The soldiers change look as you unlock Armory upgrades (starting soldier → faster shooting → double damage → +2 soldiers).
+A new soldier look for each Armory upgrade, so the base visibly gets stronger. Generate it with the new zombie sheet (`assets/bomber/zombies2/source_sheet.webp`) as the reference image so the style matches.
 
 ```
-A sprite sheet of 4 cartoon soldiers for a mobile game, in one row of 4 on a plain pure white background, each separate with clear space around it, all the same height. Every soldier is shown full body from the SIDE, facing RIGHT, aiming their weapon to the right.
+A full-color sprite sheet of 8 cartoon soldier characters for a mobile game, in a neat grid of 2 rows and 4 columns on a plain pure white background, each separate with clear space around it, all the same height. Every soldier is shown full body in side view, facing RIGHT, aiming their weapon to the right.
 
-STYLE: chunky cute proportions with big heads, glossy saturated candy colors, thick soft outlines in a darker shade of each color, big shiny highlights, brave determined faces. Clean premium mobile-game art. Each soldier clearly looks stronger than the one before.
+STYLE: fully colored and shaded, vibrant saturated colors, chunky cartoon characters with big heads and small bodies, thick soft outlines, brave determined faces, clean premium mobile-game art in the same style as cartoon zombie game characters. Every soldier has a different outfit, main color and weapon, and each one clearly looks stronger and more high-tech than the one before.
 
-1. Rifleman: olive-green uniform, round army helmet, simple rifle
-2. Machine gunner: darker green vest with ammo belts across the chest, headset, chunky machine gun
-3. Heavy gunner: bulky armor vest and shoulder pads, visor helmet, big minigun with glowing barrels
-4. Elite commando: black and gold armor, red beret, glowing blue energy rifle, small cape
+1. Recruit: plain olive t-shirt and cap, small pistol
+2. Rifleman: olive-green uniform, round army helmet, rifle
+3. Grenadier: tan uniform with grenades on the belt, helmet with goggles, grenade launcher
+4. Machine gunner: dark green vest with ammo belts across the chest, headset, chunky machine gun
+5. Sniper: camouflage ghillie hood, long sniper rifle with a scope
+6. Flamethrower: orange fireproof suit, gas mask, flamethrower with fuel tanks on the back
+7. Heavy gunner: bulky blue armor and shoulder pads, visor helmet, big minigun with glowing barrels
+8. Elite commando: black and gold armor, red beret, glowing blue energy rifle, small cape
 
-AVOID: text, numbers, logos, background, shadows on the background, blood, items touching.
+AVOID: black shapes, single-color shapes, text, numbers, logos, background, shadows on the background, blood, items touching.
 ```
 
 ## 9. Bullets (4 types, one per soldier look)
@@ -142,19 +146,19 @@ AVOID: text, background, shadows on the background, items touching.
 
 ## 10. Base (4 stages)
 
-The base grows as you unlock base HP upgrades.
+The first try came out too plain and the stages didn't look like the same base growing. This version keeps one footprint and grows it.
 
 ```
-A sprite sheet of 4 cartoon military base defenses for a mobile game, in one row of 4 on a plain pure white background, each separate with clear space around it, all drawn from the SIDE, standing on a flat bottom edge. Each stage is clearly bigger and stronger than the one before.
+A full-color sprite sheet of 4 upgrade stages of the SAME military base for a mobile tower-defense game, in one row of 4 on a plain pure white background, each separate with clear space around it. Every stage has the same ground footprint width and sits on the same flat bottom line, drawn in a 3/4 side view facing RIGHT (toward where the zombies come from). Each stage is clearly bigger, taller and more fortified than the one before, keeping the same green flag and color scheme so it reads as one base being upgraded.
 
-STYLE: chunky cute cartoon, glossy saturated colors, thick soft outlines, big shiny highlights, clean premium mobile-game art. No people.
+STYLE: polished premium mobile strategy game building art, chunky and cute but heroic, fully colored and shaded with rich detail, warm lighting from the upper left, vibrant saturated colors, thick soft outlines. Cozy-military look: olive greens, sand, warm wood, steel grey with yellow accents.
 
-1. Small wooden watchtower on stilts with a green flag, and a little pile of sandbags in front
-2. Sandbag bunker with a wooden lookout tower, camouflage net and a flag
-3. Concrete fort with a short tower, metal plates, hazard stripes and spotlights
-4. Steel fortress with a tall armored tower, glowing lights, satellite dish and a big flag
+1. Outpost: wooden watchtower with a ladder, a lookout platform with a small roof, a sandbag wall in front, a green flag on top
+2. Bunker: the same tower now on a stone base, a curved sandbag bunker with a gun slit in front, camouflage net, ammo crates, a searchlight
+3. Fort: a stone and concrete fort with crenellated walls, the tower now reinforced with steel plates, a mounted machine gun on top, hazard stripes, spotlights, barbed wire in front
+4. Fortress: a big steel-and-stone fortress with a tall armored command tower, glowing windows, a radar dish, twin cannons, a heavy gate, banners and a large green flag, glowing lights
 
-AVOID: text, numbers, logos, people, background scenery, shadows on the background, items touching.
+AVOID: black shapes, single-color shapes, flat simple shapes, people, text, numbers, logos, background scenery, shadows on the background, items touching.
 ```
 
 ## 11. UI kit
@@ -173,4 +177,21 @@ Include:
 - An empty rounded panel frame (dark purple with a metal riveted border)
 
 AVOID: any text or letters, numbers, logos, background, shadows on the background, elements touching.
+```
+
+## 12. The first four zombies, redone in the new style
+
+The new zombie sheet looks better than the first one, so redo Walker, Runner, Brute and the Zombie King to match it. Use the new zombie sheet (`assets/bomber/zombies2/source_sheet.webp`) as the reference image.
+
+```
+A full-color sprite sheet of 4 cartoon zombie characters for a mobile game, in one row of 4 on a plain pure white background, each separate with clear space around it. All zombies are shown full body in side view, walking toward the LEFT with arms reaching forward.
+
+STYLE: fully colored and shaded, vibrant saturated colors, cute-creepy cartoon, thick soft outlines, clearly visible faces with glowing yellow eyes and stitched mouths, torn clothes, fun rather than gory. Clean premium mobile-game art, exactly the same style as the reference zombies. Every zombie has a different body shape and a different main color.
+
+1. Walker: average zombie, green skin, torn blue shirt, dark grey pants, shuffling
+2. Runner: skinny lime-yellow zombie in a torn red tank top and ripped jeans shorts, leaning forward running
+3. Brute: big muscular dark-green zombie, torn purple shirt, heavy fists, slow
+4. Zombie King: giant emerald-green zombie with a spiky golden crown, black tattered cape, purple royal rags, the biggest and scariest
+
+AVOID: black shapes, single-color shapes, blood, gore, text, background scenery, shadows on the background, items touching.
 ```

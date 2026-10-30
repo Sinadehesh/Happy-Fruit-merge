@@ -60,8 +60,21 @@ const ZOMBIE_SPRITES = {
     walker: '../assets/bomber/zombies/01_walker.png',
     runner: '../assets/bomber/zombies/02_runner.png',
     brute: '../assets/bomber/zombies/03_brute.png',
-    boss: '../assets/bomber/zombies/04_boss.png'
+    boss: '../assets/bomber/zombies/04_boss.png',
+    sprinter: '../assets/bomber/zombies2/01_sprinter.png',
+    trooper: '../assets/bomber/zombies2/02_trooper.png',
+    bloater: '../assets/bomber/zombies2/03_bloater.png',
+    screamer: '../assets/bomber/zombies2/04_screamer.png',
+    hulk: '../assets/bomber/zombies2/05_hulk.png',
+    ghoul: '../assets/bomber/zombies2/06_ghoul.png',
+    juggernaut: '../assets/bomber/zombies2/07_juggernaut.png',
+    titan: '../assets/bomber/zombies2/08_titan.png'
 };
+// Soldier bullets, one per upgrade step (see bulletTier)
+const BULLET_SPRITES = ['rifle', 'tracer', 'heavy', 'plasma'].map((n, i) => `../assets/bomber/bullets/0${i + 1}_${n}.png`);
+// UI art (assets/bomber/ui); each falls back to the drawn look if it can't load
+const UI_SPRITES = ['btn_green_long', 'btn_sound_on', 'btn_sound_off', 'btn_city', 'btn_play', 'ribbon',
+    'icon_gift', 'icon_star', 'icon_heart', 'icon_zombie', 'icon_bomb', 'icon_trophy'];
 const PLANE_SPRITE = '../assets/bomber/plane.png';
 
 // Battlefield backgrounds, switched with the 🌆 button. groundRow = image row where the grass starts.
@@ -160,6 +173,16 @@ function loadImages(paths) {
 const bombImgs = loadImages(BOMB_SPRITES);
 const zombieImgs = Object.fromEntries(Object.entries(ZOMBIE_SPRITES).map(([k, src]) => [k, loadImages([src])[0]]));
 const planeImg = loadImages([PLANE_SPRITE])[0];
+const bulletImgs = loadImages(BULLET_SPRITES);
+const uiImgs = Object.fromEntries(UI_SPRITES.map(n => [n, loadImages([`../assets/bomber/ui/${n}.png`])[0]]));
+// Draw a UI image fitted (keeping its shape) into a box centred on (cx, cy); returns false if not loaded
+function drawUi(name, cx, cy, w, h) {
+    const img = uiImgs[name];
+    if (!imgReady(img)) return false;
+    const k = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+    ctx.drawImage(img, cx - img.naturalWidth * k / 2, cy - img.naturalHeight * k / 2, img.naturalWidth * k, img.naturalHeight * k);
+    return true;
+}
 const bgImgs = BACKGROUNDS.map(bg => bg.src ? loadImages([bg.src])[0] : null);
 const imgReady = img => img && img.complete && img.naturalWidth > 0;
 let bgIndex = 0;
@@ -235,7 +258,7 @@ let state = 'title';      // title | merge | bomb | cleared | armory | over | wo
 let time = 0, phaseT = 0, stateT = 0;
 let level = 1, score = 0, baseHP = 10, baseMax = 10, baseFlash = 0;
 let currentTier = 0, nextTier = 0;
-let lootThisLevel = 0, flyingLoot = [], tracers = [], soldiers = [];
+let lootThisLevel = 0, flyingLoot = [], tracers = [], soldiers = [], bullets = [];
 let pointer = { x: W / 2, y: 0 };
 let overflowT = 0;
 let shake = 0;
@@ -429,7 +452,7 @@ function startLevel(n) {
     for (const b of bayBombs()) Composite.remove(engine.world, b);
     level = n; score = 0; kills = 0; bestMerge = 0; lootThisLevel = 0;
     setupBase();
-    zombies = []; projectiles = []; explosions = []; particles = []; floats = []; craters = []; streaks = []; flyingLoot = []; tracers = [];
+    zombies = []; projectiles = []; explosions = []; particles = []; floats = []; craters = []; streaks = []; flyingLoot = []; tracers = []; bullets = [];
     currentTier = randomDropTier(); nextTier = randomDropTier();
 
     // the horde for this level
@@ -573,15 +596,43 @@ function killZombie(z) {
     }
 }
 
+// Bullets get flashier with the upgrades: rifle → tracer (faster shooting) → heavy (2x damage) → plasma (+2 soldiers)
+function bulletTier() {
+    const L = save.armoryLevel;
+    return L >= 8 ? 3 : L >= 6 ? 2 : L >= 3 ? 1 : 0;
+}
+
 function soldierShoot(s, target) {
-    const dmg = 0.5 * perks().soldierDmg * levelHpMul(level);
-    target.hp -= dmg;
-    target.flash = 0.08;
     s.recoil = 1;
     s.aim = Math.atan2(target.y - 22 * target.type.size - s.y, target.x - s.x);
-    tracers.push({ x1: s.x + 10, y1: s.y - 2, x2: target.x + rand(-4, 4), y2: target.y - 22 * target.type.size + rand(-6, 6), t: 0 });
+    bullets.push({ x: s.x + 12, y: s.y - 16, target, dmg: 0.5 * perks().soldierDmg * levelHpMul(level), tier: bulletTier(), dy: rand(-6, 6) });
     Sound.shot();
-    if (target.hp <= 0) killZombie(target);
+}
+
+function updateBullets(dt) {
+    for (const b of bullets) {
+        const z = b.target;
+        const tx = z.x, ty = z.y - 22 * z.type.size + b.dy;
+        const d = Math.hypot(tx - b.x, ty - b.y), step = 650 * dt;
+        b.angle = Math.atan2(ty - b.y, tx - b.x);
+        if (z.dead || d <= step) {
+            b.done = true;
+            if (!z.dead) {
+                z.hp -= b.dmg; z.flash = 0.08;
+                burst(tx, ty, 3, 'spark');
+                if (z.hp <= 0) killZombie(z);
+            }
+        } else { b.x += (tx - b.x) / d * step; b.y += (ty - b.y) / d * step; }
+    }
+    bullets = bullets.filter(b => !b.done);
+}
+
+function drawBullet(b) {
+    const img = bulletImgs[b.tier], len = 16 + b.tier * 4;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+    if (imgReady(img)) ctx.drawImage(img, -len, -len * img.naturalHeight / img.naturalWidth / 2, len, len * img.naturalHeight / img.naturalWidth);
+    else { ctx.strokeStyle = '#fff3a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(0, 0); ctx.stroke(); }
+    ctx.restore();
 }
 
 function floatText(x, y, str, color, size) { floats.push({ x, y, str, color, size, t: 0 }); }
@@ -699,6 +750,7 @@ function update(dt) {
     flyingLoot = flyingLoot.filter(l => !l.done);
     for (const tr of tracers) tr.t += dt;
     tracers = tracers.filter(tr => tr.t < 0.08);
+    updateBullets(dt);
 
     for (const p of particles) {
         p.t += dt;
@@ -1181,7 +1233,10 @@ function drawPhaseBar() {
     } else if (state === 'armory' || state === 'won') {
         text(`🎁 ${save.lootQueue.length} LOOT TO DROP`, 14, y + h / 2 + 1, 18, '#ffd32a', 'left');
         if (state === 'armory') {
-            ctx.fillStyle = Math.sin(time * 5) > 0 ? '#2ed573' : '#26b862'; rrect(NEXT_BTN.x, NEXT_BTN.y, NEXT_BTN.w, NEXT_BTN.h, 10); ctx.fill();
+            const pulse = 1 + Math.sin(time * 5) * 0.03, cx = NEXT_BTN.x + NEXT_BTN.w / 2, cy = NEXT_BTN.y + NEXT_BTN.h / 2;
+            const img = uiImgs.btn_green_long;
+            if (imgReady(img)) ctx.drawImage(img, cx - NEXT_BTN.w * pulse / 2, cy - NEXT_BTN.h * pulse / 2, NEXT_BTN.w * pulse, NEXT_BTN.h * pulse);
+            else { ctx.fillStyle = Math.sin(time * 5) > 0 ? '#2ed573' : '#26b862'; rrect(NEXT_BTN.x, NEXT_BTN.y, NEXT_BTN.w, NEXT_BTN.h, 10); ctx.fill(); }
             text(`LEVEL ${save.level} ▶`, NEXT_BTN.x + NEXT_BTN.w / 2, NEXT_BTN.y + NEXT_BTN.h / 2 + 1, 18, '#fff');
         }
     }
@@ -1194,21 +1249,30 @@ function drawHUD() {
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, HUD_H);
     text(`LEVEL ${state === 'armory' || state === 'won' ? save.level : level}`, 14, 20, 20, '#ffd32a', 'left');
     text(`${score}`, 14, 42, 17, '#fff', 'left');
-    text(`🎁 ${save.lootQueue.length}`, LOOT_HUD.x, LOOT_HUD.y, 15, '#ffd32a', 'center');
-    text(`⭐ ${save.armoryLevel}/${LOOT.length - 1}`, LOOT_HUD.x, 18, 13, '#a29bfe', 'center');
+    // loot and upgrades (icon + number; the emoji is the fallback if the icon art can't load)
+    if (drawUi('icon_gift', LOOT_HUD.x - 14, LOOT_HUD.y, 20, 20)) text(`${save.lootQueue.length}`, LOOT_HUD.x + 2, LOOT_HUD.y + 1, 15, '#ffd32a', 'left');
+    else text(`🎁 ${save.lootQueue.length}`, LOOT_HUD.x, LOOT_HUD.y, 15, '#ffd32a', 'center');
+    if (drawUi('icon_star', LOOT_HUD.x - 14, 18, 18, 18)) text(`${save.armoryLevel}/${LOOT.length - 1}`, LOOT_HUD.x + 2, 19, 13, '#d6ccff', 'left');
+    else text(`⭐ ${save.armoryLevel}/${LOOT.length - 1}`, LOOT_HUD.x, 18, 13, '#a29bfe', 'center');
     // base health
     const bw = 110, bx = W - bw - 98, by = 14;
-    text('BASE', bx - 8, by + 8, 14, '#c8c3e6', 'right');
+    if (!drawUi('icon_heart', bx - 14, by + 8, 20, 20)) text('BASE', bx - 8, by + 8, 14, '#c8c3e6', 'right');
     ctx.fillStyle = '#3d3360'; rrect(bx, by, bw, 16, 8); ctx.fill();
     ctx.fillStyle = baseHP / baseMax > 0.35 ? '#2ed573' : '#ff4757';
     rrect(bx, by, Math.max(0, bw * baseHP / baseMax), 16, 8); ctx.fill();
     text(`${baseHP}/${baseMax}`, bx + bw / 2, by + 9, 12, '#fff');
-    text(`🧟 ${zombies.filter(z => !z.dead).length + spawnQueue.length}`, bx, by + 32, 14, '#badc58', 'left');
+    const zCount = zombies.filter(z => !z.dead).length + spawnQueue.length;
+    if (drawUi('icon_zombie', bx + 6, by + 32, 15, 15)) text(`${zCount}`, bx + 17, by + 33, 14, '#badc58', 'left');
+    else text(`🧟 ${zCount}`, bx, by + 32, 14, '#badc58', 'left');
     // background switch + mute
-    ctx.fillStyle = '#3d3360'; rrect(W - 88, 10, 36, 36, 10); ctx.fill();
-    text('🌆', W - 70, 29, 18, '#fff', 'center', null);
-    ctx.fillStyle = '#3d3360'; rrect(W - 46, 10, 36, 36, 10); ctx.fill();
-    text(Sound.isMuted() ? '🔇' : '🔊', W - 28, 29, 18, '#fff', 'center', null);
+    if (!drawUi('btn_city', W - 70, 28, 36, 36)) {
+        ctx.fillStyle = '#3d3360'; rrect(W - 88, 10, 36, 36, 10); ctx.fill();
+        text('🌆', W - 70, 29, 18, '#fff', 'center', null);
+    }
+    if (!drawUi(Sound.isMuted() ? 'btn_sound_off' : 'btn_sound_on', W - 27, 28, 42, 36)) {
+        ctx.fillStyle = '#3d3360'; rrect(W - 46, 10, 36, 36, 10); ctx.fill();
+        text(Sound.isMuted() ? '🔇' : '🔊', W - 28, 29, 18, '#fff', 'center', null);
+    }
 }
 
 function drawParticles() {
@@ -1244,6 +1308,7 @@ function drawOverlays() {
         ctx.strokeStyle = `rgba(255, 240, 160, ${1 - tr.t / 0.08})`; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(tr.x1, tr.y1); ctx.lineTo(tr.x2, tr.y2); ctx.stroke();
     }
+    for (const b of bullets) drawBullet(b);
     for (const l of flyingLoot) drawLoot(l.x, l.y, 9 + l.tier, l.tier, 1, l.t * 8);
     for (const s of streaks) {
         const k = s.t / 0.3;
@@ -1264,7 +1329,8 @@ function drawOverlays() {
         ctx.globalAlpha = fade;
         ctx.translate(W / 2, 200);
         ctx.scale(pop, pop);
-        text(b.title, 0, 0, 46, b.color);
+        drawUi('ribbon', 0, 4, 420, 96);
+        text(b.title, 0, 0, 40, b.color);
         if (b.sub) text(b.sub, 0, 40, 20, '#fff');
         ctx.restore();
     }
@@ -1277,10 +1343,11 @@ function drawTitle() {
     text('BOMBER', W / 2, 232 + bob, 72, '#ff6b35');
     drawBomb(W / 2, 360, 46, 10, Math.sin(time) * 0.2);
     const lines = ['1. MERGE: drop bombs in the bay,', 'two of the same make a BIGGER bomb', '2. BOMB: tap a bomb to drop it', 'from the plane onto the zombies', '3. ARMORY: merge zombie loot', 'to level up your base'];
-    lines.forEach((l, i) => text(l, W / 2, 440 + i * 30, 18, i % 2 === 0 ? '#ffd32a' : '#fff'));
-    text(save.level > 1 ? `TAP TO PLAY · LEVEL ${save.level}` : 'TAP TO START', W / 2, 650, 30 + Math.sin(time * 5) * 2, '#fff');
-    text(save.won ? '🏆 ALL 300 LEVELS CLEARED!' : `${MAX_LEVEL} LEVELS · ⭐ UPGRADES ${save.armoryLevel}/${LOOT.length - 1}`, W / 2, 710, 18, '#c8c3e6');
-    if (save.bestScore > 0) text(`BEST LEVEL SCORE: ${save.bestScore}`, W / 2, 740, 16, '#8c85b0');
+    lines.forEach((l, i) => text(l, W / 2, 425 + i * 28, 18, i % 2 === 0 ? '#ffd32a' : '#fff'));
+    text(save.level > 1 ? `TAP TO PLAY · LEVEL ${save.level}` : 'TAP TO START', W / 2, 612, 26, '#fff');
+    drawUi('btn_play', W / 2, 664, 60 + Math.sin(time * 5) * 3, 60 + Math.sin(time * 5) * 3);
+    text(save.won ? '🏆 ALL 300 LEVELS CLEARED!' : `${MAX_LEVEL} LEVELS · ⭐ UPGRADES ${save.armoryLevel}/${LOOT.length - 1}`, W / 2, 724, 18, '#c8c3e6');
+    if (save.bestScore > 0) text(`BEST LEVEL SCORE: ${save.bestScore}`, W / 2, 752, 16, '#8c85b0');
 }
 
 function drawGameOver() {
