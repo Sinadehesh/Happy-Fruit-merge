@@ -15,7 +15,7 @@ const GAME_HEIGHT = 640;   // 20% shorter than the original 800
 const DANGER_Y = 150;      // keep in sync with .danger-line in index.html
 const DROP_TIERS = 5;      // random drops come from the 5 smallest items
 
-// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars / ?mode=rocks
+// Modes, picked with ?mode=fruit / ?mode=animal / ?mode=cars / ?mode=rocks / ?mode=sweets
 // (cars-flat, cars-candy are other car art styles).
 // Sprite index = tier.
 // `tiers` is the size (radius) of each tier; its length is the number of merge levels.
@@ -67,6 +67,17 @@ const MODES = {
             'assets/rocks/04_malachite.png', 'assets/rocks/05_rose_quartz.png', 'assets/rocks/06_amethyst_geode.png',
             'assets/rocks/07_turquoise.png', 'assets/rocks/08_gold_nugget.png', 'assets/rocks/09_ruby.png',
             'assets/rocks/10_opal.png', 'assets/rocks/11_star_sapphire.png', 'assets/rocks/12_diamond.png'
+        ]
+    },
+    'sweets': {
+        background: '#fdf2f8',
+        // like rocks, sweets fill most of their picture
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: [
+            'assets/sweets/01_jelly_bean.png', 'assets/sweets/02_gummy_bear.png', 'assets/sweets/03_peppermint.png',
+            'assets/sweets/04_marshmallow.png', 'assets/sweets/05_macaron.png', 'assets/sweets/06_chocolate_truffle.png',
+            'assets/sweets/07_cupcake.png', 'assets/sweets/08_donut.png', 'assets/sweets/09_ice_cream.png',
+            'assets/sweets/10_caramel_pudding.png', 'assets/sweets/11_lollipop.png', 'assets/sweets/12_celebration_cake.png'
         ]
     }
 };
