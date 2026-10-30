@@ -1,10 +1,11 @@
-# Usage: python3 tools/cut_sheet.py sheet.jpg out_dir name1,name2,...
+# Usage: python3 tools/cut_sheet.py sheet.jpg out_dir name1,name2,... [size, default 256]
 # Cut a grid sprite sheet on a white background into 256x256 transparent PNGs
 import sys
 import numpy as np
 from PIL import Image, ImageFilter
 from scipy import ndimage
 src, out, names = sys.argv[1], sys.argv[2], sys.argv[3].split(',')
+SIZE = int(sys.argv[4]) if len(sys.argv) > 4 else 256
 a = np.array(Image.open(src).convert('RGB')).astype(int)
 H, W = a.shape[:2]
 fg = a.min(axis=2) < 230
@@ -34,5 +35,5 @@ for (y0, y1) in rows:
         img = img.crop(img.getbbox())
         s = max(img.size); sq = Image.new('RGBA', (s, s), (0, 0, 0, 0))
         sq.paste(img, ((s - img.width) // 2, (s - img.height) // 2))
-        sq.resize((256, 256), Image.LANCZOS).save(f'{out}/{k+1:02d}_{names[k]}.png', optimize=True)
+        sq.resize((SIZE, SIZE), Image.LANCZOS).save(f'{out}/{k+1:02d}_{names[k]}.png', optimize=True)
         print(k + 1, names[k], img.size); k += 1

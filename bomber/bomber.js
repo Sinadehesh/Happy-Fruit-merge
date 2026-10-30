@@ -21,8 +21,13 @@ const BAY_LINE = 70;             // overflow line, in bay coordinates
 const BASE_X = 48;               // zombies reaching this x hit your base
 
 // ---------- BOMBS ----------
-// Optional art: put 12 image paths here (one per level) to replace the drawn bombs.
-const BOMB_SPRITES = [];
+// Art for each level (cut from assets/bomber/bombs/source_sheet.webp). If an image can't load,
+// that bomb is drawn in code instead. Hitboxes come from the sprite outlines in shapes.js.
+const BOMB_SPRITES = ['firecracker', 'cherry_bomb', 'grenade', 'dynamite', 'tnt', 'cluster_bomb', 'aerial_bomb',
+    'napalm', 'bunker_buster', 'thermobaric', 'mega_nuke', 'black_hole']
+    .map((name, i) => `../assets/bomber/bombs/${String(i + 1).padStart(2, '0')}_${name}.png`);
+const SPRITE_SIZE = 256;   // sprite images are 256x256
+const SPRITE_FIT = 1.08;   // draw slightly bigger than the hitbox so the art touches
 
 const BOMBS = [
     { name: 'Firecracker',   body: '#ff4757', band: '#ffd32a', icon: 'band' },
@@ -44,8 +49,21 @@ const blastRadius = t => 22 + t * 16;                             // on the batt
 const blastDamage = t => Math.round(2 * Math.pow(1.75, t));
 
 // ---------- ZOMBIES ----------
-// Optional art: { walker: 'path.png', ... } to replace the drawn zombies.
-const ZOMBIE_SPRITES = {};
+// Zombie art (cut from assets/bomber/zombies/source_sheet.webp); drawn in code if an image can't load
+const ZOMBIE_SPRITES = {
+    walker: '../assets/bomber/zombies/01_walker.png',
+    runner: '../assets/bomber/zombies/02_runner.png',
+    brute: '../assets/bomber/zombies/03_brute.png',
+    boss: '../assets/bomber/zombies/04_boss.png'
+};
+const PLANE_SPRITE = '../assets/bomber/plane.png';
+
+// Battlefield backgrounds, switched with the 🌆 button. groundRow = image row where the grass starts.
+const BACKGROUNDS = [
+    { src: '../assets/bomber/bg_city.webp', groundRow: 666 },
+    { src: '../assets/bomber/bg_ruins.webp', groundRow: 806, fadeGround: true },
+    { src: null }  // drawn in code
+];
 
 const ZOMBIES = {
     walker: { skin: '#7bd389', shirt: '#4a69bd', pants: '#353b48', size: 1.0, hp: 3,  speed: 13,  dmg: 1,  pts: 10 },
@@ -81,7 +99,15 @@ function loadImages(paths) {
 }
 const bombImgs = loadImages(BOMB_SPRITES);
 const zombieImgs = Object.fromEntries(Object.entries(ZOMBIE_SPRITES).map(([k, src]) => [k, loadImages([src])[0]]));
+const planeImg = loadImages([PLANE_SPRITE])[0];
+const bgImgs = BACKGROUNDS.map(bg => bg.src ? loadImages([bg.src])[0] : null);
 const imgReady = img => img && img.complete && img.naturalWidth > 0;
+let bgIndex = 0;
+try { bgIndex = Math.min(BACKGROUNDS.length - 1, Math.max(0, parseInt(localStorage.getItem('zombieBomber.bg'), 10) || 0)); } catch (e) {}
+function nextBackground() {
+    bgIndex = (bgIndex + 1) % BACKGROUNDS.length;
+    try { localStorage.setItem('zombieBomber.bg', bgIndex); } catch (e) {}
+}
 
 // ---------- SOUND (synthesized, no files) ----------
 const Sound = (() => {
@@ -179,7 +205,19 @@ const bayBombs = () => Composite.allBodies(engine.world).filter(b => b.tier !== 
 function spawnBayBomb(x, y, tier, merged) {
     const r = BOMB_R[tier];
     const startR = merged ? Math.max(r * 0.35, 8) : r;
-    const body = Bodies.circle(x, y, startR, { restitution: 0.12, friction: 0.4, density: 0.001 * (tier + 1) });
+    const opts = { restitution: 0.12, friction: 0.4, density: 0.001 * (tier + 1) };
+    const outline = typeof SHAPES !== 'undefined' && SHAPES[BOMB_SPRITES[tier]];
+    let body, centre = null;
+    if (outline) {
+        // hitbox = the sprite's outline; Matter centres the body on the outline's centroid
+        const pts = outline.map(([px, py]) => ({ x: px, y: py }));
+        centre = Matter.Vertices.centre(pts);
+        const s = spriteScale(startR);
+        body = Bodies.fromVertices(x, y, [pts.map(p => ({ x: p.x * s, y: p.y * s }))], opts);
+    } else {
+        body = Bodies.circle(x, y, startR, opts);
+    }
+    body.centre = centre;
     body.tier = tier;
     body.currentRadius = startR;
     body.targetRadius = r;
@@ -470,7 +508,46 @@ function drawBattlefield() {
     ctx.save();
     ctx.beginPath(); ctx.rect(0, BATTLE_TOP, W, BATTLE_BOTTOM - BATTLE_TOP); ctx.clip();
 
-    // dusk sky
+    const bg = BACKGROUNDS[bgIndex], bgImg = bgImgs[bgIndex];
+    if (imgReady(bgImg)) drawBackgroundImage(bg, bgImg);
+    else drawDrawnBackground();
+    for (const c of craters) { ctx.fillStyle = `rgba(30, 20, 15, ${c.a * 0.6})`; ellipse(c.x, c.y, c.r, c.r * 0.28); ctx.fill(); }
+
+    drawBase();
+
+    // reticle: where a bomb dropped right now would land
+    if (state === 'bomb') {
+        const tFall = (-30 + Math.sqrt(30 * 30 + 2 * 1100 * (IMPACT_Y - plane.y - 14))) / 1100;
+        const lx = plane.x + plane.vx * 0.85 * tFall;
+        const pulse = 0.6 + 0.4 * Math.sin(time * 8);
+        ctx.strokeStyle = `rgba(255, 80, 60, ${pulse})`; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+        ellipse(lx, IMPACT_Y, 16, 5); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(lx - 8, IMPACT_Y); ctx.lineTo(lx + 8, IMPACT_Y); ctx.moveTo(lx, IMPACT_Y - 4); ctx.lineTo(lx, IMPACT_Y + 4); ctx.stroke();
+    }
+
+    // plane shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ellipse(plane.x, GROUND_Y + 8, 26, 4); ctx.fill();
+
+    [...zombies].sort((a, b) => a.y - b.y).forEach(drawZombie);
+    for (const p of projectiles) drawBomb(p.x, p.y, 7 + p.tier * 1.4, p.tier, p.rot);
+    for (const e of explosions) drawExplosion(e);
+    drawPlane();
+    ctx.restore();
+}
+
+// Background art, scaled to the canvas width and lined up so its grass starts at GROUND_Y
+function drawBackgroundImage(bg, img) {
+    const s = W / img.naturalWidth;
+    ctx.drawImage(img, 0, GROUND_Y - bg.groundRow * s, W, img.naturalHeight * s);
+    if (bg.fadeGround) {  // this art's grass strip is thin and turns black below; blend in more grass
+        const g = ctx.createLinearGradient(0, GROUND_Y + 18, 0, BATTLE_BOTTOM);
+        g.addColorStop(0, 'rgba(34, 92, 18, 0)'); g.addColorStop(0.4, '#225c12'); g.addColorStop(1, '#173f0c');
+        ctx.fillStyle = g; ctx.fillRect(0, GROUND_Y + 18, W, BATTLE_BOTTOM - GROUND_Y - 18);
+    }
+}
+
+// The original background, drawn in code
+function drawDrawnBackground() {
     const sky = ctx.createLinearGradient(0, BATTLE_TOP, 0, GROUND_Y);
     sky.addColorStop(0, '#2c1b4d'); sky.addColorStop(0.55, '#b33771'); sky.addColorStop(1, '#ff9f43');
     ctx.fillStyle = sky; ctx.fillRect(0, BATTLE_TOP, W, GROUND_Y - BATTLE_TOP);
@@ -505,28 +582,6 @@ function drawBattlefield() {
     gg.addColorStop(0, '#5b8c3a'); gg.addColorStop(0.15, '#4a6b2f'); gg.addColorStop(1, '#2d3b1f');
     ctx.fillStyle = gg; ctx.fillRect(0, GROUND_Y, W, BATTLE_BOTTOM - GROUND_Y);
     ctx.fillStyle = '#7bb24a'; ctx.fillRect(0, GROUND_Y, W, 3);
-    for (const c of craters) { ctx.fillStyle = `rgba(30, 20, 15, ${c.a * 0.6})`; ellipse(c.x, c.y, c.r, c.r * 0.28); ctx.fill(); }
-
-    drawBase();
-
-    // reticle: where a bomb dropped right now would land
-    if (state === 'bomb') {
-        const tFall = (-30 + Math.sqrt(30 * 30 + 2 * 1100 * (IMPACT_Y - plane.y - 14))) / 1100;
-        const lx = plane.x + plane.vx * 0.85 * tFall;
-        const pulse = 0.6 + 0.4 * Math.sin(time * 8);
-        ctx.strokeStyle = `rgba(255, 80, 60, ${pulse})`; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
-        ellipse(lx, IMPACT_Y, 16, 5); ctx.stroke(); ctx.setLineDash([]);
-        ctx.beginPath(); ctx.moveTo(lx - 8, IMPACT_Y); ctx.lineTo(lx + 8, IMPACT_Y); ctx.moveTo(lx, IMPACT_Y - 4); ctx.lineTo(lx, IMPACT_Y + 4); ctx.stroke();
-    }
-
-    // plane shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'; ellipse(plane.x, GROUND_Y + 8, 26, 4); ctx.fill();
-
-    [...zombies].sort((a, b) => a.y - b.y).forEach(drawZombie);
-    for (const p of projectiles) drawBomb(p.x, p.y, 7 + p.tier * 1.4, p.tier, p.rot);
-    for (const e of explosions) drawExplosion(e);
-    drawPlane();
-    ctx.restore();
 }
 
 function drawBase() {
@@ -558,6 +613,15 @@ function drawPlane() {
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(Math.sin(time * 1.6 + 1) * 0.04);
+    if (imgReady(planeImg)) {
+        const w = 96, h = w * planeImg.naturalHeight / planeImg.naturalWidth;
+        ctx.drawImage(planeImg, -w / 2, -h / 2, w, h);
+        // spinning propeller blur over the art's propeller
+        ctx.fillStyle = 'rgba(230, 230, 240, 0.35)';
+        ellipse(w * 0.43, 0, 3, h * 0.45 * Math.abs(Math.sin(time * 40))); ctx.fill();
+        ctx.restore();
+        return;
+    }
     // tail fin + stabilizer
     ctx.fillStyle = '#c0392b';
     ctx.beginPath(); ctx.moveTo(-26, -3); ctx.lineTo(-40, -22); ctx.lineTo(-33, -22); ctx.lineTo(-18, -5); ctx.fill();
@@ -597,8 +661,12 @@ function drawZombie(z) {
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; ellipse(0, 0, 10 * s, 3 * s); ctx.fill();
     const img = zombieImgs[z.kind];
     if (imgReady(img)) {
-        const h = 46 * s, w = h * img.naturalWidth / img.naturalHeight;
+        // waddle: bob up and down and rock side to side while walking
+        const h = 52 * s, w = h * img.naturalWidth / img.naturalHeight;
+        if (!z.dead) { ctx.translate(0, -Math.abs(Math.sin(z.walk)) * 2.5 * s); ctx.rotate(Math.sin(z.walk) * 0.07); }
+        if (z.flash > 0) ctx.filter = 'brightness(2.5)';
         ctx.drawImage(img, -w / 2, -h, w, h);
+        ctx.filter = 'none';
     } else {
         ctx.scale(s, s);
         const step = Math.sin(z.walk);
@@ -655,14 +723,18 @@ function drawExplosion(e) {
 }
 
 // ---------- DRAW: BOMBS ----------
-function drawBomb(x, y, r, tier, angle, alpha = 1) {
+const spriteScale = r => (r * 2 * SPRITE_FIT) / SPRITE_SIZE;
+
+// centre: for bay bombs, the hitbox centroid in sprite pixels (the body's position), so art and hitbox line up
+function drawBomb(x, y, r, tier, angle, alpha = 1, centre = null) {
     const b = BOMBS[tier];
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.rotate(angle);
     if (imgReady(bombImgs[tier])) {
-        ctx.drawImage(bombImgs[tier], -r * 1.15, -r * 1.15, r * 2.3, r * 2.3);
+        const s = spriteScale(r), c = centre || { x: SPRITE_SIZE / 2, y: SPRITE_SIZE / 2 };
+        ctx.drawImage(bombImgs[tier], -c.x * s, -c.y * s, SPRITE_SIZE * s, SPRITE_SIZE * s);
         ctx.restore();
         return;
     }
@@ -768,7 +840,7 @@ function drawBay() {
     ctx.restore();
     if (overflowT > 0 && state === 'merge') { ctx.fillStyle = `rgba(255, 60, 60, ${0.25 + 0.2 * Math.sin(time * 20)})`; ctx.fillRect(BAY.x, BAY.y, BAY.w, BAY_LINE); }
 
-    for (const b of bayBombs()) drawBomb(BAY.x + b.position.x, BAY.y + b.position.y, b.currentRadius, b.tier, b.angle);
+    for (const b of bayBombs()) drawBomb(BAY.x + b.position.x, BAY.y + b.position.y, b.currentRadius, b.tier, b.angle, 1, b.centre);
 
     // the bomb you're about to drop hangs at the top during MERGE
     if (state === 'merge') {
@@ -813,14 +885,16 @@ function drawHUD() {
     text(`WAVE ${wave}`, 14, 20, 20, '#ffd32a', 'left');
     text(`${score}`, 14, 42, 17, '#fff', 'left');
     // base health
-    const bw = 130, bx = W - bw - 56, by = 14;
+    const bw = 110, bx = W - bw - 98, by = 14;
     text('BASE', bx - 8, by + 8, 14, '#c8c3e6', 'right');
     ctx.fillStyle = '#3d3360'; rrect(bx, by, bw, 16, 8); ctx.fill();
     ctx.fillStyle = baseHP / BASE_HP > 0.35 ? '#2ed573' : '#ff4757';
     rrect(bx, by, Math.max(0, bw * baseHP / BASE_HP), 16, 8); ctx.fill();
     text(`${baseHP}/${BASE_HP}`, bx + bw / 2, by + 9, 12, '#fff');
     text(`🧟 ${zombies.filter(z => !z.dead).length + spawnQueue.length}`, bx, by + 32, 14, '#badc58', 'left');
-    // mute
+    // background switch + mute
+    ctx.fillStyle = '#3d3360'; rrect(W - 88, 10, 36, 36, 10); ctx.fill();
+    text('🌆', W - 70, 29, 18, '#fff', 'center', null);
     ctx.fillStyle = '#3d3360'; rrect(W - 46, 10, 36, 36, 10); ctx.fill();
     text(Sound.isMuted() ? '🔇' : '🔊', W - 28, 29, 18, '#fff', 'center', null);
 }
@@ -930,6 +1004,7 @@ canvas.addEventListener('pointerdown', e => {
     pointer = p;
     Sound.init();
     if (p.x > W - 50 && p.y < HUD_H) { Sound.toggle(); return; }
+    if (p.x > W - 92 && p.x <= W - 50 && p.y < HUD_H && state !== 'title') { nextBackground(); return; }
     if (state === 'title') { startGame(); return; }
     if (state === 'over') { if (stateT > 1) startGame(); return; }
     const inBay = p.x >= BAY.x && p.x <= BAY.x + BAY.w && p.y >= BAY.y && p.y <= BAY.y + BAY.h;

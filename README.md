@@ -59,4 +59,4 @@ Each wave has two phases:
 
 Zombies (walkers, runners, brutes and a boss every 5 waves) walk toward your base the whole time. Unused bombs carry over to the next wave. The base has 10 HP.
 
-The art is drawn in code for now. To use generated art, cut the sheets into `assets/bomber/` and list the files in `BOMB_SPRITES` / `ZOMBIE_SPRITES` at the top of `bomber/bomber.js`.
+Art lives in `assets/bomber/` (bombs, zombies, plane and two backgrounds; the 🌆 button switches between the two backgrounds and the original drawn one). If an image can't load, that item is drawn in code instead. Bomb hitboxes are their sprite outlines (`bomber/shapes.js`, from `tools/make_shapes.py`); `tools/soft_glow.py` re-cuts glowing items like the Black Hole bomb with a soft halo. Asset prompts are in `bomber/ASSET_PROMPTS.md`.
