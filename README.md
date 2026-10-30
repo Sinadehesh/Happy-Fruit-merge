@@ -49,3 +49,14 @@ Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest a
 ```
 python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png assets/sweets/[01]*.png
 ```
+
+# Zombie Bomber (`/bomber/`)
+A second game built on the same drop-and-merge engine: https://sinadehesh.github.io/Happy-Fruit-merge/bomber/
+
+Each wave has two phases:
+1. **Merge** (15–18 seconds): tap the bomb bay to drop bombs. Two of the same merge into a bigger bomb (Firecracker → Cherry Bomb → Grenade → Dynamite → TNT Barrel → Cluster Bomb → Aerial Bomb → Napalm → Bunker Buster → Thermobaric → Mega Nuke → Black Hole). If the bay overflows, the phase ends early.
+2. **Bombs away**: tap a bomb in the bay and the plane drops it. Bigger bombs have a much bigger blast. The red marker on the ground shows where a bomb would land right now.
+
+Zombies (walkers, runners, brutes and a boss every 5 waves) walk toward your base the whole time. Unused bombs carry over to the next wave. The base has 10 HP.
+
+The art is drawn in code for now. To use generated art, cut the sheets into `assets/bomber/` and list the files in `BOMB_SPRITES` / `ZOMBIE_SPRITES` at the top of `bomber/bomber.js`.
