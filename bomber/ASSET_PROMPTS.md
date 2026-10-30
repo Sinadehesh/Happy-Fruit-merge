@@ -54,3 +54,54 @@ A single cartoon bomber plane for a mobile game, shown from the SIDE flying to t
 ```
 A wide side-view game background for a mobile game, 3:2 landscape. Dusk sky going from deep purple at the top to hot pink and orange at the horizon, a big glowing blood-red moon, a few soft clouds, a silhouette of a ruined city skyline with a few lit windows, and a flat strip of green grass ground along the bottom quarter. Glossy, saturated cartoon style, clean and simple so characters stand out on top. No characters, no zombies, no planes, no text.
 ```
+
+## 5. New zombies (8 types, discovered every 20 levels)
+
+These are drawn in code until the art exists. Same style as the first zombie sheet so they match.
+
+```
+A sprite sheet of 8 cartoon zombies for a mobile game, in a neat grid of 2 rows and 4 columns on a plain pure white background, each separate with clear space around it. All zombies are shown full body from the SIDE, walking toward the LEFT with arms reaching forward.
+
+STYLE: cute-creepy chunky cartoon, glossy saturated colors, thick soft outlines, big heads, small bodies, glowing eyes, torn clothes, fun rather than gory. Clean premium mobile-game art. Every zombie has a different silhouette and main color.
+
+1. Trooper: grey-green skin, torn army uniform, dented army helmet
+2. Sprinter: lime skin, hot-pink tank top, red spiky mohawk, skinny, leaning forward running
+3. Bloater: yellow-green skin, huge round swollen belly in a tight orange shirt, short legs
+4. Screamer: lavender skin, purple hooded robe, mouth wide open screaming
+5. Hulk: dark green, very big and muscular, small bone horns, ripped navy shirt
+6. Ghoul: pale blue-grey skin, black rags, glowing cyan eyes with a cyan aura, fast and thin
+7. Juggernaut: huge zombie in grey metal armor plates and a metal helmet with a red visor slit
+8. Titan: gigantic teal zombie with big horns, purple tattered cape, glowing eyes, the biggest and scariest
+
+AVOID: blood, gore, text, background scenery, shadows on the background, items touching.
+```
+
+## 6. Soldier
+
+```
+A single cartoon soldier for a mobile game, full body from the SIDE, facing RIGHT, aiming a rifle, centered on a plain pure white background. Chunky cute proportions with a big head, olive-green uniform, round army helmet, brave determined face. Glossy saturated cartoon style, thick soft outlines. No text, no background, no shadow.
+```
+
+## 7. Loot (10 levels, merged in the Armory)
+
+```
+A sprite sheet of 10 cartoon loot items for a mobile merge game, in a neat grid of 3 rows (4, 4, 2) on a plain pure white background, each separate and centered in its own cell, nothing touching.
+
+IMPORTANT: every item is ROUND or fits inside a circle, chunky and compact, each with a different shape and main color. No faces.
+
+STYLE: ultra-saturated glossy candy style, thick soft outlines in a darker shade of each item's color, big white shiny highlights, clean premium mobile-game icon art.
+
+ITEMS, from junk to treasure:
+1. Rusty orange bolt and nut
+2. Shiny blue gear
+3. Green battery with a lightning bolt
+4. Orange ammo crate
+5. Red toolbox
+6. Yellow medkit with a white cross
+7. Green army helmet
+8. Stack of gold bars
+9. Purple military medal with a star
+10. Magenta-gold trophy cup with a small soft glow (the final treasure)
+
+AVOID: text, numbers, logos, grid lines, shadows or glows on the background, realistic style, items touching, items cut off.
+```

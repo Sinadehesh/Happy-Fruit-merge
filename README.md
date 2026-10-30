@@ -53,10 +53,12 @@ python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.p
 # Zombie Bomber (`/bomber/`)
 A second game built on the same drop-and-merge engine: https://sinadehesh.github.io/Happy-Fruit-merge/bomber/
 
-Each wave has two phases:
+**300 levels.** Each level alternates two phases until the horde is gone:
 1. **Merge** (15–18 seconds): tap the bomb bay to drop bombs. Two of the same merge into a bigger bomb (Firecracker → Cherry Bomb → Grenade → Dynamite → TNT Barrel → Cluster Bomb → Aerial Bomb → Napalm → Bunker Buster → Thermobaric → Mega Nuke → Black Hole). If the bay overflows, the phase ends early.
 2. **Bombs away**: tap a bomb in the bay and the plane drops it. Bigger bombs have a much bigger blast. The red marker on the ground shows where a bomb would land right now.
 
-Zombies (walkers, runners, brutes and a boss every 5 waves) walk toward your base the whole time. Unused bombs carry over to the next wave. The base has 10 HP.
+Zombies walk toward your base the whole time and soldiers on the base shoot at them. Only the number, speed and crowding of zombies grow with the level. There are 12 zombie types: Walker, Runner, Brute and the Zombie King (every 5 levels) show up in the first 10 levels; after that a new type is discovered every 20 levels (Trooper 20, Sprinter 40, Bloater 60, Screamer 80, Hulk 100, Ghoul 120, Juggernaut 140, Titan 160).
 
-Art lives in `assets/bomber/` (bombs, zombies, plane and two backgrounds; the 🌆 button switches between the two backgrounds and the original drawn one). If an image can't load, that item is drawn in code instead. Bomb hitboxes are their sprite outlines (`bomber/shapes.js`, from `tools/make_shapes.py`); `tools/soft_glow.py` re-cuts glowing items like the Black Hole bomb with a soft halo. Asset prompts are in `bomber/ASSET_PROMPTS.md`.
+**Armory.** Zombies drop loot. After each level the loot goes into the Armory, a second merge box (Bolt → Gear → Battery → Ammo → Toolbox → Medkit → Helmet → Gold Bar → Medal → Trophy). The first time you make each loot level you unlock a permanent upgrade: more soldiers, more base HP, faster and stronger soldiers, bigger bomb drops, bigger blasts. Your level, armory and loot are saved in the browser; losing retries the same level and keeps the loot.
+
+Art lives in `assets/bomber/` (bombs, the first 4 zombies, plane and two backgrounds; the 🌆 button switches between the two backgrounds and the original drawn one). Anything without art yet (the 8 later zombies, soldiers, loot) is drawn in code, and so is any image that can't load. Bomb hitboxes are their sprite outlines (`bomber/shapes.js`, from `tools/make_shapes.py`); `tools/soft_glow.py` re-cuts glowing items like the Black Hole bomb with a soft halo. Asset prompts are in `bomber/ASSET_PROMPTS.md`.
