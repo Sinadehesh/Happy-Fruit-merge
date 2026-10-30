@@ -71,8 +71,21 @@ const ZOMBIE_SPRITES = {
     juggernaut: '../assets/bomber/zombies2/07_juggernaut.png',
     titan: '../assets/bomber/zombies2/08_titan.png'
 };
-// Soldier bullets, one per upgrade step (see bulletTier)
-const BULLET_SPRITES = ['rifle', 'tracer', 'heavy', 'plasma'].map((n, i) => `../assets/bomber/bullets/0${i + 1}_${n}.png`);
+// Shots: each soldier look fires its own projectile with its own muzzle flash (assets/bomber/shots).
+// tip / tipY = where the gun's muzzle is: right of the soldier's centre / above the feet, as fractions of the art's height.
+// jet = the flash is a jet pointing forward (starts at the muzzle) instead of a star centred on it.
+const SHOTS = [
+    { name: 'pistol',  len: 20, flash: 12, speed: 650,  tip: 0.285 },
+    { name: 'rifle',   len: 30, flash: 14, speed: 700,  tip: 0.33 },
+    { name: 'grenade', len: 15, flash: 17, speed: 420,  tip: 0.33, spin: true, smoke: true },
+    { name: 'tracer',  len: 34, flash: 19, speed: 750,  tip: 0.35 },
+    { name: 'sniper',  len: 34, flash: 15, speed: 1000, tip: 0.32 },
+    { name: 'flame',   len: 40, flash: 22, speed: 480,  tip: 0.31, tipY: 0.6, jet: true },
+    { name: 'minigun', len: 28, flash: 18, speed: 750,  tip: 0.34, tipY: 0.42, jet: true },
+    { name: 'energy',  len: 44, flash: 19, speed: 800,  tip: 0.335 }
+];
+const SHOT_SPRITES = SHOTS.map((sh, i) => `../assets/bomber/shots/proj_${i + 1}_${sh.name}.png`);
+const FLASH_SPRITES = SHOTS.map((sh, i) => `../assets/bomber/shots/flash_${i + 1}.png`);
 // UI art (assets/bomber/ui); each falls back to the drawn look if it can't load
 const UI_SPRITES = ['btn_green_long', 'btn_sound_on', 'btn_sound_off', 'btn_city', 'btn_play', 'ribbon',
     'icon_gift', 'icon_star', 'icon_heart', 'icon_zombie', 'icon_bomb', 'icon_trophy', 'icon_coin', 'panel', 'btn_purple_long'];
@@ -157,7 +170,6 @@ function stats(up = save.up) {
         soldierLook: up.soldiers - 1,                                   // one look per level
         soldierDmg: (1 + 0.25 * (up.soldiers - 1)) * (1 + 0.35 * (up.weapons - 1)),
         fireRate: 1 + 0.12 * (up.weapons - 1),
-        bulletTier: Math.min(3, Math.floor((up.weapons - 1) / 2)),     // rifle, tracer, heavy, plasma
         baseHp: 10 + 8 * (up.base - 1),
         baseStage: Math.min(3, Math.floor((up.base - 1) / 2)),          // which base art to draw
         dropMin: Math.floor((up.bombs - 1) / 3),                        // smallest bomb you drop
@@ -170,7 +182,7 @@ function upgradeEffect(key) {
     const now = stats(), next = stats({ ...save.up, [key]: save.up[key] + 1 });
     switch (key) {
         case 'soldiers': return next.soldiers > now.soldiers ? '+1 SOLDIER' : 'STRONGER SOLDIERS';
-        case 'weapons': return next.bulletTier > now.bulletTier ? 'NEW BULLETS!' : '+35% DAMAGE';
+        case 'weapons': return '+35% DAMAGE · FASTER';
         case 'base': return '+8 BASE HP';
         case 'bombs': return next.dropMin > now.dropMin ? 'BIGGER BOMB DROPS' : '+8% BLAST';
     }
@@ -202,7 +214,8 @@ function loadImages(paths) {
 const bombImgs = loadImages(BOMB_SPRITES);
 const zombieImgs = Object.fromEntries(Object.entries(ZOMBIE_SPRITES).map(([k, src]) => [k, loadImages([src])[0]]));
 const planeImg = loadImages([PLANE_SPRITE])[0];
-const bulletImgs = loadImages(BULLET_SPRITES);
+const shotImgs = loadImages(SHOT_SPRITES);
+const flashImgs = loadImages(FLASH_SPRITES);
 const soldierImgs = loadImages(SOLDIER_SPRITES);
 const baseImgs = loadImages(BASE_SPRITES);
 const uiImgs = Object.fromEntries(UI_SPRITES.map(n => [n, loadImages([`../assets/bomber/ui/${n}.png`])[0]]));
@@ -558,7 +571,8 @@ function soldierShoot(s, target) {
     s.recoil = 1;
     s.aim = Math.atan2(target.y - 22 * target.type.size - s.y, target.x - s.x);
     const st = stats();
-    bullets.push({ x: s.x + 15, y: s.y - 29, target, dmg: 0.5 * st.soldierDmg * levelHpMul(level), tier: st.bulletTier, dy: rand(-6, 6) });
+    const shot = SHOTS[s.look || 0];
+    bullets.push({ x: s.x + 34 * 1.25 * shot.tip, y: s.y - 34 * 1.25 * (shot.tipY || 0.68), target, dmg: 0.5 * st.soldierDmg * levelHpMul(level), look: s.look || 0, dy: rand(-6, 6), spin: 0 });
     Sound.shot();
 }
 
@@ -566,8 +580,11 @@ function updateBullets(dt) {
     for (const b of bullets) {
         const z = b.target;
         const tx = z.x, ty = z.y - 22 * z.type.size + b.dy;
-        const d = Math.hypot(tx - b.x, ty - b.y), step = 650 * dt;
+        const shot = SHOTS[b.look];
+        const d = Math.hypot(tx - b.x, ty - b.y), step = shot.speed * dt;
         b.angle = Math.atan2(ty - b.y, tx - b.x);
+        if (shot.spin) b.spin += dt * 14;
+        if (shot.smoke && Math.random() < 0.5) particles.push({ x: b.x, y: b.y, kind: 'smoke', t: 0, vx: 0, vy: -8, life: 0.4, size: 3, g: 0, drag: 1 });
         if (z.dead || d <= step) {
             b.done = true;
             if (!z.dead) {
@@ -581,8 +598,8 @@ function updateBullets(dt) {
 }
 
 function drawBullet(b) {
-    const img = bulletImgs[b.tier], len = 16 + b.tier * 4;
-    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+    const img = shotImgs[b.look], len = SHOTS[b.look].len;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle + b.spin);
     if (imgReady(img)) ctx.drawImage(img, -len, -len * img.naturalHeight / img.naturalWidth / 2, len, len * img.naturalHeight / img.naturalWidth);
     else { ctx.strokeStyle = '#fff3a0'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-len, 0); ctx.lineTo(0, 0); ctx.stroke(); }
     ctx.restore();
@@ -843,7 +860,14 @@ function drawSoldier(s, scale = 1.25) {
     if (imgReady(img)) {
         const h = 34, w = h * img.naturalWidth / img.naturalHeight;
         ctx.drawImage(img, -w / 2, -h, w, h);
-        if (s.recoil > 0.6) { ctx.fillStyle = '#fff3a0'; circle(w * 0.36, -h * 0.68, 3 * s.recoil); ctx.fill(); }
+        const shot = SHOTS[s.look || 0], flash = flashImgs[s.look || 0];
+        if (s.recoil > 0.4 && imgReady(flash)) {  // muzzle flash at the gun's muzzle
+            const fw = shot.flash, fh = fw * flash.naturalHeight / flash.naturalWidth;
+            const mx = h * shot.tip, my = -h * (shot.tipY || 0.68);
+            ctx.globalAlpha = Math.min(1, s.recoil * 1.5);
+            ctx.drawImage(flash, shot.jet ? mx - 1 : mx - fw * 0.3, my - fh / 2, fw, fh);
+            ctx.globalAlpha = 1;
+        }
         ctx.restore();
         return;
     }
@@ -1155,8 +1179,10 @@ function drawShop() {
             ctx.restore();
             text(`x${nextSt.soldiers}`, px + 46, py + 16, 18, '#fff');
         } else if (c.key === 'weapons') {
-            const img = bulletImgs[st.bulletTier];
-            if (imgReady(img)) { const w = 84, h = w * img.naturalHeight / img.naturalWidth; ctx.drawImage(img, px - w / 2, py - h / 2, w, h); }
+            // your soldiers' current muzzle flash and shot
+            const fl = flashImgs[st.soldierLook], sh = shotImgs[st.soldierLook];
+            if (imgReady(fl)) { const k = Math.min(50 / fl.naturalWidth, 50 / fl.naturalHeight); ctx.drawImage(fl, px - 70, py - fl.naturalHeight * k / 2, fl.naturalWidth * k, fl.naturalHeight * k); }
+            if (imgReady(sh)) { const k = Math.min(84 / sh.naturalWidth, 50 / sh.naturalHeight); ctx.drawImage(sh, px - 16, py - sh.naturalHeight * k / 2, sh.naturalWidth * k, sh.naturalHeight * k); }
         } else if (c.key === 'base') {
             const img = baseImgs[nextSt.baseStage];
             if (imgReady(img)) {
