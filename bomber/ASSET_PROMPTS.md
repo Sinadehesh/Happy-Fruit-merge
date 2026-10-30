@@ -10,7 +10,7 @@ STYLE (match exactly): flat cel-shaded 2D cartoon in the style of the reference 
 
 ## 0b. Enhance the old zombies to match (Edit Image)
 
-Open the first zombie sheet (`assets/bomber/zombies/source_sheet.webp`, the walker, runner, brute and king), click **Edit Image**, add the new zombie sheet as reference, and use:
+If your generator can edit an image: open the first zombie sheet (`assets/bomber/zombies/source_sheet.webp`), click **Edit Image** and use the prompt below. If it can't, use section 12 instead (no reference needed).
 
 ```
 Redraw these 4 zombies so they match the reference zombie sheet exactly. Keep each zombie's identity, pose (walking to the LEFT, arms forward), clothes and main colors, and keep them in one row on a plain pure white background with space between them.
@@ -210,19 +210,19 @@ Include:
 AVOID: any text or letters, numbers, logos, background, shadows on the background, elements touching.
 ```
 
-## 12. The first four zombies, redone in the new style
+## 12. The first four zombies, redone in the new style (no reference image needed)
 
-The new zombie sheet looks better than the first one, so redo Walker, Runner, Brute and the Zombie King to match it. Use the new zombie sheet (`assets/bomber/zombies2/source_sheet.webp`) as the reference image.
+Uses the same wording as the prompt that produced the 8 new zombies, so the same generator settings give the same look. Use the same Art Style setting you used for the 8 new zombies.
 
 ```
 A full-color sprite sheet of 4 cartoon zombie characters for a mobile game, in one row of 4 on a plain pure white background, each separate with clear space around it. All zombies are shown full body in side view, walking toward the LEFT with arms reaching forward.
 
-STYLE: fully colored and shaded, vibrant saturated colors, cute-creepy cartoon, thick soft outlines, clearly visible faces with glowing yellow eyes and stitched mouths, torn clothes, fun rather than gory. Clean premium mobile-game art, exactly the same style as the reference zombies. Every zombie has a different body shape and a different main color.
+STYLE: fully colored and shaded, vibrant saturated colors, cute-creepy cartoon, flat cel shading with one darker hard-edged shadow per color, matte with no shiny highlights, thin dark outlines, normal grown-up proportions with normal-sized heads and long thin arms and legs, gaunt skull-like faces with small sunken pale-yellow eyes, a nose hole and exposed teeth, torn clothes with jagged edges, fun rather than gory. Clean premium mobile-game art, same style as cartoon zombie game characters. Every zombie has a different body shape and a different main color, with clearly visible faces, skin, clothes and details.
 
-1. Walker: average zombie, green skin, torn blue shirt, dark grey pants, shuffling
-2. Runner: skinny lime-yellow zombie in a torn red tank top and ripped jeans shorts, leaning forward running
-3. Brute: big muscular dark-green zombie, torn purple shirt, heavy fists, slow
-4. Zombie King: giant emerald-green zombie with a spiky golden crown, black tattered cape, purple royal rags, the biggest and scariest
+1. Walker: average-height zombie, green skin, torn blue shirt, dark grey pants, bare feet, shuffling
+2. Runner: skinny lime-yellow zombie in a torn red tank top and ripped jean shorts, leaning far forward running
+3. Brute: big broad muscular dark-green zombie, torn purple shirt, huge fists, slow and heavy
+4. Zombie King: tall emerald-green zombie with a spiky golden crown, black tattered cape, purple royal rags, the most important-looking one
 
-AVOID: black shapes, single-color shapes, blood, gore, text, background scenery, shadows on the background, items touching.
+AVOID: chibi proportions, big heads, small bodies, glowing red eyes, glossy shine, thick soft outlines, black shapes, single-color shapes, blood, gore, text, background scenery, shadows on the background, items touching.
 ```
