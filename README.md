@@ -53,9 +53,9 @@ python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.p
 # Zombie Bomber (`/bomber/`)
 A second game built on the same drop-and-merge engine: https://sinadehesh.github.io/Happy-Fruit-merge/bomber/
 
-**300 levels.** Each level alternates two phases until the horde is gone:
-1. **Merge** (15–18 seconds): tap the bomb bay to drop bombs. Two of the same merge into a bigger bomb (Firecracker → Cherry Bomb → Grenade → Dynamite → TNT Barrel → Cluster Bomb → Aerial Bomb → Napalm → Bunker Buster → Thermobaric → Mega Nuke → Black Hole). If the bay overflows, the phase ends early.
-2. **Bombs away**: tap a bomb in the bay and the plane drops it. Bigger bombs have a much bigger blast. The red marker on the ground shows where a bomb would land right now.
+**300 levels.** Switch between two modes any time with the **MERGE | BOMB** buttons:
+- **Merge**: tap the bomb bay to drop bombs. Two of the same merge into a bigger bomb (Firecracker → Cherry Bomb → Grenade → Dynamite → TNT Barrel → Cluster Bomb → Aerial Bomb → Napalm → Bunker Buster → Thermobaric → Mega Nuke → Black Hole). If the bay overflows it switches to Bomb for you.
+- **Bomb**: tap a bomb in the bay and the plane drops it. Bigger bombs have a much bigger blast. The red marker on the ground shows where a bomb would land right now. When the bay is empty it switches back to Merge.
 
 Zombies walk toward your base the whole time and soldiers on the base shoot at them. Only the number, speed and crowding of zombies grow with the level. There are 12 zombie types: Walker, Runner, Brute and the Zombie King (every 5 levels) show up in the first 10 levels; after that a new type is discovered every 20 levels (Trooper 20, Sprinter 40, Bloater 60, Screamer 80, Hulk 100, Ghoul 120, Juggernaut 140, Titan 160).
 

@@ -1,7 +1,7 @@
 // --- ZOMBIE BOMBER ---
-// 300 levels. Each level alternates two phases until the horde is gone:
-//   1. MERGE: drop bombs into the bomb bay; two of the same merge into a bigger bomb (Happy Fruit Merge rules).
-//   2. BOMBS AWAY: tap a bomb in the bay and the plane drops it on the zombies below.
+// 300 levels. The player switches between two modes any time (MERGE | BOMB buttons):
+//   MERGE: drop bombs into the bomb bay; two of the same merge into a bigger bomb (Happy Fruit Merge rules).
+//   BOMB: tap a bomb in the bay and the plane drops it on the zombies below.
 // Zombies keep walking toward your base the whole time, and soldiers on the base shoot at them.
 // Zombies drop loot. Between levels the loot goes into the ARMORY, another merge box; reaching a new loot
 // level unlocks a permanent upgrade. Level, armory and loot are saved in the browser.
@@ -104,7 +104,6 @@ const ZOMBIES = {
 for (const [kind, t] of Object.entries(ZOMBIES)) t.kind = kind;
 
 const MAX_LEVEL = 300;
-const mergeTime = level => (level === 1 ? 18 : 15);
 
 // Difficulty: only the number, speed and crowding of zombies go up with the level
 const levelZombieCount = level => Math.min(150, Math.round(5 + level * 0.45));
@@ -255,7 +254,7 @@ function text(str, x, y, size, color, align = 'center', stroke = '#1a1026', stro
 
 // ---------- STATE ----------
 let state = 'title';      // title | merge | bomb | cleared | armory | over | won
-let time = 0, phaseT = 0, stateT = 0;
+let time = 0, stateT = 0;
 let level = 1, score = 0, baseHP = 10, baseMax = 10, baseFlash = 0;
 let currentTier = 0, nextTier = 0;
 let lootThisLevel = 0, flyingLoot = [], tracers = [], soldiers = [], bullets = [];
@@ -264,7 +263,7 @@ let overflowT = 0;
 let shake = 0;
 let banner = null;
 let spawnQueue = [], spawnT = 0, spawnEvery = 2;
-let zombies = [], projectiles = [], explosions = [], particles = [], floats = [], craters = [], streaks = [];
+let zombies = [], projectiles = [], explosions = [], particles = [], floats = [], craters = [];
 let kills = 0, bestMerge = 0;
 const plane = { x: 60, y: 118, vx: 95 };
 
@@ -452,7 +451,7 @@ function startLevel(n) {
     for (const b of bayBombs()) Composite.remove(engine.world, b);
     level = n; score = 0; kills = 0; bestMerge = 0; lootThisLevel = 0;
     setupBase();
-    zombies = []; projectiles = []; explosions = []; particles = []; floats = []; craters = []; streaks = []; flyingLoot = []; tracers = []; bullets = [];
+    zombies = []; projectiles = []; explosions = []; particles = []; floats = []; craters = []; flyingLoot = []; tracers = []; bullets = [];
     currentTier = randomDropTier(); nextTier = randomDropTier();
 
     // the horde for this level
@@ -475,16 +474,17 @@ function startLevel(n) {
     startMerge(`LEVEL ${level}`, discovered ? `NEW ZOMBIE: ${discovered.name.toUpperCase()}!` : isBossLevel ? 'THE ZOMBIE KING IS COMING!' : 'MERGE BIGGER BOMBS!');
 }
 
+// The player picks the mode with the MERGE | BOMB buttons; these also switch it automatically
+// when the bay is full (→ BOMB) or empty (→ MERGE).
 function startMerge(title, sub) {
     state = 'merge'; stateT = 0; overflowT = 0;
-    phaseT = mergeTime(level);
-    showBanner(title, sub, '#ffd32a');
+    if (title) showBanner(title, sub, '#ffd32a');
 }
 
-function startBomb(reason) {
+function startBomb(note) {
+    if (bayBombs().length === 0) { floatText(W / 2, BAY.y + 40, 'NO BOMBS YET · MERGE FIRST', '#ffd32a', 20); return; }
     state = 'bomb'; stateT = 0;
-    if (bayBombs().length === 0) { startMerge('NO BOMBS!', 'MERGE SOME MORE'); return; }
-    showBanner(reason || 'BOMBS AWAY!', 'TAP A BOMB TO DROP IT', '#ff6b35');
+    if (note) floatText(W / 2, BAY.y + 40, note, '#ff9f43', 22);
 }
 
 function levelCleared() {
@@ -541,7 +541,6 @@ function launchFromBay(px, py) {
     hit.launched = true;
     Composite.remove(engine.world, hit);
     const from = { x: BAY.x + hit.position.x, y: BAY.y + hit.position.y };
-    streaks.push({ x1: from.x, y1: from.y, x2: plane.x, y2: plane.y + 10, t: 0, color: BOMBS[hit.tier].light });
     projectiles.push({ x: plane.x, y: plane.y + 14, vx: plane.vx * 0.85, vy: 30, tier: hit.tier, rot: 0 });
     burst(from.x, from.y, 8, 'sparkle', BOMBS[hit.tier].light);
     Sound.launch();
@@ -727,14 +726,12 @@ function update(dt) {
     projectiles = projectiles.filter(p => !p.done);
 
     if (state === 'merge') {
-        phaseT -= dt;
-        // bay overflow: a landed bomb completely above the line for a moment ends the phase early
+        // bay overflow: a landed bomb completely above the line for a moment switches to BOMB
         const over = bayBombs().some(b => !b.isDropping && !b.isGrowing && b.bounds.max.y < BAY_LINE && b.speed < 1.5);
         overflowT = over ? overflowT + dt : 0;
-        if (overflowT > 1.2) startBomb('BAY FULL!');
-        else if (phaseT <= 0) startBomb();
+        if (overflowT > 1.2) startBomb('BAY FULL! BOMB TIME');
     } else if (state === 'bomb') {
-        if (bayBombs().length === 0 && projectiles.length === 0 && explosions.length === 0 && !waveDone()) startMerge('OUT OF BOMBS!', 'MERGE MORE, FAST!');
+        if (bayBombs().length === 0 && projectiles.length === 0 && !waveDone()) { startMerge(); floatText(W / 2, BAY.y + 40, 'OUT OF BOMBS · MERGE MORE', '#ffd32a', 20); }
     }
     if ((state === 'merge' || state === 'bomb') && waveDone() && projectiles.length === 0) levelCleared();
     if (state === 'cleared' && stateT > 2.6 && flyingLoot.length === 0) openArmory();
@@ -763,8 +760,6 @@ function update(dt) {
     explosions = explosions.filter(e => e.t < 0.6);
     for (const f of floats) f.t += dt;
     floats = floats.filter(f => f.t < 1.2);
-    for (const s of streaks) s.t += dt;
-    streaks = streaks.filter(s => s.t < 0.3);
     for (const c of craters) c.a = Math.max(0.35, c.a - dt * 0.05);
     if (banner) { banner.t += dt; if (banner.t > banner.dur) banner = null; }
     shake = Math.max(0, shake - dt * 30);
@@ -1216,18 +1211,18 @@ function drawBay() {
 function drawPhaseBar() {
     const { y, h } = PHASE_BAR;
     ctx.fillStyle = '#1b1530'; ctx.fillRect(0, y - 4, W, h + 8);
-    if (state === 'merge') {
-        const k = clamp(phaseT / mergeTime(level), 0, 1);
-        ctx.fillStyle = '#2f2a4a'; rrect(12, y, W - 110, h, 8); ctx.fill();
-        const bar = ctx.createLinearGradient(12, 0, W - 98, 0);
-        bar.addColorStop(0, '#ffd32a'); bar.addColorStop(1, '#ff6b35');
-        ctx.fillStyle = phaseT < 4 && Math.sin(time * 16) > 0 ? '#ff4757' : bar;
-        rrect(12, y, Math.max(h, (W - 110) * k), h, 8); ctx.fill();
-        text(`MERGE!  ${Math.ceil(phaseT)}s`, 12 + (W - 110) / 2, y + h / 2 + 1, 18, '#fff');
-        text('NEXT', W - 72, y + h / 2 + 1, 15, '#c8c3e6');
-        drawBomb(W - 30, y + h / 2 + 2, 11, nextTier, 0);
-    } else if (state === 'bomb') {
-        text(`💣 BOMBS AWAY!  ${bayBombs().length} LEFT`, W / 2, y + h / 2 + 1, 19, '#ff9f43');
+    if (state === 'merge' || state === 'bomb') {
+        // MERGE | BOMB switch
+        const m = MODE_BTNS.merge, b = MODE_BTNS.bomb;
+        const onMerge = state === 'merge';
+        ctx.fillStyle = onMerge ? '#ffb400' : '#3d3360'; rrect(m.x, m.y, m.w, m.h, 10); ctx.fill();
+        ctx.fillStyle = !onMerge ? '#ff5e3a' : '#3d3360'; rrect(b.x, b.y, b.w, b.h, 10); ctx.fill();
+        ctx.globalAlpha = onMerge ? 1 : 0.6;
+        text('🔧 MERGE', m.x + m.w / 2 - 14, m.y + m.h / 2 + 1, 18, '#fff');
+        drawBomb(m.x + m.w - 22, m.y + m.h / 2 + 2, 10, nextTier, 0);
+        ctx.globalAlpha = !onMerge ? 1 : 0.6;
+        text(`💣 BOMB · ${bayBombs().length}`, b.x + b.w / 2, b.y + b.h / 2 + 1, 18, '#fff');
+        ctx.globalAlpha = 1;
     } else if (state === 'cleared') {
         text('GET READY…', W / 2, y + h / 2 + 1, 19, '#7bed9f');
     } else if (state === 'armory' || state === 'won') {
@@ -1242,6 +1237,11 @@ function drawPhaseBar() {
     }
 }
 const NEXT_BTN = { x: W - 150, y: PHASE_BAR.y - 2, w: 138, h: PHASE_BAR.h + 4 };
+const MODE_BTNS = {
+    merge: { x: 12, y: PHASE_BAR.y - 2, w: (W - 32) / 2, h: PHASE_BAR.h + 4 },
+    bomb: { x: W / 2 + 4, y: PHASE_BAR.y - 2, w: (W - 32) / 2, h: PHASE_BAR.h + 4 }
+};
+const inBox = (p, b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
 
 function drawHUD() {
     const g = ctx.createLinearGradient(0, 0, 0, HUD_H);
@@ -1310,11 +1310,6 @@ function drawOverlays() {
     }
     for (const b of bullets) drawBullet(b);
     for (const l of flyingLoot) drawLoot(l.x, l.y, 9 + l.tier, l.tier, 1, l.t * 8);
-    for (const s of streaks) {
-        const k = s.t / 0.3;
-        ctx.strokeStyle = `rgba(255, 220, 150, ${0.8 * (1 - k)})`; ctx.lineWidth = 4 * (1 - k) + 1;
-        ctx.beginPath(); ctx.moveTo(s.x1, s.y1); ctx.lineTo(s.x2, s.y2); ctx.stroke();
-    }
     for (const f of floats) {
         const k = f.t / 1.2;
         ctx.globalAlpha = 1 - k * k;
@@ -1342,7 +1337,7 @@ function drawTitle() {
     text('ZOMBIE', W / 2, 170 + bob, 64, '#7bed9f');
     text('BOMBER', W / 2, 232 + bob, 72, '#ff6b35');
     drawBomb(W / 2, 360, 46, 10, Math.sin(time) * 0.2);
-    const lines = ['1. MERGE: drop bombs in the bay,', 'two of the same make a BIGGER bomb', '2. BOMB: tap a bomb to drop it', 'from the plane onto the zombies', '3. ARMORY: merge zombie loot', 'to level up your base'];
+    const lines = ['MERGE: drop bombs in the bay,', 'two of the same make a BIGGER bomb', 'BOMB: tap a bomb to drop it', 'from the plane onto the zombies', 'Switch MERGE / BOMB any time!', 'ARMORY: merge loot to level up'];
     lines.forEach((l, i) => text(l, W / 2, 425 + i * 28, 18, i % 2 === 0 ? '#ffd32a' : '#fff'));
     text(save.level > 1 ? `TAP TO PLAY · LEVEL ${save.level}` : 'TAP TO START', W / 2, 612, 26, '#fff');
     drawUi('btn_play', W / 2, 664, 60 + Math.sin(time * 5) * 3, 60 + Math.sin(time * 5) * 3);
@@ -1398,6 +1393,10 @@ canvas.addEventListener('pointerdown', e => {
     if (state === 'over') { if (stateT > 1) startLevel(level); return; }
     if (state === 'armory' && p.x >= NEXT_BTN.x && p.x <= NEXT_BTN.x + NEXT_BTN.w && p.y >= NEXT_BTN.y && p.y <= NEXT_BTN.y + NEXT_BTN.h) {
         saveArmory(); startLevel(save.level); return;
+    }
+    if (state === 'merge' || state === 'bomb') {
+        if (inBox(p, MODE_BTNS.merge)) { if (state !== 'merge') startMerge(); return; }
+        if (inBox(p, MODE_BTNS.bomb)) { if (state !== 'bomb') startBomb(); return; }
     }
     const inBay = p.x >= BAY.x && p.x <= BAY.x + BAY.w && p.y >= BAY.y && p.y <= BAY.y + BAY.h;
     if (!inBay) return;
