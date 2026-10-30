@@ -3,8 +3,8 @@
 //   MERGE: drop bombs into the bomb bay; two of the same merge into a bigger bomb (Happy Fruit Merge rules).
 //   BOMB: tap a bomb in the bay and the plane drops it on the zombies below.
 // Zombies keep walking toward your base the whole time, and soldiers on the base shoot at them.
-// Zombies drop loot. Between levels the loot goes into the ARMORY, another merge box; reaching a new loot
-// level unlocks a permanent upgrade. Level, armory and loot are saved in the browser.
+// Zombies drop coins. Between levels the coins buy upgrades in the shop (Soldiers, Weapons, Base, Bombs).
+// Level, coins and upgrades are saved in the browser.
 
 const { Engine, Bodies, Body, Composite, Events, Query } = Matter;
 
@@ -25,7 +25,7 @@ const BASE_X = 48;               // zombies reaching this x hit your base
 const SOLDIER_SPOTS = [{ x: 26, y: GROUND_Y - 74 }, { x: 40, y: LANE_BOTTOM - 22 }, { x: 22, y: LANE_BOTTOM - 22 },
     { x: 52, y: LANE_BOTTOM - 6 }, { x: 14, y: LANE_BOTTOM - 4 }];
 const SOLDIER_RANGE = 220;
-const LOOT_HUD = { x: 150, y: 42 };   // where picked-up loot flies to
+const COIN_HUD = { x: 150, y: 30 };   // where dropped coins fly to
 
 // ---------- BOMBS ----------
 // Art for each level (cut from assets/bomber/bombs/source_sheet.webp). If an image can't load,
@@ -51,7 +51,7 @@ const BOMBS = [
     { name: 'Black Hole',    body: '#1e1336', band: '#e056fd', icon: 'void' }
 ];
 const BOMB_R = [22, 27, 33, 39, 46, 53, 61, 69, 78, 87, 97, 108];   // radius in the bay; even steps so no level dwarfs the rest
-const blastRadius = t => (22 + t * 16) * perks().blastMul;          // on the battlefield
+const blastRadius = t => (22 + t * 16) * stats().blastMul;          // on the battlefield
 const blastDamage = t => Math.round(2 * Math.pow(1.75, t));
 
 // ---------- ZOMBIES ----------
@@ -74,8 +74,21 @@ const ZOMBIE_SPRITES = {
 const BULLET_SPRITES = ['rifle', 'tracer', 'heavy', 'plasma'].map((n, i) => `../assets/bomber/bullets/0${i + 1}_${n}.png`);
 // UI art (assets/bomber/ui); each falls back to the drawn look if it can't load
 const UI_SPRITES = ['btn_green_long', 'btn_sound_on', 'btn_sound_off', 'btn_city', 'btn_play', 'ribbon',
-    'icon_gift', 'icon_star', 'icon_heart', 'icon_zombie', 'icon_bomb', 'icon_trophy'];
+    'icon_gift', 'icon_star', 'icon_heart', 'icon_zombie', 'icon_bomb', 'icon_trophy', 'icon_coin', 'panel', 'btn_purple_long'];
 const PLANE_SPRITE = '../assets/bomber/plane.png';
+// Soldier art, one image per Soldiers upgrade level (8). Empty until the sheet exists; drawn in code meanwhile.
+const SOLDIER_SPRITES = [];
+// Drawn soldiers until then: each upgrade level gets its own colors and a longer gun
+const SOLDIER_LOOKS = [
+    { body: '#7a8f4a', helmet: '#5b6e33', gun: 9,  gunColor: '#2d3436' },
+    { body: '#5a7d3a', helmet: '#4b6b2f', gun: 13, gunColor: '#2d3436' },
+    { body: '#c2a36b', helmet: '#8b7d4b', gun: 13, gunColor: '#2d3436' },
+    { body: '#3d5229', helmet: '#2f3d1f', gun: 16, gunColor: '#1e272e' },
+    { body: '#6d7f4f', helmet: '#3f4d2a', gun: 20, gunColor: '#1e272e' },
+    { body: '#e67e22', helmet: '#7f8c8d', gun: 14, gunColor: '#d35400' },
+    { body: '#2e86de', helmet: '#34495e', gun: 17, gunColor: '#576574' },
+    { body: '#2d3436', helmet: '#c0392b', gun: 17, gunColor: '#48dbfb' }
+];
 
 // Battlefield backgrounds, switched with the 🌆 button. groundRow = image row where the grass starts.
 const BACKGROUNDS = [
@@ -85,21 +98,21 @@ const BACKGROUNDS = [
 ];
 
 // 12 zombie types. The first four show up in the first 10 levels; after that a new type is discovered
-// every 20 levels (20, 40, ... 160). `weight` = how common it is once discovered; `loot` = drop chance.
+// every 20 levels (20, 40, ... 160). `weight` = how common it is once discovered; `pts` also sets the coins it drops.
 // look: extra details for the drawn version (types without art yet).
 const ZOMBIES = {
-    walker:     { name: 'Walker',     unlock: 1,   skin: '#7bd389', shirt: '#4a69bd', pants: '#353b48', size: 1.0,  hp: 3,   speed: 13,  dmg: 1,  pts: 10,  weight: 3,    loot: 0.3 },
-    runner:     { name: 'Runner',     unlock: 2,   skin: '#badc58', shirt: '#eb4d4b', pants: '#2f3640', size: 0.85, hp: 2,   speed: 30,  dmg: 1,  pts: 15,  weight: 2,    loot: 0.3 },
-    brute:      { name: 'Brute',      unlock: 3,   skin: '#4b9e6b', shirt: '#6d214f', pants: '#1e272e', size: 1.6,  hp: 16,  speed: 7,   dmg: 3,  pts: 50,  weight: 1,    loot: 0.6 },
-    boss:       { name: 'Zombie King', unlock: 5,  skin: '#26de81', shirt: '#130f40', pants: '#000000', size: 2.6,  hp: 90,  speed: 4.5, dmg: 10, pts: 400, weight: 0,    loot: 1, boss: true, look: 'crown' },
-    trooper:    { name: 'Trooper',    unlock: 20,  skin: '#8fbc8f', shirt: '#556b2f', pants: '#3b3b2e', size: 1.05, hp: 10,  speed: 12,  dmg: 2,  pts: 40,  weight: 1.2,  loot: 0.4, look: 'helmet' },
-    sprinter:   { name: 'Sprinter',   unlock: 40,  skin: '#c4e538', shirt: '#e84393', pants: '#2d3436', size: 0.8,  hp: 4,   speed: 48,  dmg: 1,  pts: 35,  weight: 1,    loot: 0.4, look: 'mohawk' },
-    bloater:    { name: 'Bloater',    unlock: 60,  skin: '#a3cb38', shirt: '#ffbe76', pants: '#6d4c41', size: 1.5,  hp: 30,  speed: 8,   dmg: 4,  pts: 80,  weight: 0.7,  loot: 0.6, look: 'fat' },
-    screamer:   { name: 'Screamer',   unlock: 80,  skin: '#d6a2e8', shirt: '#5f27cd', pants: '#2c2c54', size: 1.1,  hp: 14,  speed: 26,  dmg: 2,  pts: 70,  weight: 0.9,  loot: 0.5, look: 'hood' },
-    hulk:       { name: 'Hulk',       unlock: 100, skin: '#009432', shirt: '#2c2c54', pants: '#1e272e', size: 2.0,  hp: 60,  speed: 9,   dmg: 5,  pts: 150, weight: 0.5,  loot: 0.7, look: 'horns' },
-    ghoul:      { name: 'Ghoul',      unlock: 120, skin: '#c8d6e5', shirt: '#222f3e', pants: '#10161e', size: 1.2,  hp: 30,  speed: 34,  dmg: 3,  pts: 140, weight: 0.7,  loot: 0.6, look: 'glow' },
-    juggernaut: { name: 'Juggernaut', unlock: 140, skin: '#6ab04c', shirt: '#57606f', pants: '#2f3542', size: 2.2,  hp: 160, speed: 6,   dmg: 8,  pts: 300, weight: 0.3,  loot: 0.9, look: 'armor' },
-    titan:      { name: 'Titan',      unlock: 160, skin: '#1dd1a1', shirt: '#341f97', pants: '#130f40', size: 2.9,  hp: 400, speed: 4,   dmg: 15, pts: 900, weight: 0.12, loot: 1,   look: 'horns' }
+    walker:     { name: 'Walker',     unlock: 1,   skin: '#7bd389', shirt: '#4a69bd', pants: '#353b48', size: 1.0,  hp: 3,   speed: 13,  dmg: 1,  pts: 10,  weight: 3 },
+    runner:     { name: 'Runner',     unlock: 2,   skin: '#badc58', shirt: '#eb4d4b', pants: '#2f3640', size: 0.85, hp: 2,   speed: 30,  dmg: 1,  pts: 15,  weight: 2 },
+    brute:      { name: 'Brute',      unlock: 3,   skin: '#4b9e6b', shirt: '#6d214f', pants: '#1e272e', size: 1.6,  hp: 16,  speed: 7,   dmg: 3,  pts: 50,  weight: 1 },
+    boss:       { name: 'Zombie King', unlock: 5,  skin: '#26de81', shirt: '#130f40', pants: '#000000', size: 2.6,  hp: 90,  speed: 4.5, dmg: 10, pts: 400, weight: 0, boss: true, look: 'crown' },
+    trooper:    { name: 'Trooper',    unlock: 20,  skin: '#8fbc8f', shirt: '#556b2f', pants: '#3b3b2e', size: 1.05, hp: 10,  speed: 12,  dmg: 2,  pts: 40,  weight: 1.2, look: 'helmet' },
+    sprinter:   { name: 'Sprinter',   unlock: 40,  skin: '#c4e538', shirt: '#e84393', pants: '#2d3436', size: 0.8,  hp: 4,   speed: 48,  dmg: 1,  pts: 35,  weight: 1, look: 'mohawk' },
+    bloater:    { name: 'Bloater',    unlock: 60,  skin: '#a3cb38', shirt: '#ffbe76', pants: '#6d4c41', size: 1.5,  hp: 30,  speed: 8,   dmg: 4,  pts: 80,  weight: 0.7, look: 'fat' },
+    screamer:   { name: 'Screamer',   unlock: 80,  skin: '#d6a2e8', shirt: '#5f27cd', pants: '#2c2c54', size: 1.1,  hp: 14,  speed: 26,  dmg: 2,  pts: 70,  weight: 0.9, look: 'hood' },
+    hulk:       { name: 'Hulk',       unlock: 100, skin: '#009432', shirt: '#2c2c54', pants: '#1e272e', size: 2.0,  hp: 60,  speed: 9,   dmg: 5,  pts: 150, weight: 0.5, look: 'horns' },
+    ghoul:      { name: 'Ghoul',      unlock: 120, skin: '#c8d6e5', shirt: '#222f3e', pants: '#10161e', size: 1.2,  hp: 30,  speed: 34,  dmg: 3,  pts: 140, weight: 0.7, look: 'glow' },
+    juggernaut: { name: 'Juggernaut', unlock: 140, skin: '#6ab04c', shirt: '#57606f', pants: '#2f3542', size: 2.2,  hp: 160, speed: 6,   dmg: 8,  pts: 300, weight: 0.3, look: 'armor' },
+    titan:      { name: 'Titan',      unlock: 160, skin: '#1dd1a1', shirt: '#341f97', pants: '#130f40', size: 2.9,  hp: 400, speed: 4,   dmg: 15, pts: 900, weight: 0.12,   look: 'horns' }
 };
 for (const [kind, t] of Object.entries(ZOMBIES)) t.kind = kind;
 
@@ -112,39 +125,51 @@ const levelSpeedMul = level => Math.min(2.2, 1 + (level - 1) * 0.004);
 const levelSpawnEvery = level => Math.max(0.22, 2.3 - level * 0.025);
 const levelGroupSize = level => 1 + Math.floor(level / 50);   // zombies arriving together
 
-// ---------- LOOT & ARMORY ----------
-// Zombies drop loot; merge it in the Armory. The first time you make a loot level, you unlock its perk.
-const LOOT = [
-    { name: 'Bolt',     icon: '🔩', color: '#ff7f50' },
-    { name: 'Gear',     icon: '⚙️', color: '#1e90ff', perk: '+1 SOLDIER' },
-    { name: 'Battery',  icon: '🔋', color: '#2ed573', perk: '+5 BASE HP' },
-    { name: 'Ammo',     icon: '📦', color: '#ffa502', perk: 'SOLDIERS SHOOT 50% FASTER' },
-    { name: 'Toolbox',  icon: '🧰', color: '#ff4757', perk: '+1 SOLDIER' },
-    { name: 'Medkit',   icon: '💊', color: '#eccc68', perk: '+10 BASE HP' },
-    { name: 'Helmet',   icon: '🪖', color: '#6ab04c', perk: 'SOLDIERS DO 2X DAMAGE' },
-    { name: 'Gold Bar', icon: '💰', color: '#f9ca24', perk: 'BIGGER BOMB DROPS' },
-    { name: 'Medal',    icon: '🎖️', color: '#a29bfe', perk: '+2 SOLDIERS' },
-    { name: 'Trophy',   icon: '🏆', color: '#e056fd', perk: 'BLASTS 25% BIGGER' }
-];
-const LOOT_R = [20, 26, 33, 41, 50, 60, 71, 83, 96, 110];
+// ---------- UPGRADE SHOP ----------
+// Zombies drop coins; between levels the coins buy levels in 4 upgrade tracks.
+const UPGRADES = {
+    soldiers: { name: 'SOLDIERS', max: 8,  price: 60 },
+    weapons:  { name: 'WEAPONS',  max: 8,  price: 50 },
+    base:     { name: 'BASE',     max: 8,  price: 40 },
+    bombs:    { name: 'BOMBS',    max: 10, price: 80 }
+};
+const upgradePrice = (key, lv) => Math.round(UPGRADES[key].price * Math.pow(1.8, lv - 1));  // from lv to lv + 1
+const SOLDIER_COUNT = [1, 1, 2, 2, 3, 3, 4, 5];
+const coinsFor = type => Math.max(1, Math.round(type.pts / 5));
 
 // Progress saved in the browser
 const SAVE_KEY = 'zombieBomber.save';
-let save = { level: 1, armoryLevel: 0, armory: [], lootQueue: [], bestScore: 0, won: false };
-try { save = Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) {}
+let save = { level: 1, coins: 0, up: { soldiers: 1, weapons: 1, base: 1, bombs: 1 }, bestScore: 0, won: false };
+try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if (s) save = { ...save, level: s.level || 1, coins: s.coins || 0, bestScore: s.bestScore || 0, won: !!s.won, up: { ...save.up, ...(s.up || {}) } };
+} catch (e) {}
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
-// Upgrades from the highest loot level ever made
-function perks() {
-    const L = save.armoryLevel;
+// What the current upgrade levels do
+function stats(up = save.up) {
     return {
-        soldiers: 1 + (L >= 1) + (L >= 4) + 2 * (L >= 8),
-        baseHp: 10 + 5 * (L >= 2) + 10 * (L >= 5),
-        fireRate: L >= 3 ? 1.5 : 1,
-        soldierDmg: L >= 6 ? 2 : 1,
-        dropTiers: L >= 7 ? 4 : 3,
-        blastMul: L >= 9 ? 1.25 : 1
+        soldiers: SOLDIER_COUNT[up.soldiers - 1],
+        soldierLook: up.soldiers - 1,                                   // one look per level
+        soldierDmg: (1 + 0.25 * (up.soldiers - 1)) * (1 + 0.35 * (up.weapons - 1)),
+        fireRate: 1 + 0.12 * (up.weapons - 1),
+        bulletTier: Math.min(3, Math.floor((up.weapons - 1) / 2)),     // rifle, tracer, heavy, plasma
+        baseHp: 10 + 8 * (up.base - 1),
+        baseStage: Math.min(3, Math.floor((up.base - 1) / 2)),          // for the 4-stage base art, once it exists
+        dropMin: Math.floor((up.bombs - 1) / 3),                        // smallest bomb you drop
+        blastMul: 1 + 0.08 * (up.bombs - 1)
     };
+}
+
+// What the next level of a track gives, for the shop card
+function upgradeEffect(key) {
+    const now = stats(), next = stats({ ...save.up, [key]: save.up[key] + 1 });
+    switch (key) {
+        case 'soldiers': return next.soldiers > now.soldiers ? '+1 SOLDIER' : 'STRONGER SOLDIERS';
+        case 'weapons': return next.bulletTier > now.bulletTier ? 'NEW BULLETS!' : '+35% DAMAGE';
+        case 'base': return '+8 BASE HP';
+        case 'bombs': return next.dropMin > now.dropMin ? 'BIGGER BOMB DROPS' : '+8% BLAST';
+    }
 }
 
 // ---------- CANVAS ----------
@@ -174,6 +199,7 @@ const bombImgs = loadImages(BOMB_SPRITES);
 const zombieImgs = Object.fromEntries(Object.entries(ZOMBIE_SPRITES).map(([k, src]) => [k, loadImages([src])[0]]));
 const planeImg = loadImages([PLANE_SPRITE])[0];
 const bulletImgs = loadImages(BULLET_SPRITES);
+const soldierImgs = loadImages(SOLDIER_SPRITES);
 const uiImgs = Object.fromEntries(UI_SPRITES.map(n => [n, loadImages([`../assets/bomber/ui/${n}.png`])[0]]));
 // Draw a UI image fitted (keeping its shape) into a box centred on (cx, cy); returns false if not loaded
 function drawUi(name, cx, cy, w, h) {
@@ -226,7 +252,8 @@ const Sound = (() => {
         merge: t => { tone(420 + t * 70, 0.14, 'sine', 0.22, 420); tone(840 + t * 140, 0.1, 'sine', 0.08, 300); },
         launch: () => tone(900, 0.28, 'sawtooth', 0.05, -700),
         shot: () => noise(0.05, 0.08, 3000),
-        loot: () => tone(1200, 0.08, 'sine', 0.12, 600),
+        coin: () => tone(1500, 0.06, 'sine', 0.08, 500),
+        buy: () => [660, 880, 1320].forEach((f, i) => setTimeout(() => tone(f, 0.12, 'triangle', 0.15, 0), i * 70)),
         boom: t => { noise(0.35 + t * 0.09, 0.45 + t * 0.05, 1400 - t * 90); tone(90 - t * 4, 0.3 + t * 0.06, 'sine', 0.5, -50); },
         hurt: () => { tone(140, 0.25, 'square', 0.12, -80); noise(0.2, 0.2, 600); },
         win: () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.18, 'triangle', 0.18, 0), i * 110)),
@@ -254,11 +281,11 @@ function text(str, x, y, size, color, align = 'center', stroke = '#1a1026', stro
 }
 
 // ---------- STATE ----------
-let state = 'title';      // title | merge | bomb | cleared | armory | over | won
+let state = 'title';      // title | merge | bomb | cleared | shop | over | won
 let time = 0, stateT = 0;
 let level = 1, score = 0, baseHP = 10, baseMax = 10, baseFlash = 0;
 let currentTier = 0, nextTier = 0;
-let lootThisLevel = 0, flyingLoot = [], tracers = [], soldiers = [], bullets = [];
+let coinsThisLevel = 0, flyingCoins = [], tracers = [], soldiers = [], bullets = [];
 let pointer = { x: W / 2, y: 0 };
 let overflowT = 0;
 let shake = 0;
@@ -356,105 +383,18 @@ function handleBayCollisions(e) {
 Events.on(engine, 'collisionStart', handleBayCollisions);
 Events.on(engine, 'collisionActive', handleBayCollisions);
 
-// ---------- ARMORY (loot merge box, same size and rules as the bomb bay) ----------
-const armoryEngine = Engine.create({ positionIterations: 12, velocityIterations: 8 });
-const armoryFloor = Bodies.rectangle(BAY.w / 2, BAY.h + 25, BAY.w * 2, 50, wallOpts);
-Composite.add(armoryEngine.world, [
-    armoryFloor,
-    Bodies.rectangle(-25, BAY.h / 2 - BAY.h, 50, BAY.h * 4, wallOpts),
-    Bodies.rectangle(BAY.w + 25, BAY.h / 2 - BAY.h, 50, BAY.h * 4, wallOpts)
-]);
-const armoryItems = () => Composite.allBodies(armoryEngine.world).filter(b => b.lootTier !== undefined);
-let armoryOverflowT = 0;
-
-function spawnLoot(x, y, tier, merged) {
-    const r = LOOT_R[tier];
-    const startR = merged ? Math.max(r * 0.35, 8) : r;
-    const body = Bodies.circle(x, y, startR, { restitution: 0.15, friction: 0.4, density: 0.001 * (tier + 1) });
-    Object.assign(body, { lootTier: tier, currentRadius: startR, targetRadius: r, isGrowing: merged, isDropping: !merged });
-    if (merged) Body.setVelocity(body, { x: 0, y: 2 });
-    Composite.add(armoryEngine.world, body);
-}
-
-Events.on(armoryEngine, 'beforeUpdate', () => {
-    for (const b of armoryItems()) {
-        if (b.isGrowing) {
-            const next = Math.min(b.targetRadius, b.currentRadius + b.targetRadius / 18);
-            Body.scale(b, next / b.currentRadius, next / b.currentRadius);
-            b.currentRadius = next;
-            if (next >= b.targetRadius) b.isGrowing = false;
-        }
-        if (b.isDropping) { b.dropAge = (b.dropAge || 0) + 1; if (b.dropAge > 60 && b.speed < 0.3) b.isDropping = false; }
-    }
-});
-function handleArmoryCollisions(e) {
-    for (const pair of e.pairs) {
-        const a = pair.bodyA, b = pair.bodyB;
-        const landed = o => o === armoryFloor || (o.lootTier !== undefined && !o.isDropping);
-        if (a.isDropping && landed(b)) a.isDropping = false;
-        if (b.isDropping && landed(a)) b.isDropping = false;
-        if (a.isDropping || b.isDropping) continue;
-        if (a.lootTier === undefined || a.lootTier !== b.lootTier || a.lootTier >= LOOT.length - 1) continue;
-        if (a.isMerging || b.isMerging) continue;
-        a.isMerging = b.isMerging = true;
-        const t = a.lootTier + 1;
-        const x = (a.position.x + b.position.x) / 2, y = (a.position.y + b.position.y) / 2;
-        Composite.remove(armoryEngine.world, [a, b]);
-        spawnLoot(x, y, t, true);
-        Sound.merge(t);
-        burst(BAY.x + x, BAY.y + y, 12 + t * 3, 'sparkle', LOOT[t].color);
-        if (t > save.armoryLevel) {  // level up!
-            save.armoryLevel = t;
-            showBanner('LEVEL UP!', LOOT[t].perk, '#7bed9f');
-            Sound.win();
-            setupBase();  // show the new soldiers / base HP right away
-        }
-        saveArmory();
-    }
-}
-Events.on(armoryEngine, 'collisionStart', handleArmoryCollisions);
-Events.on(armoryEngine, 'collisionActive', handleArmoryCollisions);
-
-function saveArmory() {
-    save.armory = armoryItems().map(b => b.lootTier);
-    writeSave();
-}
-
-// Put saved armory items back (stacked from the biggest), once per page load
-let armoryRestored = false;
-function restoreArmory() {
-    if (armoryRestored) return;
-    armoryRestored = true;
-    [...save.armory].sort((a, b) => b - a).forEach((t, i) => {
-        const r = LOOT_R[t];
-        const b = Bodies.circle(clamp(r + 10 + (i * 97) % (BAY.w - 2 * r - 20), r, BAY.w - r), BAY.h - r - 10 - Math.floor(i / 4) * 30, r, { restitution: 0.15, friction: 0.4, density: 0.001 * (t + 1) });
-        Object.assign(b, { lootTier: t, currentRadius: r, targetRadius: r, isGrowing: false, isDropping: false });
-        Composite.add(armoryEngine.world, b);
-    });
-}
-
-function dropLoot(px) {
-    if (!save.lootQueue.length) return;
-    if (armoryOverflowT > 0.5) { floatText(W / 2, BAY.y + 40, 'ARMORY FULL! MERGE FIRST', '#ff4757', 20); return; }
-    const t = save.lootQueue.shift();
-    const r = LOOT_R[t];
-    spawnLoot(clamp(px - BAY.x, r + 2, BAY.w - r - 2), r + 6, t, false);
-    Sound.drop();
-    writeSave();
-}
-
 // ---------- GAME FLOW ----------
 function setupBase() {
-    const p = perks();
-    baseMax = p.baseHp; baseHP = baseMax;
-    soldiers = Array.from({ length: p.soldiers }, (_, i) => ({ ...SOLDIER_SPOTS[i % SOLDIER_SPOTS.length], cd: rand(0, 1), recoil: 0 }));
+    const st = stats();
+    baseMax = st.baseHp; baseHP = baseMax;
+    soldiers = Array.from({ length: st.soldiers }, (_, i) => ({ ...SOLDIER_SPOTS[i % SOLDIER_SPOTS.length], cd: rand(0, 1), recoil: 0, look: st.soldierLook }));
 }
 
 function startLevel(n) {
     for (const b of bayBombs()) Composite.remove(engine.world, b);
-    level = n; score = 0; kills = 0; bestMerge = 0; lootThisLevel = 0;
+    level = n; score = 0; kills = 0; bestMerge = 0; coinsThisLevel = 0;
     setupBase();
-    zombies = []; projectiles = []; explosions = []; particles = []; floats = []; craters = []; flyingLoot = []; tracers = []; bullets = [];
+    zombies = []; projectiles = []; explosions = []; particles = []; floats = []; craters = []; flyingCoins = []; tracers = []; bullets = [];
     currentTier = randomDropTier(); nextTier = randomDropTier();
 
     // the horde for this level
@@ -494,31 +434,45 @@ function levelCleared() {
     state = 'cleared'; stateT = 0;
     const bonus = 100 * level;
     score += bonus;
+    const coinBonus = 20 + level * 5;
+    save.coins += coinBonus;
     save.bestScore = Math.max(save.bestScore, score);
     if (level >= MAX_LEVEL) save.won = true;
     save.level = Math.min(MAX_LEVEL, level + 1);
     writeSave();
-    showBanner(`LEVEL ${level} CLEARED!`, `+${bonus} BONUS · 🎁 ${lootThisLevel} LOOT`, '#7bed9f');
+    showBanner(`LEVEL ${level} CLEARED!`, `💰 +${coinsThisLevel + coinBonus} COINS`, '#7bed9f');
     Sound.win();
 }
 
-function openArmory() {
-    restoreArmory();
-    state = level >= MAX_LEVEL && save.won ? 'won' : 'armory';
-    stateT = 0; armoryOverflowT = 0;
-    if (state === 'armory') showBanner('ARMORY', save.lootQueue.length ? 'TAP TO DROP YOUR LOOT · MERGE TO LEVEL UP' : 'MERGE LOOT TO LEVEL UP', '#a29bfe');
+function openShop() {
+    state = level >= MAX_LEVEL && save.won ? 'won' : 'shop';
+    stateT = 0;
+}
+
+function buyUpgrade(card) {
+    const key = card.key, lv = save.up[key];
+    if (lv >= UPGRADES[key].max) return;
+    const price = upgradePrice(key, lv);
+    if (save.coins < price) { floatText(card.x + card.w / 2, card.y + card.h - 60, 'NOT ENOUGH COINS', '#ff6b81', 16); return; }
+    save.coins -= price;
+    save.up[key]++;
+    writeSave();
+    setupBase();  // new soldiers / base HP show right away
+    Sound.buy();
+    burst(card.x + card.w / 2, card.y + 60, 24, 'sparkle', '#ffd32a');
+    floatText(card.x + card.w / 2, card.y + 40, 'LEVEL UP!', '#7bed9f', 24);
 }
 
 function gameOver() {
     state = 'over'; stateT = 0;
     Sound.lose();
     save.bestScore = Math.max(save.bestScore, score);
-    writeSave();  // loot picked up this level is kept
+    writeSave();  // coins picked up this level are kept
 }
 
 function showBanner(title, sub, color) { banner = { title, sub, color, t: 0, dur: 2.2 }; }
 
-function randomDropTier() { return Math.floor(Math.random() * perks().dropTiers); }
+function randomDropTier() { return Math.min(BOMBS.length - 1, stats().dropMin + Math.floor(Math.random() * 3)); }
 
 // ---------- ACTIONS ----------
 function dropIntoBay(px) {
@@ -589,25 +543,17 @@ function killZombie(z) {
     score += z.type.pts;
     floatText(z.x, z.y - 40 * z.type.size, `+${z.type.pts}`, '#ffffff', 16 + z.type.size * 4);
     burst(z.x, z.y - 18 * z.type.size, 8 + Math.round(z.type.size * 6), 'gib', z.type.skin);
-    // loot: bigger zombies and later levels drop better loot; a level gives at most 10 + level/30 pieces
-    const maxLoot = 10 + Math.floor(level / 30);
-    if (lootThisLevel < maxLoot && Math.random() < z.type.loot) {
-        const tier = Math.min(LOOT.length - 2, Math.floor(level / 60) + (z.type.size >= 1.5 ? 1 : 0) + (z.type.boss ? 1 : 0));
-        lootThisLevel++;
-        flyingLoot.push({ x: z.x, y: z.y - 30 * z.type.size, sx: z.x, sy: z.y - 30 * z.type.size, tier, t: 0 });
-    }
-}
-
-// Bullets get flashier with the upgrades: rifle → tracer (faster shooting) → heavy (2x damage) → plasma (+2 soldiers)
-function bulletTier() {
-    const L = save.armoryLevel;
-    return L >= 8 ? 3 : L >= 6 ? 2 : L >= 3 ? 1 : 0;
+    // every zombie drops coins that fly up to the coin counter
+    const amount = coinsFor(z.type);
+    coinsThisLevel += amount;
+    flyingCoins.push({ x: z.x, y: z.y - 30 * z.type.size, sx: z.x, sy: z.y - 30 * z.type.size, amount, t: 0 });
 }
 
 function soldierShoot(s, target) {
     s.recoil = 1;
     s.aim = Math.atan2(target.y - 22 * target.type.size - s.y, target.x - s.x);
-    bullets.push({ x: s.x + 12, y: s.y - 16, target, dmg: 0.5 * perks().soldierDmg * levelHpMul(level), tier: bulletTier(), dy: rand(-6, 6) });
+    const st = stats();
+    bullets.push({ x: s.x + 12, y: s.y - 16, target, dmg: 0.5 * st.soldierDmg * levelHpMul(level), tier: st.bulletTier, dy: rand(-6, 6) });
     Sound.shot();
 }
 
@@ -666,16 +612,10 @@ function update(dt) {
     for (const c of clouds) { c.x += c.v * dt; if (c.x > W + 80) c.x = -80; }
 
     const playing = state === 'merge' || state === 'bomb' || state === 'cleared';
-    const inArmory = state === 'armory' || state === 'won';
     physicsAcc = Math.min(physicsAcc + dt, 0.1);
     while (physicsAcc >= 1 / 60) {
         if (playing || state === 'over') Engine.update(engine, 1000 / 60);
-        if (inArmory) Engine.update(armoryEngine, 1000 / 60);
         physicsAcc -= 1 / 60;
-    }
-    if (inArmory) {
-        const full = armoryItems().some(b => !b.isDropping && !b.isGrowing && b.bounds.max.y < BAY_LINE && b.speed < 1.5);
-        armoryOverflowT = full ? armoryOverflowT + dt : 0;
     }
 
     if (playing) {
@@ -693,7 +633,7 @@ function update(dt) {
             }
         }
         // soldiers shoot the closest zombie in range
-        const rate = perks().fireRate;
+        const rate = stats().fireRate;
         for (const s of soldiers) {
             s.recoil = Math.max(0, s.recoil - dt * 8);
             s.cd -= dt;
@@ -737,17 +677,19 @@ function update(dt) {
         if (bayBombs().length === 0 && projectiles.length === 0 && !waveDone()) { startMerge(); floatText(W / 2, BAY.y + 40, 'OUT OF BOMBS · MERGE MORE', '#ffd32a', 20); }
     }
     if ((state === 'merge' || state === 'bomb') && waveDone() && projectiles.length === 0) levelCleared();
-    if (state === 'cleared' && stateT > 2.6 && flyingLoot.length === 0) openArmory();
+    if (state === 'cleared' && stateT > 2.6 && flyingCoins.length === 0) openShop();
 
-    // loot flies up to the loot counter
-    for (const l of flyingLoot) {
-        l.t += dt;
-        const k = Math.min(1, l.t / 0.9), e = k * k;
-        l.x = l.sx + (LOOT_HUD.x - l.sx) * e;
-        l.y = l.sy + (LOOT_HUD.y - l.sy) * e - Math.sin(k * Math.PI) * 60;
-        if (k >= 1 && !l.done) { l.done = true; save.lootQueue.push(l.tier); writeSave(); Sound.loot(); }
+    // coins fly up to the coin counter
+    let landed = false;
+    for (const c of flyingCoins) {
+        c.t += dt;
+        const k = Math.min(1, c.t / 0.8), e = k * k;
+        c.x = c.sx + (COIN_HUD.x - 14 - c.sx) * e;
+        c.y = c.sy + (COIN_HUD.y - c.sy) * e - Math.sin(k * Math.PI) * 50;
+        if (k >= 1 && !c.done) { c.done = true; save.coins += c.amount; landed = true; Sound.coin(); }
     }
-    flyingLoot = flyingLoot.filter(l => !l.done);
+    if (landed) writeSave();
+    flyingCoins = flyingCoins.filter(c => !c.done);
     for (const tr of tracers) tr.t += dt;
     tracers = tracers.filter(tr => tr.t < 0.08);
     updateBullets(dt);
@@ -877,22 +819,32 @@ function drawBase() {
     ctx.restore();
 }
 
-function drawSoldier(s) {
+function drawSoldier(s, scale = 1.35) {
+    const look = SOLDIER_LOOKS[s.look || 0];
     ctx.save();
     ctx.translate(s.x - s.recoil * 2, s.y);
+    ctx.scale(scale, scale);
+    const img = soldierImgs[s.look || 0];
+    if (imgReady(img)) {
+        const h = 34, w = h * img.naturalWidth / img.naturalHeight;
+        ctx.drawImage(img, -w / 2, -h, w, h);
+        if (s.recoil > 0.6) { ctx.fillStyle = '#fff3a0'; circle(w / 2, -h * 0.55, 3 * s.recoil); ctx.fill(); }
+        ctx.restore();
+        return;
+    }
     ctx.lineCap = 'round';
     // legs
-    ctx.strokeStyle = '#3b4a2a'; ctx.lineWidth = 3;
+    ctx.strokeStyle = shade(look.body, -0.45); ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(-3, 0); ctx.moveTo(0, -9); ctx.lineTo(3, 0); ctx.stroke();
     // body + head
-    ctx.fillStyle = '#5a7d3a'; rrect(-4, -20, 8, 12, 2); ctx.fill();
+    ctx.fillStyle = look.body; rrect(-4, -20, 8, 12, 2); ctx.fill();
     ctx.fillStyle = '#f5c6a5'; circle(0, -24, 4); ctx.fill();
     // helmet
-    ctx.fillStyle = '#4b6b2f'; ctx.beginPath(); ctx.arc(0, -25, 5, Math.PI, 0); ctx.fill(); ctx.fillRect(-6, -25.5, 12, 1.8);
-    // rifle, aimed at the target
+    ctx.fillStyle = look.helmet; ctx.beginPath(); ctx.arc(0, -25, 5, Math.PI, 0); ctx.fill(); ctx.fillRect(-6, -25.5, 12, 1.8);
+    // gun, aimed at the target
     ctx.save(); ctx.translate(2, -16); ctx.rotate(clamp(s.aim || 0, -0.6, 0.6));
-    ctx.fillStyle = '#2d3436'; ctx.fillRect(-2, -1.5, 15, 3);
-    if (s.recoil > 0.6) { ctx.fillStyle = '#fff3a0'; circle(15, 0, 3 * s.recoil); ctx.fill(); }
+    ctx.fillStyle = look.gunColor; ctx.fillRect(-2, -1.5, look.gun, 3);
+    if (s.recoil > 0.6) { ctx.fillStyle = '#fff3a0'; circle(look.gun, 0, 3 * s.recoil); ctx.fill(); }
     ctx.restore();
     ctx.restore();
 }
@@ -1026,20 +978,10 @@ function drawZombieLook(look) {
     }
 }
 
-function drawLoot(x, y, r, tier, alpha = 1, angle = 0) {
-    const l = LOOT[tier];
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.translate(x, y); ctx.rotate(angle);
-    const g = ctx.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r);
-    g.addColorStop(0, shade(l.color, 0.5)); g.addColorStop(0.6, l.color); g.addColorStop(1, shade(l.color, -0.4));
-    ctx.fillStyle = g; circle(0, 0, r); ctx.fill();
-    ctx.strokeStyle = shade(l.color, -0.6); ctx.lineWidth = Math.max(1.5, r * 0.08); ctx.stroke();
-    ctx.rotate(-angle);
-    ctx.font = `${r * 1.05}px system-ui, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(l.icon, 0, r * 0.06);
-    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ellipse(-r * 0.4, -r * 0.5, r * 0.28, r * 0.14, -0.6); ctx.fill();
-    ctx.restore();
+function drawCoin(x, y, r) {
+    if (drawUi('icon_coin', x, y, r * 2, r * 2)) return;
+    ctx.fillStyle = '#f9ca24'; circle(x, y, r); ctx.fill();
+    ctx.strokeStyle = '#b8860b'; ctx.lineWidth = Math.max(1, r * 0.15); ctx.stroke();
 }
 
 function drawExplosion(e) {
@@ -1150,7 +1092,7 @@ function drawBombIcon(b, r) {
 }
 
 // ---------- DRAW: BOMB BAY / ARMORY ----------
-function drawBoxBackground(top, bottom, label) {
+function drawBoxBackground(top, bottom, label, line = true) {
     ctx.fillStyle = '#1b1530'; rrect(BAY.x - 8, BAY.y - 8, BAY.w + 16, BAY.h + 14, 12); ctx.fill();
     ctx.save();
     rrect(BAY.x, BAY.y, BAY.w, BAY.h, 8); ctx.clip();
@@ -1162,6 +1104,7 @@ function drawBoxBackground(top, bottom, label) {
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     for (let y = BAY.y + 12; y < BAY.y + BAY.h; y += 50) { circle(BAY.x + 8, y, 2.5); ctx.fill(); circle(BAY.x + BAY.w - 8, y, 2.5); ctx.fill(); }
     text(label, BAY.x + BAY.w / 2, BAY.y + BAY.h - 30, 34, 'rgba(255,255,255,0.05)', 'center', null);
+    if (!line) return;
     const ly = BAY.y + BAY_LINE;
     ctx.save(); ctx.beginPath(); ctx.rect(BAY.x, ly - 4, BAY.w, 8); ctx.clip();
     for (let x = BAY.x - 20; x < BAY.x + BAY.w + 20; x += 16) {
@@ -1171,25 +1114,60 @@ function drawBoxBackground(top, bottom, label) {
     ctx.restore();
 }
 
-function drawArmory() {
-    drawBoxBackground('#3b2f5c', '#211a38', 'ARMORY');
-    if (armoryOverflowT > 0) { ctx.fillStyle = `rgba(255, 60, 60, ${0.25 + 0.2 * Math.sin(time * 20)})`; ctx.fillRect(BAY.x, BAY.y, BAY.w, BAY_LINE); }
-    for (const b of armoryItems()) drawLoot(BAY.x + b.position.x, BAY.y + b.position.y, b.currentRadius, b.lootTier, 1, b.angle);
-    if (save.lootQueue.length) {
-        const t = save.lootQueue[0], r = LOOT_R[t];
-        const x = BAY.x + clamp(pointer.x - BAY.x, r + 2, BAY.w - r - 2);
-        drawLoot(x, BAY.y + r + 6, r, t, 0.75);
+// Upgrade shop: 4 cards in the bay area, tap a card to buy its next level
+const SHOP_CARDS = ['soldiers', 'weapons', 'base', 'bombs'].map((key, i) => ({
+    key, x: BAY.x + 8 + (i % 2) * 213, y: BAY.y + 42 + Math.floor(i / 2) * 180, w: 197, h: 172
+}));
+
+function drawShop() {
+    drawBoxBackground('#3b2f5c', '#211a38', '', false);
+    text('UPGRADES', BAY.x + BAY.w / 2, BAY.y + 22, 24, '#ffd32a');
+    const st = stats();
+    for (const c of SHOP_CARDS) {
+        const lv = save.up[c.key], up = UPGRADES[c.key], maxed = lv >= up.max;
+        const price = maxed ? 0 : upgradePrice(c.key, lv), afford = !maxed && save.coins >= price;
+        // card frame
+        const panel = uiImgs.panel;
+        if (imgReady(panel)) ctx.drawImage(panel, c.x, c.y, c.w, c.h);
+        else { ctx.fillStyle = '#2b2346'; rrect(c.x, c.y, c.w, c.h, 14); ctx.fill(); }
+        if (afford) { ctx.strokeStyle = `rgba(123, 237, 159, ${0.5 + 0.4 * Math.sin(time * 5)})`; ctx.lineWidth = 3; rrect(c.x + 2, c.y + 2, c.w - 4, c.h - 4, 14); ctx.stroke(); }
+        // picture of what you're upgrading
+        const px = c.x + c.w / 2, py = c.y + 50;
+        if (c.key === 'soldiers') {
+            ctx.save(); ctx.translate(px - 6, py + 26); ctx.scale(2.1, 2.1);
+            drawSoldier({ x: 0, y: 0, recoil: 0, aim: 0, look: st.soldierLook }, 1);
+            ctx.restore();
+            text(`x${st.soldiers}`, px + 40, py + 14, 18, '#fff');
+        } else if (c.key === 'weapons') {
+            const img = bulletImgs[st.bulletTier];
+            if (imgReady(img)) { const w = 84, h = w * img.naturalHeight / img.naturalWidth; ctx.drawImage(img, px - w / 2, py - h / 2, w, h); }
+        } else if (c.key === 'base') {
+            drawUi('icon_heart', px, py - 4, 54, 54);
+            text(`${st.baseHp}`, px, py - 2, 18, '#fff');
+        } else {
+            drawBomb(px, py + 2, 30, Math.min(BOMBS.length - 1, st.dropMin + 2), 0);
+        }
+        // name, level, what the next level gives
+        text(up.name, px, c.y + 90, 18, '#fff');
+        text(maxed ? 'MAX LEVEL' : `LV ${lv} → ${lv + 1}`, px, c.y + 108, 13, '#d6ccff');
+        if (!maxed) text(upgradeEffect(c.key), px, c.y + 124, 12, '#7bed9f');
+        // price button
+        const bx = c.x + 30, by = c.y + 136, bw = c.w - 60, bh = 28;
+        if (!maxed) {
+            const img = uiImgs[afford ? 'btn_green_long' : 'btn_purple_long'];
+            ctx.globalAlpha = afford ? 1 : 0.55;
+            if (imgReady(img)) ctx.drawImage(img, bx, by, bw, bh);
+            else { ctx.fillStyle = afford ? '#2ed573' : '#6c5ce7'; rrect(bx, by, bw, bh, 10); ctx.fill(); }
+            drawCoin(bx + 26, by + bh / 2, 9);
+            text(`${price}`, bx + 40, by + bh / 2 + 1, 16, '#fff', 'left');
+            ctx.globalAlpha = 1;
+        }
     }
-    // next upgrade
-    const nextT = save.armoryLevel + 1;
-    if (nextT < LOOT.length) text(`NEXT UPGRADE: MERGE A ${LOOT[nextT].icon} ${LOOT[nextT].name.toUpperCase()}`, BAY.x + BAY.w / 2, BAY.y + BAY_LINE + 22, 15, '#d6ccff');
-    if (nextT < LOOT.length) text(`→ ${LOOT[nextT].perk}`, BAY.x + BAY.w / 2, BAY.y + BAY_LINE + 42, 15, '#7bed9f');
-    else text('ALL UPGRADES UNLOCKED!', BAY.x + BAY.w / 2, BAY.y + BAY_LINE + 30, 18, '#7bed9f');
     ctx.restore();
 }
 
 function drawBay() {
-    if (state === 'armory' || state === 'won') { drawArmory(); return; }
+    if (state === 'shop' || state === 'won') { drawShop(); return; }
     drawBoxBackground('#3a3f58', '#232638', 'BOMB BAY');
     if (overflowT > 0 && state === 'merge') { ctx.fillStyle = `rgba(255, 60, 60, ${0.25 + 0.2 * Math.sin(time * 20)})`; ctx.fillRect(BAY.x, BAY.y, BAY.w, BAY_LINE); }
 
@@ -1228,9 +1206,10 @@ function drawPhaseBar() {
         ctx.globalAlpha = 1;
     } else if (state === 'cleared') {
         text('GET READY…', W / 2, y + h / 2 + 1, 19, '#7bed9f');
-    } else if (state === 'armory' || state === 'won') {
-        text(`🎁 ${save.lootQueue.length} LOOT TO DROP`, 14, y + h / 2 + 1, 18, '#ffd32a', 'left');
-        if (state === 'armory') {
+    } else if (state === 'shop' || state === 'won') {
+        drawCoin(28, y + h / 2, 12);
+        text(`${save.coins}`, 46, y + h / 2 + 1, 20, '#ffd32a', 'left');
+        if (state === 'shop') {
             const pulse = 1 + Math.sin(time * 5) * 0.03, cx = NEXT_BTN.x + NEXT_BTN.w / 2, cy = NEXT_BTN.y + NEXT_BTN.h / 2;
             const img = uiImgs.btn_green_long;
             if (imgReady(img)) ctx.drawImage(img, cx - NEXT_BTN.w * pulse / 2, cy - NEXT_BTN.h * pulse / 2, NEXT_BTN.w * pulse, NEXT_BTN.h * pulse);
@@ -1250,13 +1229,11 @@ function drawHUD() {
     const g = ctx.createLinearGradient(0, 0, 0, HUD_H);
     g.addColorStop(0, '#24183f'); g.addColorStop(1, '#1b1530');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, HUD_H);
-    text(`LEVEL ${state === 'armory' || state === 'won' ? save.level : level}`, 14, 20, 20, '#ffd32a', 'left');
+    text(`LEVEL ${state === 'shop' || state === 'won' ? save.level : level}`, 14, 20, 20, '#ffd32a', 'left');
     text(`${score}`, 14, 42, 17, '#fff', 'left');
-    // loot and upgrades (icon + number; the emoji is the fallback if the icon art can't load)
-    if (drawUi('icon_gift', LOOT_HUD.x - 14, LOOT_HUD.y, 20, 20)) text(`${save.lootQueue.length}`, LOOT_HUD.x + 2, LOOT_HUD.y + 1, 15, '#ffd32a', 'left');
-    else text(`🎁 ${save.lootQueue.length}`, LOOT_HUD.x, LOOT_HUD.y, 15, '#ffd32a', 'center');
-    if (drawUi('icon_star', LOOT_HUD.x - 14, 18, 18, 18)) text(`${save.armoryLevel}/${LOOT.length - 1}`, LOOT_HUD.x + 2, 19, 13, '#d6ccff', 'left');
-    else text(`⭐ ${save.armoryLevel}/${LOOT.length - 1}`, LOOT_HUD.x, 18, 13, '#a29bfe', 'center');
+    // coins
+    drawCoin(COIN_HUD.x - 14, COIN_HUD.y, 11);
+    text(`${save.coins}`, COIN_HUD.x + 2, COIN_HUD.y + 1, 17, '#ffd32a', 'left');
     // base health
     const bw = 110, bx = W - bw - 98, by = 14;
     if (!drawUi('icon_heart', bx - 14, by + 8, 20, 20)) text('BASE', bx - 8, by + 8, 14, '#c8c3e6', 'right');
@@ -1312,7 +1289,7 @@ function drawOverlays() {
         ctx.beginPath(); ctx.moveTo(tr.x1, tr.y1); ctx.lineTo(tr.x2, tr.y2); ctx.stroke();
     }
     for (const b of bullets) drawBullet(b);
-    for (const l of flyingLoot) drawLoot(l.x, l.y, 9 + l.tier, l.tier, 1, l.t * 8);
+    for (const c of flyingCoins) drawCoin(c.x, c.y, 7 + Math.min(6, c.amount / 10));
     for (const f of floats) {
         const k = f.t / 1.2;
         ctx.globalAlpha = 1 - k * k;
@@ -1340,11 +1317,11 @@ function drawTitle() {
     text('ZOMBIE', W / 2, 170 + bob, 64, '#7bed9f');
     text('BOMBER', W / 2, 232 + bob, 72, '#ff6b35');
     drawBomb(W / 2, 360, 46, 10, Math.sin(time) * 0.2);
-    const lines = ['MERGE: drop bombs in the bay,', 'two of the same make a BIGGER bomb', 'BOMB: tap a bomb to drop it', 'from the plane onto the zombies', 'Switch MERGE / BOMB any time!', 'ARMORY: merge loot to level up'];
+    const lines = ['MERGE: drop bombs in the bay,', 'two of the same make a BIGGER bomb', 'BOMB: tap a bomb to drop it', 'from the plane onto the zombies', 'Switch MERGE / BOMB any time!', 'Spend coins on UPGRADES'];
     lines.forEach((l, i) => text(l, W / 2, 425 + i * 28, 18, i % 2 === 0 ? '#ffd32a' : '#fff'));
     text(save.level > 1 ? `TAP TO PLAY · LEVEL ${save.level}` : 'TAP TO START', W / 2, 612, 26, '#fff');
     drawUi('btn_play', W / 2, 664, 60 + Math.sin(time * 5) * 3, 60 + Math.sin(time * 5) * 3);
-    text(save.won ? '🏆 ALL 300 LEVELS CLEARED!' : `${MAX_LEVEL} LEVELS · ⭐ UPGRADES ${save.armoryLevel}/${LOOT.length - 1}`, W / 2, 724, 18, '#c8c3e6');
+    text(save.won ? '🏆 ALL 300 LEVELS CLEARED!' : `${MAX_LEVEL} LEVELS · 💰 ${save.coins} COINS`, W / 2, 724, 18, '#c8c3e6');
     if (save.bestScore > 0) text(`BEST LEVEL SCORE: ${save.bestScore}`, W / 2, 752, 16, '#8c85b0');
 }
 
@@ -1356,7 +1333,7 @@ function drawGameOver() {
     text(`SCORE ${score}`, W / 2, 352, 32, '#fff');
     text(`🧟 ${kills} ZOMBIES BLOWN UP`, W / 2, 400, 20, '#badc58');
     if (bestMerge > 0) text(`BIGGEST BOMB: ${BOMBS[bestMerge].name.toUpperCase()}`, W / 2, 432, 18, '#ff9f43');
-    text(`🎁 LOOT KEPT: ${lootThisLevel}  ·  MERGE IT IN THE ARMORY`, W / 2, 480, 16, '#a29bfe');
+    text(`💰 ${coinsThisLevel} COINS KEPT · SPEND THEM ON UPGRADES`, W / 2, 480, 16, '#ffd32a');
     if (stateT > 1) text(`TAP TO RETRY LEVEL ${level}`, W / 2, 580, 28 + Math.sin(time * 5) * 2, '#fff');
 }
 
@@ -1394,8 +1371,11 @@ canvas.addEventListener('pointerdown', e => {
     if (p.x > W - 92 && p.x <= W - 50 && p.y < HUD_H && state !== 'title') { nextBackground(); return; }
     if (state === 'title') { startLevel(save.level); return; }
     if (state === 'over') { if (stateT > 1) startLevel(level); return; }
-    if (state === 'armory' && p.x >= NEXT_BTN.x && p.x <= NEXT_BTN.x + NEXT_BTN.w && p.y >= NEXT_BTN.y && p.y <= NEXT_BTN.y + NEXT_BTN.h) {
-        saveArmory(); startLevel(save.level); return;
+    if (state === 'shop' && inBox(p, NEXT_BTN)) { startLevel(save.level); return; }
+    if (state === 'shop' || state === 'won') {
+        const card = SHOP_CARDS.find(c => inBox(p, c));
+        if (card) buyUpgrade(card);
+        return;
     }
     if (state === 'merge' || state === 'bomb') {
         if (inBox(p, MODE_BTNS.merge)) { if (state !== 'merge') startMerge(); return; }
@@ -1403,8 +1383,7 @@ canvas.addEventListener('pointerdown', e => {
     }
     const inBay = p.x >= BAY.x && p.x <= BAY.x + BAY.w && p.y >= BAY.y && p.y <= BAY.y + BAY.h;
     if (!inBay) return;
-    if (state === 'armory' || state === 'won') dropLoot(p.x);
-    else if (state === 'merge') dropIntoBay(p.x);
+    if (state === 'merge') dropIntoBay(p.x);
     else if (state === 'bomb') launchFromBay(p.x, p.y);
 });
 

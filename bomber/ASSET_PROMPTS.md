@@ -84,7 +84,7 @@ Tip for Ludo.ai: set the Art Style to Cartoonish and use the first zombie sheet 
 A single cartoon soldier for a mobile game, full body from the SIDE, facing RIGHT, aiming a rifle, centered on a plain pure white background. Chunky cute proportions with a big head, olive-green uniform, round army helmet, brave determined face. Glossy saturated cartoon style, thick soft outlines. No text, no background, no shadow.
 ```
 
-## 7. Loot (10 levels, merged in the Armory)
+## 7. Loot (no longer used: the Armory was replaced by the upgrade shop)
 
 ```
 A sprite sheet of 10 cartoon loot items for a mobile merge game, in a neat grid of 3 rows (4, 4, 2) on a plain pure white background, each separate and centered in its own cell, nothing touching.
