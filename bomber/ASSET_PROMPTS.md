@@ -1,5 +1,35 @@
 # Zombie Bomber – asset prompts
 
+## 0. Matching style (paste into any character prompt)
+
+The new zombie sheet (`assets/bomber/zombies2/source_sheet.webp`) sets the look. Paste this block into prompts for anything that stands on the battlefield, and use that sheet as the reference image (Ludo.ai: **Use As Reference**, Art Style **Cartoonish**).
+
+```
+STYLE (match exactly): flat cel-shaded 2D cartoon in the style of the reference zombie sheet, like a Western TV cartoon or a classic flash game. Each color area has one base color plus one darker shadow shade with a hard edge, no gradients, no glossy highlights, matte finish. Thin, even, near-black outlines. Normal grown-up proportions: normal-sized heads, long thin limbs, big hands and feet. Gaunt skull-like faces with small sunken pale-yellow eyes with tiny dark pupils, a visible nose hole and exposed teeth. Saturated but slightly muted colors. Torn clothes with jagged zigzag edges.
+```
+
+## 0b. Enhance the old zombies to match (Edit Image)
+
+Open the first zombie sheet (`assets/bomber/zombies/source_sheet.webp`, the walker, runner, brute and king), click **Edit Image**, add the new zombie sheet as reference, and use:
+
+```
+Redraw these 4 zombies so they match the reference zombie sheet exactly. Keep each zombie's identity, pose (walking to the LEFT, arms forward), clothes and main colors, and keep them in one row on a plain pure white background with space between them.
+
+Change the art style: flat cel-shaded 2D cartoon, one base color plus one darker hard-edged shadow per area, no gradients, no glossy highlights, matte finish, thin even near-black outlines.
+
+Change the proportions: no more chibi. Normal grown-up bodies with normal-sized heads, long thin arms and legs, big hands and feet.
+
+Change the faces: replace the big glowing red eyes with small sunken pale-yellow eyes with tiny dark pupils, gaunt skull-like faces, a nose hole and exposed teeth.
+
+1. Walker: green skin, torn blue shirt, dark grey pants, bare feet
+2. Runner: lime-yellow skin, torn red tank top, ripped jean shorts, skinny, leaning forward
+3. Brute: big muscular dark-green body, torn purple shirt, heavy fists
+4. Zombie King: tall emerald-green zombie, spiky golden crown, black tattered cape, purple royal rags
+
+AVOID: chibi proportions, big heads, glowing red eyes, glossy shine, thick soft outlines, blood, text, background, shadows on the background.
+```
+
+
 Generate each sheet separately and send it over; it gets cut and wired into the game.
 
 ## 1. Bombs (12 levels)
@@ -110,23 +140,24 @@ AVOID: text, numbers, logos, grid lines, shadows or glows on the background, rea
 
 ## 8. Soldier upgrades (8 looks)
 
-A new soldier look for each Armory upgrade, so the base visibly gets stronger. Generate it with the new zombie sheet (`assets/bomber/zombies2/source_sheet.webp`) as the reference image so the style matches.
+One look per Soldiers level in the shop. Use the new zombie sheet as the reference image so they match.
 
 ```
-A full-color sprite sheet of 8 cartoon soldier characters for a mobile game, in a neat grid of 2 rows and 4 columns on a plain pure white background, each separate with clear space around it, all the same height. Every soldier is shown full body in side view, facing RIGHT, aiming their weapon to the right.
+A sprite sheet of 8 cartoon soldier characters for a mobile game, in a neat grid of 2 rows and 4 columns on a plain pure white background, each separate with clear space around it, all the same height. Every soldier is shown full body in side view, facing RIGHT, aiming their weapon to the right.
 
-STYLE: fully colored and shaded, vibrant saturated colors, chunky cartoon characters with big heads and small bodies, thick soft outlines, brave determined faces, clean premium mobile-game art in the same style as cartoon zombie game characters. Every soldier has a different outfit, main color and weapon, and each one clearly looks stronger and more high-tech than the one before.
+STYLE (match exactly): flat cel-shaded 2D cartoon in the style of the reference zombie sheet, like a Western TV cartoon or a classic flash game. Each color area has one base color plus one darker shadow shade with a hard edge, no gradients, no glossy highlights, matte finish. Thin, even, near-black outlines. Normal grown-up proportions: normal-sized heads, long thin limbs, big hands and feet. Gaunt skull-like faces with small sunken pale-yellow eyes with tiny dark pupils, a visible nose hole and exposed teeth. Saturated but slightly muted colors. Torn clothes with jagged zigzag edges. Soldiers have healthy skin, brave determined faces with normal eyes (not zombie eyes), clean uniforms (not torn).
 
+Every soldier has a different outfit, main color and weapon, and each one clearly looks stronger and more high-tech than the one before:
 1. Recruit: plain olive t-shirt and cap, small pistol
 2. Rifleman: olive-green uniform, round army helmet, rifle
 3. Grenadier: tan uniform with grenades on the belt, helmet with goggles, grenade launcher
 4. Machine gunner: dark green vest with ammo belts across the chest, headset, chunky machine gun
 5. Sniper: camouflage ghillie hood, long sniper rifle with a scope
 6. Flamethrower: orange fireproof suit, gas mask, flamethrower with fuel tanks on the back
-7. Heavy gunner: bulky blue armor and shoulder pads, visor helmet, big minigun with glowing barrels
+7. Heavy gunner: bulky blue armor and shoulder pads, visor helmet, big minigun
 8. Elite commando: black and gold armor, red beret, glowing blue energy rifle, small cape
 
-AVOID: black shapes, single-color shapes, text, numbers, logos, background, shadows on the background, blood, items touching.
+AVOID: black shapes, single-color shapes, chibi proportions, glossy shine, text, numbers, logos, background, shadows on the background, blood, items touching.
 ```
 
 ## 9. Bullets (4 types, one per soldier look)
@@ -146,19 +177,19 @@ AVOID: text, background, shadows on the background, items touching.
 
 ## 10. Base (4 stages)
 
-The first try came out too plain and the stages didn't look like the same base growing. This version keeps one footprint and grows it.
+The same base growing as you buy Base upgrades. Use the new zombie sheet as the reference image so it matches.
 
 ```
-A full-color sprite sheet of 4 upgrade stages of the SAME military base for a mobile tower-defense game, in one row of 4 on a plain pure white background, each separate with clear space around it. Every stage has the same ground footprint width and sits on the same flat bottom line, drawn in a 3/4 side view facing RIGHT (toward where the zombies come from). Each stage is clearly bigger, taller and more fortified than the one before, keeping the same green flag and color scheme so it reads as one base being upgraded.
+A sprite sheet of 4 upgrade stages of the SAME military base for a mobile tower-defense game, in one row of 4 on a plain pure white background, each separate with clear space around it. Every stage has the same ground footprint width and sits on the same flat bottom line, drawn from the side, facing RIGHT (toward where the zombies come from). Each stage is clearly bigger, taller and more fortified than the one before, keeping the same green flag and colors so it reads as one base being upgraded.
 
-STYLE: polished premium mobile strategy game building art, chunky and cute but heroic, fully colored and shaded with rich detail, warm lighting from the upper left, vibrant saturated colors, thick soft outlines. Cozy-military look: olive greens, sand, warm wood, steel grey with yellow accents.
+STYLE (match exactly): flat cel-shaded 2D cartoon in the style of the reference zombie sheet, like a Western TV cartoon or a classic flash game. One base color plus one darker hard-edged shadow per area, no gradients, no glossy highlights, matte finish, thin even near-black outlines, saturated but slightly muted colors, rich detail.
 
-1. Outpost: wooden watchtower with a ladder, a lookout platform with a small roof, a sandbag wall in front, a green flag on top
-2. Bunker: the same tower now on a stone base, a curved sandbag bunker with a gun slit in front, camouflage net, ammo crates, a searchlight
-3. Fort: a stone and concrete fort with crenellated walls, the tower now reinforced with steel plates, a mounted machine gun on top, hazard stripes, spotlights, barbed wire in front
-4. Fortress: a big steel-and-stone fortress with a tall armored command tower, glowing windows, a radar dish, twin cannons, a heavy gate, banners and a large green flag, glowing lights
+1. Outpost: wooden watchtower with a ladder and a small roofed lookout platform, a sandbag wall in front, a green flag on top
+2. Bunker: the same tower on a stone base, a curved sandbag bunker with a gun slit, camouflage net, ammo crates, a searchlight
+3. Fort: stone and concrete walls with battlements, the tower reinforced with steel plates, a mounted machine gun, hazard stripes, barbed wire in front
+4. Fortress: a big steel-and-stone fortress with a tall armored command tower, lit windows, a radar dish, twin cannons, a heavy gate and a large green flag
 
-AVOID: black shapes, single-color shapes, flat simple shapes, people, text, numbers, logos, background scenery, shadows on the background, items touching.
+AVOID: black shapes, single-color shapes, people, glossy shine, text, numbers, logos, background scenery, shadows on the background, items touching.
 ```
 
 ## 11. UI kit
