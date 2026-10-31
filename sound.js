@@ -1,41 +1,36 @@
 // --- SOUND ---
-// Soft, cute "ASMR" sounds and a music-box lullaby, all made in code with Web Audio (no files yet).
-// Sound and music can be switched off in the settings; the choice is remembered.
+// Soft, cute sound effects made in code with Web Audio, and background songs by Kevin MacLeod
+// (assets/music, CC BY 4.0, credited in the settings and assets/music/CREDITS.txt).
+// Sound can be switched off and the song picked (or switched off) in the settings; the choice is remembered.
 
 const Sound = (() => {
     const KEY = 'happyFruitMerge.audio';
-    let prefs = { sfx: true, music: true };
+    // music = index into SONGS, or -1 for off
+    let prefs = { sfx: true, music: 0 };
     try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(KEY)) }; } catch (e) {}
+    if (typeof prefs.music !== 'number') prefs.music = prefs.music === false ? -1 : 0;   // older saves stored true/false
     const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (e) {} };
 
-    let ac = null, sfxBus = null, musicBus = null;
+    let ac = null, sfxBus = null;
 
     // Start audio on the first tap (browsers block sound until then)
     function unlock() {
         if (!ac) {
             try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-            const master = ac.createGain(); master.gain.value = 0.9; master.connect(ac.destination);
-            // a little dreamy echo shared by everything
-            const echo = ac.createDelay(); echo.delayTime.value = 0.22;
-            const feedback = ac.createGain(); feedback.gain.value = 0.28;
-            const wet = ac.createGain(); wet.gain.value = 0.22;
-            const soften = ac.createBiquadFilter(); soften.type = 'lowpass'; soften.frequency.value = 2600;
-            echo.connect(feedback); feedback.connect(echo); echo.connect(soften); soften.connect(wet); wet.connect(master);
-            sfxBus = ac.createGain(); sfxBus.gain.value = prefs.sfx ? 1 : 0;
-            musicBus = ac.createGain(); musicBus.gain.value = prefs.music ? 0.5 : 0;
-            for (const bus of [sfxBus, musicBus]) { bus.connect(master); bus.connect(echo); }
+            sfxBus = ac.createGain(); sfxBus.gain.value = prefs.sfx ? 0.9 : 0;
+            sfxBus.connect(ac.destination);
         }
         if (ac.state === 'suspended') ac.resume();
-        if (prefs.music) Music.start();
+        Music.play();
     }
     document.addEventListener('visibilitychange', () => {
-        if (!ac) return;
-        if (document.hidden) ac.suspend(); else ac.resume();
+        if (document.hidden) { if (ac) ac.suspend(); Music.pause(); }
+        else { if (ac) ac.resume(); Music.play(); }
     });
 
     // ---------- building blocks ----------
 
-    function tone(freq, dur, { type = 'sine', gain = 0.2, slideTo = null, attack = 0.005, when = 0, bus = sfxBus } = {}) {
+    function tone(freq, dur, { type = 'sine', gain = 0.2, slideTo = null, attack = 0.005, when = 0 } = {}) {
         if (!ac) return;
         const t = ac.currentTime + when;
         const o = ac.createOscillator(), g = ac.createGain();
@@ -45,7 +40,7 @@ const Sound = (() => {
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(gain, t + attack);
         g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        o.connect(g); g.connect(bus);
+        o.connect(g); g.connect(sfxBus);
         o.start(t); o.stop(t + dur + 0.05);
     }
 
@@ -62,16 +57,15 @@ const Sound = (() => {
     }
 
     // music-box bell: soft sine with a quiet overtone
-    function bell(freq, { gain = 0.16, dur = 0.9, when = 0, bus = sfxBus } = {}) {
-        tone(freq, dur, { type: 'sine', gain, when, bus });
-        tone(freq * 2, dur * 0.5, { type: 'sine', gain: gain * 0.25, when, bus });
-        tone(freq * 3.01, dur * 0.25, { type: 'triangle', gain: gain * 0.08, when, bus });
+    function bell(freq, { gain = 0.16, dur = 0.9, when = 0 } = {}) {
+        tone(freq, dur, { type: 'sine', gain, when });
+        tone(freq * 2, dur * 0.5, { type: 'sine', gain: gain * 0.25, when });
+        tone(freq * 3.01, dur * 0.25, { type: 'triangle', gain: gain * 0.08, when });
     }
 
     // C major pentatonic, step 0 = C5
     const PENTA = [0, 2, 4, 7, 9];
     const pentaFreq = step => 523.25 * Math.pow(2, (PENTA[((step % 5) + 5) % 5] + 12 * Math.floor(step / 5)) / 12);
-    const midi = m => 440 * Math.pow(2, (m - 69) / 12);
 
     // ---------- game sounds ----------
 
@@ -101,45 +95,41 @@ const Sound = (() => {
         tap() { tone(1400, 0.05, { slideTo: 1000, gain: 0.05 }); }
     };
 
-    // ---------- music: a slow music-box lullaby (C - Am - F - G), looping ----------
+    // ---------- music: songs by Kevin MacLeod, one plays on repeat ----------
+
+    const SONGS = [
+        { title: 'Carefree', file: 'carefree' },
+        { title: 'Easy Lemon', file: 'easy_lemon' },
+        { title: 'Wallpaper', file: 'wallpaper' },
+        { title: 'Monkeys Spinning Monkeys', file: 'monkeys_spinning_monkeys' }
+    ];
+    const MUSIC_VOLUME = 0.35;
 
     const Music = (() => {
-        const BPM = 78, EIGHTH = 60 / BPM / 2;
-        const CHORDS = [[72, 76, 79, 84], [69, 72, 76, 81], [65, 69, 72, 77], [67, 71, 74, 79]];
-        const BASS = [48, 45, 41, 43];
-        const A = [0, 1, 2, 3, 2, 1, 2, 1], B = [3, 2, 1, 2, 0, -1, 1, -1], END = [0, 1, 2, 3, -1, -1, -1, -1];
-        const BARS = [[0, A], [1, A], [2, A], [3, B], [0, A], [1, A], [2, B], [3, END]];
-        let timer = null, nextAt = 0, step = 0;
-
-        function schedule() {
-            while (nextAt < ac.currentTime + 0.3) {
-                const bar = Math.floor(step / 8) % BARS.length, i = step % 8;
-                const [chord, pattern] = BARS[bar];
-                const when = nextAt - ac.currentTime;
-                if (pattern[i] >= 0) bell(midi(CHORDS[chord][pattern[i]]), { gain: 0.07, dur: 1.4, when, bus: musicBus });
-                if (i === 0 || i === 4) tone(midi(BASS[chord]), 1.2, { gain: 0.06, when, bus: musicBus, attack: 0.02 });
-                nextAt += EIGHTH; step++;
-            }
-        }
+        let audio = null, loaded = -1, started = false;
         return {
-            start() {
-                if (timer || !ac) return;
-                nextAt = ac.currentTime + 0.1;
-                timer = setInterval(schedule, 60);
+            play() {
+                if (prefs.music < 0) return;
+                if (!audio) { audio = new Audio(); audio.loop = true; audio.volume = MUSIC_VOLUME; }
+                if (loaded !== prefs.music) { audio.src = `assets/music/${SONGS[prefs.music].file}.mp3`; loaded = prefs.music; }
+                started = true;
+                audio.play().catch(() => {});   // blocked until the first tap; unlock() calls this again then
             },
-            stop() { clearInterval(timer); timer = null; }
+            pause() { if (audio) audio.pause(); },
+            stop() { if (audio) { audio.pause(); audio.currentTime = 0; } }
         };
     })();
 
     function play(name, ...args) { if (ac && prefs.sfx && sfx[name]) sfx[name](...args); }
 
-    function setSfx(on) { prefs.sfx = on; savePrefs(); if (sfxBus) sfxBus.gain.value = on ? 1 : 0; }
-    function setMusic(on) {
-        prefs.music = on; savePrefs();
-        if (!ac) return;
-        musicBus.gain.value = on ? 0.5 : 0;
-        if (on) Music.start(); else Music.stop();
+    function setSfx(on) { prefs.sfx = on; savePrefs(); if (sfxBus) sfxBus.gain.value = on ? 0.9 : 0; }
+    // next song, and after the last one: off
+    function nextMusic() {
+        prefs.music = prefs.music + 1 >= SONGS.length ? -1 : prefs.music + 1;
+        savePrefs();
+        if (prefs.music < 0) Music.stop(); else Music.play();
     }
+    const songTitle = () => prefs.music < 0 ? null : SONGS[prefs.music].title;
 
-    return { unlock, play, setSfx, setMusic, prefs: () => ({ ...prefs }) };
+    return { unlock, play, setSfx, nextMusic, songTitle, prefs: () => ({ ...prefs }) };
 })();

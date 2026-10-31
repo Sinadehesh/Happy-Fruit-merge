@@ -434,11 +434,13 @@ function audioButtons() {
     const p = Sound.prefs();
     document.getElementById('btn-sfx').className = `pill ${p.sfx ? 'green' : 'grey'}`;
     document.getElementById('btn-sfx').textContent = `Sound ${p.sfx ? 'On' : 'Off'}`;
-    document.getElementById('btn-music').className = `pill ${p.music ? 'green' : 'grey'}`;
-    document.getElementById('btn-music').textContent = `Music ${p.music ? 'On' : 'Off'}`;
+    const song = Sound.songTitle();
+    document.getElementById('btn-music').className = `pill ${song ? 'green' : 'grey'}`;
+    document.getElementById('btn-music').textContent = song ? '♪ Music On' : 'Music Off';
+    document.getElementById('song-name').textContent = song ? `♪ "${song}" Kevin MacLeod (incompetech.com), CC BY 4.0` : 'Tap Music to pick a song';
 }
 document.getElementById('btn-sfx').addEventListener('click', () => { Sound.setSfx(!Sound.prefs().sfx); Sound.play('tap'); audioButtons(); });
-document.getElementById('btn-music').addEventListener('click', () => { Sound.setMusic(!Sound.prefs().music); Sound.play('tap'); audioButtons(); });
+document.getElementById('btn-music').addEventListener('click', () => { Sound.unlock(); Sound.nextMusic(); Sound.play('tap'); audioButtons(); });
 document.querySelectorAll('#settings a, #settings button').forEach(b => b.addEventListener('pointerdown', () => Sound.play('tap')));
 audioButtons();
 FX.init(board);
