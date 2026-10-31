@@ -5,6 +5,11 @@ A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Ma
 ## Layout
 Styled after Block Blast: your best score with a crown at the top left, the big current score in the middle (it counts up as you score), a gear at the top right for the settings panel (modes, car style, Reverse, Restart), the dark grid board, and the next item below it. The panel and buttons come from the UI sheet (`assets/ui/source_sheet.jpg`, cut with `tools/cut_boxes.py`, which now removes any plain background colour).
 
+## Combos, effects and sound
+- Every drop that leads to a merge keeps your combo going; two drops in a row without a merge break it (Block Blast rule). Combos multiply points (x1.2 per step, up to x3) and show "COMBO xN"; combos of 3, 5, 7, 10 and 15 show SWEET! YUMMY! JUICY! TASTY! DELICIOUS! (also when you make the biggest item).
+- `fx.js` draws the merge bursts, rings, flying candy pieces, combo labels and praise words with the art in `assets/fx` (cut from the combo sheets).
+- `sound.js` makes soft bubble pops, squishy landings, music-box chimes and a lullaby loop in code (Web Audio). Sound and Music can be switched off in the settings.
+
 ## How to play
 - Pick a mode in the settings (gear): **🍓 Fruit**, **🐷 Animals**, **🚗 Cars**, **⛏️ Rocks** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks` / `?mode=sweets`).
 - Tap/click the box to drop the item shown at the top. **Next** shows what comes after it.

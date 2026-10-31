@@ -130,8 +130,16 @@ function randomDropTier() {
     return Math.floor(Math.random() * DROP_TIERS);
 }
 
+// Combo (Block Blast rule): every merge adds 1; dropping COMBO_BREAK items in a row without
+// any merge breaks it. Long combos earn more points and show praise words.
+const COMBO_BREAK = 2;
+const PRAISE_AT = { 3: 0, 5: 1, 7: 2, 10: 3, 15: 4 };   // combo count -> SWEET! YUMMY! JUICY! TASTY! DELICIOUS!
+let combo = 0, dropsWithoutMerge = 0;
+const praiseFor = n => PRAISE_AT[n] !== undefined ? PRAISE_AT[n] : (n > 15 && n % 5 === 0 ? 4 : undefined);
+const comboMultiplier = () => 1 + 0.2 * (Math.min(combo, 11) - 1);   // x1, x1.2 ... x3
+
 function addScore(tier) {
-    const points = (tier * (tier + 1) / 2) * 10;
+    const points = Math.round((tier * (tier + 1) / 2) * 10 * comboMultiplier());
     score += points;
     if (score > bestScore) {
         isNewBest = true;
@@ -152,6 +160,7 @@ function tickScore() {
         if (shownScore > startBest) {
             if (!tickScore.crowned) {   // first time past the old best: bounce the crown
                 tickScore.crowned = true;
+                if (startBest > 0) Sound.play('newBest');
                 document.getElementById('best-box').classList.add('new-best');
             }
             bestEl.textContent = shownScore;
@@ -261,6 +270,7 @@ Events.on(engine, 'beforeUpdate', () => {
             document.getElementById('go-best-val').textContent = bestScore;
             document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
             document.getElementById('gameover').classList.add('show');
+            Sound.play('gameOver');
         }
     } else {
         dangerTimer = 0;
@@ -279,8 +289,13 @@ board.addEventListener('pointermove', (e) => {
     updateUI();
 });
 
+// sound can only start after the first tap
+document.addEventListener('pointerdown', () => Sound.unlock(), { capture: true });
+
 board.addEventListener('pointerdown', (e) => {
     if (isGameOver || Ads.isShowing()) return;
+    Sound.play('drop');
+    if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     dropX = clampX(pointerToGameX(e), currentTier);
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
@@ -309,8 +324,8 @@ function handleCollisions(event) {
         const bodyA = pairs[i].bodyA;
         const bodyB = pairs[i].bodyB;
 
-        if (bodyA.isDropping && isLanded(bodyB)) bodyA.isDropping = false;
-        if (bodyB.isDropping && isLanded(bodyA)) bodyB.isDropping = false;
+        if (bodyA.isDropping && isLanded(bodyB)) { bodyA.isDropping = false; Sound.play('land', bodyA.tier); }
+        if (bodyB.isDropping && isLanded(bodyA)) { bodyB.isDropping = false; Sound.play('land', bodyB.tier); }
         if (bodyA.isDropping || bodyB.isDropping) continue;
 
         if (bodyA.tier === undefined || bodyB.tier === undefined) continue;
@@ -320,11 +335,18 @@ function handleCollisions(event) {
         bodyB.isMerging = true;
 
         const mergedTier = bodyA.tier + 1;
+        combo++;
+        dropsWithoutMerge = 0;
         const points = addScore(mergedTier);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
         showPop(midX, midY, points);
+        FX.merge(midX, midY, TIERS[mergedTier], combo);
+        Sound.play('pop', mergedTier);
+        if (combo >= 2) Sound.play('combo', combo - 2);
+        if (mergedTier === TIERS.length - 1) { FX.praise(4); Sound.play('maxMerge'); }
+        else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise'); }
 
         Composite.remove(engine.world, [bodyA, bodyB]);
         spawnItem(midX, midY, mergedTier, true);
@@ -407,6 +429,19 @@ document.getElementById('btn-settings').addEventListener('click', () => { settin
 document.getElementById('btn-close-settings').addEventListener('click', () => { settings.classList.remove('show'); Runner.run(runner, engine); });
 settings.addEventListener('click', (e) => { if (e.target === settings) document.getElementById('btn-close-settings').click(); });
 document.getElementById('btn-new-game').addEventListener('click', () => location.reload());
+// Sound / music switches (green = on, grey = off)
+function audioButtons() {
+    const p = Sound.prefs();
+    document.getElementById('btn-sfx').className = `pill ${p.sfx ? 'green' : 'grey'}`;
+    document.getElementById('btn-sfx').textContent = `Sound ${p.sfx ? 'On' : 'Off'}`;
+    document.getElementById('btn-music').className = `pill ${p.music ? 'green' : 'grey'}`;
+    document.getElementById('btn-music').textContent = `Music ${p.music ? 'On' : 'Off'}`;
+}
+document.getElementById('btn-sfx').addEventListener('click', () => { Sound.setSfx(!Sound.prefs().sfx); Sound.play('tap'); audioButtons(); });
+document.getElementById('btn-music').addEventListener('click', () => { Sound.setMusic(!Sound.prefs().music); Sound.play('tap'); audioButtons(); });
+document.querySelectorAll('#settings a, #settings button').forEach(b => b.addEventListener('pointerdown', () => Sound.play('tap')));
+audioButtons();
+FX.init(board);
 
 bestEl.textContent = bestScore;
 window.addEventListener('resize', updateUI);
