@@ -86,10 +86,20 @@
         }
         #drop-guide {
             position: absolute; top: 0; left: 50%; aspect-ratio: 1;
-            transform: translateX(-50%);
+            transform: translateX(-50%) scale(1);
             background: center/contain no-repeat;
-            opacity: 0.65; pointer-events: none; z-index: 11;
+            opacity: 0.7; pointer-events: none; z-index: 11;
+            transform-origin: 50% 8%;   /* grows downward, so big items aren't cut off by the box's top edge */
+            transition: transform 0.25s cubic-bezier(0.34, 1.8, 0.64, 1), opacity 0.15s;
         }
+        /* while your finger holds it: pops bigger and fully visible */
+        #drop-guide.held { transform: translateX(-50%) scale(1.2); opacity: 1; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); }
+        /* dashed line from the held fruit down to where it will fall */
+        #aim-line {
+            position: absolute; bottom: 0; width: 0; pointer-events: none; z-index: 10; display: none;
+            border-left: 2px dashed rgba(255, 255, 255, 0.35); transform: translateX(-1px);
+        }
+        #aim-line.show { display: block; }
         /* combo effects layer (fx.js) */
         .fx-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; }
         /* "+30" popping up where a merge happens */
@@ -195,6 +205,7 @@
         <div id="score-val">0</div>
 
         <div id="board" class="game-board">
+            <div id="aim-line"></div>
             <div id="drop-guide"></div>
             <div class="danger-line"></div>
         </div>

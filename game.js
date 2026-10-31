@@ -125,6 +125,7 @@ const scoreEl = document.getElementById('score-val');
 const bestEl = document.getElementById('best-val');
 const nextImg = document.getElementById('next-img');
 const dropGuide = document.getElementById('drop-guide');
+const aimLine = document.getElementById('aim-line');
 
 function randomDropTier() {
     return Math.floor(Math.random() * DROP_TIERS);
@@ -191,6 +192,8 @@ function updateUI() {
     dropGuide.style.width = `${r * 2 * scale}px`;
     dropGuide.style.top = `${(spawnY(currentTier) - r) * scale}px`;
     dropGuide.style.left = `${dropX * scale}px`;
+    aimLine.style.left = `${dropX * scale}px`;
+    aimLine.style.top = `${(spawnY(currentTier) + r) * scale}px`;
 }
 
 function spawnY(tier) {
@@ -266,6 +269,7 @@ Events.on(engine, 'beforeUpdate', () => {
         dangerTimer++;
         if (dangerTimer > 180) {
             isGameOver = true;
+            clearSave();   // the next visit starts a fresh game
             document.getElementById('go-score').textContent = score;
             document.getElementById('go-best-val').textContent = bestScore;
             document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
@@ -278,26 +282,57 @@ Events.on(engine, 'beforeUpdate', () => {
 });
 
 // --- INPUT ---
+// Touch (or press) anywhere on the board or below it: the fruit pops a little bigger and follows your
+// finger, with a guide line showing where it will fall. Letting go drops it. A hovering mouse just moves it.
 
 function pointerToGameX(e) {
     const rect = board.getBoundingClientRect();
     return (e.clientX - rect.left) * (GAME_WIDTH / rect.width);
 }
 
-board.addEventListener('pointermove', (e) => {
-    dropX = clampX(pointerToGameX(e), currentTier);
-    updateUI();
-});
+const playArea = document.getElementById('app');
+let holding = null;   // pointer id of the finger holding the fruit
+
+function setHeld(on) {
+    dropGuide.classList.toggle('held', on);
+    aimLine.classList.toggle('show', on);
+}
 
 // sound can only start after the first tap
 document.addEventListener('pointerdown', () => Sound.unlock(), { capture: true });
 
-board.addEventListener('pointerdown', (e) => {
+playArea.addEventListener('pointerdown', (e) => {
+    if (holding !== null || isGameOver || Ads.isShowing() || e.target.closest('.topbar')) return;
+    holding = e.pointerId;
+    try { playArea.setPointerCapture(e.pointerId); } catch (err) {}   // keep following outside the board
+    dropX = clampX(pointerToGameX(e), currentTier);
+    setHeld(true);
+    updateUI();
+});
+
+playArea.addEventListener('pointermove', (e) => {
+    if (holding !== null ? e.pointerId !== holding : e.pointerType !== 'mouse') return;
+    dropX = clampX(pointerToGameX(e), currentTier);
+    updateUI();
+});
+
+playArea.addEventListener('pointerup', (e) => {
+    if (e.pointerId !== holding) return;
+    holding = null;
+    setHeld(false);
     if (isGameOver || Ads.isShowing()) return;
+    dropX = clampX(pointerToGameX(e), currentTier);
+    dropFruit();
+});
+
+playArea.addEventListener('pointercancel', (e) => {
+    if (e.pointerId === holding) { holding = null; setHeld(false); }
+});
+
+function dropFruit() {
     Sound.play('drop');
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
-    dropX = clampX(pointerToGameX(e), currentTier);
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
 
     currentTier = nextTier;
@@ -306,7 +341,7 @@ board.addEventListener('pointerdown', (e) => {
     updateUI();
 
     Ads.onDrop();
-});
+}
 
 // --- MERGING ---
 
@@ -384,6 +419,7 @@ function spawnItem(x, y, tier, animateGrowth) {
     body.targetRadius = targetRadius;
 
     Composite.add(engine.world, body);
+    return body;
 }
 
 function syncSprite(body) {
@@ -395,8 +431,52 @@ function syncSprite(body) {
 // --- RESTART & ADS ---
 
 document.getElementById('btn-restart').addEventListener('click', () => {
-    Ads.showInterstitial(() => location.reload());
+    Ads.showInterstitial(() => { clearSave(); location.reload(); });
 });
+
+// --- SAVE ---
+// The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
+// every second and when the page is hidden or closed, so it comes back exactly where you left it.
+const SAVE_KEY = `happyFruitMerge.save.${MODE}${REVERSE ? '.reverse' : ''}`;
+let saving = true;
+
+function saveGame() {
+    if (!saving || isGameOver) return;
+    const items = Composite.allBodies(engine.world)
+        .filter(b => b.tier !== undefined && !b.isMerging)
+        .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
+    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, items };
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+
+function clearSave() {
+    saving = false;
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+}
+
+function loadGame() {
+    let data = null;
+    try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
+    if (!data || data.v !== 1 || !Array.isArray(data.items)) return;
+    const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
+    for (const [tier, x, y, angle] of data.items) {
+        if (!okTier(tier)) continue;
+        const body = spawnItem(x, y, tier, false);
+        Body.setAngle(body, angle || 0);
+        body.isDropping = false;   // it was already in the pile
+    }
+    score = shownScore = Math.max(0, data.score | 0);
+    scoreEl.textContent = score;
+    isNewBest = score > 0 && score >= bestScore;
+    if (okTier(data.current)) currentTier = data.current;
+    if (okTier(data.next)) nextTier = data.next;
+    combo = data.combo | 0;
+    dropsWithoutMerge = data.dropsWithoutMerge | 0;
+}
+
+setInterval(saveGame, 1000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+window.addEventListener('pagehide', saveGame);
 
 // Physics is paused while an ad is on screen
 Ads.init({
@@ -428,7 +508,7 @@ const settings = document.getElementById('settings');
 document.getElementById('btn-settings').addEventListener('click', () => { settings.classList.add('show'); Runner.stop(runner); });
 document.getElementById('btn-close-settings').addEventListener('click', () => { settings.classList.remove('show'); Runner.run(runner, engine); });
 settings.addEventListener('click', (e) => { if (e.target === settings) document.getElementById('btn-close-settings').click(); });
-document.getElementById('btn-new-game').addEventListener('click', () => location.reload());
+document.getElementById('btn-new-game').addEventListener('click', () => { clearSave(); location.reload(); });
 // Sound / music switches (green = on, grey = off)
 function audioButtons() {
     const p = Sound.prefs();
@@ -446,6 +526,7 @@ audioButtons();
 FX.init(board);
 
 bestEl.textContent = bestScore;
+loadGame();
 window.addEventListener('resize', updateUI);
 updateUI();
 tickScore();

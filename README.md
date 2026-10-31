@@ -13,7 +13,8 @@ Styled after Block Blast: your best score with a crown at the top left, the big 
 
 ## How to play
 - Pick a mode in the settings (gear): **🍓 Fruit**, **🐷 Animals**, **🚗 Cars**, **⛏️ Rocks** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks` / `?mode=sweets`).
-- Tap/click the box to drop the item shown at the top. **Next** shows what comes after it.
+- Touch the box (or below it) and the item pops a little bigger and follows your finger, with a dashed line showing where it will fall. Let go to drop it. **Next** shows what comes after it.
+- The game is saved as you play (one save per mode), so closing or reloading brings you back exactly where you were. Restart in the settings starts over.
 - Two identical items touching merge into the next one:
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
   - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
