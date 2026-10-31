@@ -2,8 +2,11 @@
 
 A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Matter.js](https://brm.io/matter-js/), based on `development_plan.md`.
 
+## Layout
+Styled after Block Blast: your best score with a crown at the top left, the big current score in the middle (it counts up as you score), a gear at the top right for the settings panel (modes, car style, Reverse, Restart), the dark grid board, and the next item below it. The panel and buttons come from the UI sheet (`assets/ui/source_sheet.jpg`, cut with `tools/cut_boxes.py`, which now removes any plain background colour).
+
 ## How to play
-- Pick a mode at the top: **🍓 Fruit**, **🐷 Animals**, **🚗 Cars**, **⛏️ Rocks** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks` / `?mode=sweets`).
+- Pick a mode in the settings (gear): **🍓 Fruit**, **🐷 Animals**, **🚗 Cars**, **⛏️ Rocks** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks` / `?mode=sweets`).
 - Tap/click the box to drop the item shown at the top. **Next** shows what comes after it.
 - Two identical items touching merge into the next one:
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
@@ -11,7 +14,7 @@ A simple physics drop-and-merge game (Suika-style) built with HTML5 Canvas + [Ma
   - Rocks (12 levels): Pebble → Sandstone → Coal → Malachite → Rose Quartz → Amethyst Geode → Turquoise → Gold Nugget → Ruby → Opal → Star Sapphire → Diamond
   - Sweets (12 levels): Jelly Bean → Gummy Bear → Peppermint → Marshmallow → Macaron → Chocolate Truffle → Cupcake → Donut → Ice Cream → Caramel Pudding → Lollipop → Celebration Cake
   - Cars (12 levels, 3 art styles to pick from with 🎨 Original / Flat / Candy): Toyota Corolla → Fiat 500 → VW Bus → Jeep Wrangler → Ford Mustang → Toyota Supra → Nissan GT-R → Mercedes G-Class → Porsche 911 → Lamborghini Aventador → Ferrari LaFerrari → Bugatti Chiron
-- Tap **↕️ Reverse** to flip the sizes: level 1 is the biggest and every merge makes a smaller item. Tap it again to go back. Reverse has its own best score.
+- Tap **Reverse** in the settings to flip the sizes: level 1 is the biggest and every merge makes a smaller item. Tap it again to go back. Reverse has its own best score.
 - Items only merge after they land, so dropping fast doesn't merge things at the top.
 - Items may touch or cross the red dashed line. If an item has landed completely above it for 3 seconds, the box is full and it's game over.
 

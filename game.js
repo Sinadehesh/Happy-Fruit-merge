@@ -115,7 +115,9 @@ const BEST_KEY = (MODE === 'fruit' ? 'happyFruitMerge.best' : `happyFruitMerge.b
 let score = 0;
 let bestScore = 0;
 try { bestScore = parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) {}
+const startBest = bestScore;   // best before this game; the shown best counts up with the score once beaten
 let isNewBest = false;
+let shownScore = 0;            // the big score counts up to `score` (Block Blast style)
 
 // UI Elements
 const board = document.getElementById('board');
@@ -129,17 +131,48 @@ function randomDropTier() {
 }
 
 function addScore(tier) {
-    score += (tier * (tier + 1) / 2) * 10;
+    const points = (tier * (tier + 1) / 2) * 10;
+    score += points;
     if (score > bestScore) {
         isNewBest = true;
         bestScore = score;
         try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {}
     }
+    return points;
+}
+
+// Count the big score up toward the real score; the best (crown) follows once it's beaten
+function tickScore() {
+    if (shownScore < score) {
+        shownScore = Math.min(score, shownScore + Math.max(1, Math.ceil((score - shownScore) * 0.12)));
+        scoreEl.textContent = shownScore;
+        scoreEl.classList.add('bump');
+        clearTimeout(tickScore.unbump);
+        tickScore.unbump = setTimeout(() => scoreEl.classList.remove('bump'), 90);
+        if (shownScore > startBest) {
+            if (!tickScore.crowned) {   // first time past the old best: bounce the crown
+                tickScore.crowned = true;
+                document.getElementById('best-box').classList.add('new-best');
+            }
+            bestEl.textContent = shownScore;
+        }
+    }
+    requestAnimationFrame(tickScore);
+}
+
+// "+30" rising from where the merge happened
+function showPop(x, y, points) {
+    const pop = document.createElement('div');
+    pop.className = 'pop';
+    pop.textContent = `+${points}`;
+    pop.style.left = `${(x / GAME_WIDTH) * 100}%`;
+    pop.style.top = `${(y / GAME_HEIGHT) * 100}%`;
+    pop.style.fontSize = `${18 + Math.min(points, 600) / 25}px`;
+    board.appendChild(pop);
+    setTimeout(() => pop.remove(), 950);
 }
 
 function updateUI() {
-    scoreEl.textContent = score;
-    bestEl.textContent = bestScore;
     nextImg.src = SPRITES[nextTier];
 
     // The fruit you're about to drop hangs at the top, following the pointer
@@ -166,7 +199,7 @@ const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 })
 const render = Render.create({
     element: board,
     engine: engine,
-    options: { width: GAME_WIDTH, height: GAME_HEIGHT, wireframes: false, background: MODES[MODE].background }
+    options: { width: GAME_WIDTH, height: GAME_HEIGHT, wireframes: false, background: '#00000000' }  // the board's grid shows through
 });
 Render.run(render);
 
@@ -224,9 +257,10 @@ Events.on(engine, 'beforeUpdate', () => {
         dangerTimer++;
         if (dangerTimer > 180) {
             isGameOver = true;
-            document.getElementById('gameover-text').textContent =
-                `The box is full! Score: ${score}` + (isNewBest ? ' 🏆 New best!' : ` (Best: ${bestScore})`);
-            document.getElementById('gameover').style.display = 'flex';
+            document.getElementById('go-score').textContent = score;
+            document.getElementById('go-best-val').textContent = bestScore;
+            document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
+            document.getElementById('gameover').classList.add('show');
         }
     } else {
         dangerTimer = 0;
@@ -286,11 +320,11 @@ function handleCollisions(event) {
         bodyB.isMerging = true;
 
         const mergedTier = bodyA.tier + 1;
-        addScore(mergedTier);
-        updateUI();
+        const points = addScore(mergedTier);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
+        showPop(midX, midY, points);
 
         Composite.remove(engine.world, [bodyA, bodyB]);
         spawnItem(midX, midY, mergedTier, true);
@@ -357,13 +391,24 @@ document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
 // Car art style picker, only shown while playing Cars
 const carStyles = document.getElementById('car-styles');
 carStyles.style.display = MODE.startsWith('cars') ? 'flex' : 'none';
+carStyles.querySelectorAll('a').forEach(btn => btn.classList.add('grey'));
 carStyles.querySelectorAll('a').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.style === MODE);
+    if (btn.dataset.style === MODE) btn.classList.remove('grey');
     btn.href = `?mode=${btn.dataset.style}${sizeQuery}`;
 });
 const sizeBtn = document.getElementById('btn-size');
 sizeBtn.classList.toggle('active', REVERSE);
 sizeBtn.href = `?mode=${MODE}${REVERSE ? '' : '&size=reverse'}`;
 
+// Settings panel (gear)
+const settings = document.getElementById('settings');
+document.getElementById('btn-settings').addEventListener('click', () => { settings.classList.add('show'); Runner.stop(runner); });
+document.getElementById('btn-close-settings').addEventListener('click', () => { settings.classList.remove('show'); Runner.run(runner, engine); });
+settings.addEventListener('click', (e) => { if (e.target === settings) document.getElementById('btn-close-settings').click(); });
+document.getElementById('btn-new-game').addEventListener('click', () => location.reload());
+
+bestEl.textContent = bestScore;
 window.addEventListener('resize', updateUI);
 updateUI();
+tickScore();

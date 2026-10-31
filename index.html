@@ -4,77 +4,154 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Happy Fruit Merge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* Layout follows Block Blast: best score + settings on top, big score, the board, the tray below */
+        :root {
+            --bg-top: #4060ab;
+            --bg-bottom: #3a5299;
+            --board: #1e284a;
+            --grid: #172040;
+            --board-edge: #5578c9;
+            --gold: #f7b62c;
+            --gear: #8fc8f2;
+        }
+        html, body { margin: 0; height: 100%; }
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #2c3e50;
+            background: linear-gradient(var(--bg-top), var(--bg-bottom));
+            color: white;
+            font-family: 'Poppins', system-ui, sans-serif;
             overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        #app {
+            height: 100%;
+            width: min(100%, 480px);
+            margin: 0 auto;
+            padding: 10px 16px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
-            color: white;
-            font-family: sans-serif;
-            touch-action: none;
         }
-        h1 { margin: 5px 0; font-size: 20px; }
-        .hud {
-            width: min(100%, 450px, calc((100vh - 185px) * 450 / 640)); background: #34495e; padding: 8px 12px;
-            border-radius: 8px 8px 0 0; box-sizing: border-box; font-weight: bold;
-            display: flex; justify-content: space-between; align-items: center; font-size: 16px;
+        .topbar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 44px;
         }
-        .modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 6px; }
-        .mode-btn {
-            padding: 6px 12px; border-radius: 16px; background: #1a252f; color: white;
-            text-decoration: none; font-weight: bold; font-size: 14px; opacity: 0.6;
+        .best { display: flex; align-items: center; gap: 6px; color: var(--gold); font-size: 26px; font-weight: 800; }
+        .best svg { width: 40px; height: 32px; }
+        .best.new-best svg { animation: crown-bounce 0.6s ease; }
+        #btn-settings { background: none; border: none; padding: 0; cursor: pointer; width: 42px; height: 42px; }
+        #btn-settings svg { width: 100%; height: 100%; }
+        #score-val {
+            font-size: 62px;
+            font-weight: 800;
+            line-height: 1;
+            margin: 6px 0 14px;
+            text-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+            transition: transform 0.08s;
         }
-        .mode-btn.active { opacity: 1; background: #27ae60; }
-        #btn-size.active { background: #8e44ad; }
-        #car-styles { display: none; gap: 6px; margin-bottom: 6px; align-items: center; font-size: 13px; font-weight: bold; }
-        #car-styles a {
-            padding: 4px 10px; border-radius: 12px; background: #1a252f; color: white;
-            text-decoration: none; opacity: 0.6;
-        }
-        #car-styles a.active { opacity: 1; background: #2980b9; }
-        #next-img { width: 34px; height: 34px; vertical-align: middle; }
+        #score-val.bump { transform: scale(1.12); }
+        @keyframes crown-bounce { 30% { transform: translateY(-6px) scale(1.15); } }
+
         .game-board {
             position: relative;
-            /* fit the screen height too, keeping the 450x640 shape */
-            width: min(100%, 450px, calc((100vh - 185px) * 450 / 640));
+            /* fits the screen height too, keeping the 450x640 shape */
+            width: min(100%, 450px, calc((100vh - 260px) * 450 / 640));
             aspect-ratio: 450/640;
-            border: 6px solid #34495e;
+            border-radius: 12px;
+            border: 3px solid var(--board-edge);
             box-sizing: border-box;
-            border-radius: 0 0 8px 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            background-color: var(--board);
+            /* 8 square cells across: 12.5% of the width, and 450/640 of that as a share of the height */
+            background-image:
+                linear-gradient(var(--grid) 2px, transparent 2px),
+                linear-gradient(90deg, var(--grid) 2px, transparent 2px);
+            background-size: 12.5% 8.7890625%;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(0, 0, 0, 0.3);
         }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            border-radius: 4px;
-        }
+        canvas { display: block; width: 100%; height: 100%; }
         /* Fail line: DANGER_Y / GAME_HEIGHT = 150 / 640 */
         .danger-line {
             position: absolute; top: 23.4375%; width: 100%;
-            border-top: 3px dashed rgba(231, 76, 60, 0.8); pointer-events: none; z-index: 10;
+            border-top: 3px dashed rgba(255, 99, 99, 0.55); pointer-events: none; z-index: 10;
         }
         #drop-guide {
             position: absolute; top: 0; left: 50%; aspect-ratio: 1;
             transform: translateX(-50%);
             background: center/contain no-repeat;
-            opacity: 0.6; pointer-events: none; z-index: 11;
+            opacity: 0.65; pointer-events: none; z-index: 11;
         }
-        #gameover {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 200;
+        /* "+30" popping up where a merge happens */
+        .pop {
+            position: absolute; z-index: 12; pointer-events: none;
+            transform: translate(-50%, -50%);
+            font-weight: 800; color: white; font-size: 22px;
+            text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35), 0 0 6px rgba(0, 0, 0, 0.3);
+            animation: pop-up 0.9s ease-out forwards;
+        }
+        @keyframes pop-up {
+            0% { opacity: 0; transform: translate(-50%, -30%) scale(0.6); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+            30% { transform: translate(-50%, -60%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+        }
+
+        /* Tray under the board: what comes next */
+        .tray { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 80px; }
+        .tray-label { color: var(--gear); font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+        #next-img { width: 68px; height: 68px; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
+
+        /* Settings and game over use the wood panel from the UI kit */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(12, 18, 45, 0.72); display: none;
+            justify-content: center; align-items: center; z-index: 200;
+        }
+        .overlay.show { display: flex; }
+        .panel {
+            position: relative;
+            width: min(88vw, 380px);
+            box-sizing: border-box;
+            padding: 34px 26px 30px;
+            border-style: solid;
+            border-image: url('assets/ui/panel_wood.png') 64 fill / 46px stretch;
+            color: #6b3d1e;
             text-align: center;
         }
-        #gameover button {
-            margin-top: 12px; background: #27ae60; color: white; border: none; padding: 12px 24px;
-            border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer;
+        .panel h2 { margin: 0 0 12px; font-size: 26px; font-weight: 800; }
+        .btn-close {
+            position: absolute; top: -14px; right: -14px; width: 46px; height: 46px; border: none; padding: 0;
+            background: url('assets/ui/btn_close.png') center/contain no-repeat; cursor: pointer;
         }
+        .pill {
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+            width: 148px; aspect-ratio: 354 / 141;
+            background: url('assets/ui/pill_blue.png') center/100% 100% no-repeat;
+            border: none; color: white; font: 800 16px 'Poppins', sans-serif; text-decoration: none; cursor: pointer;
+            text-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+            padding-bottom: 4px; box-sizing: border-box;
+        }
+        .pill img { height: 28px; }
+        .pill.green, .pill.active { background-image: url('assets/ui/pill_green.png'); }
+        .pill.yellow, #btn-size.active { background-image: url('assets/ui/pill_yellow.png'); }
+        .pill.grey { background-image: url('assets/ui/pill_grey.png'); }
+        .pill.small { width: 100px; font-size: 13px; }
+        .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-items: center; }
+        #car-styles { display: none; justify-content: center; gap: 6px; margin-top: 10px; }
+        .panel .row { margin-top: 14px; display: flex; justify-content: center; gap: 8px; }
+        #go-score { font-size: 56px; font-weight: 800; color: #3a5299; line-height: 1.1; }
+        #go-best { display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 20px; font-weight: 800; color: #d58f00; }
+        #go-best svg { width: 30px; height: 24px; }
+        #go-new { display: none; color: #e84393; font-weight: 800; margin-top: 4px; }
+
         #ad-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none;
             flex-direction: column; justify-content: center; align-items: center; z-index: 300;
@@ -94,37 +171,68 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
-    <h1><img src="assets/farm/00_seed_bag.png" alt="" style="height: 26px; vertical-align: middle;"> Happy Fruit Merge</h1>
+    <svg width="0" height="0" style="position: absolute;">
+        <defs>
+            <symbol id="crown" viewBox="0 0 40 32">
+                <path d="M3 9l9 7 8-13 8 13 9-7-4 18H7z" fill="#f7b62c" stroke="#d18a00" stroke-width="2" stroke-linejoin="round"/>
+                <rect x="7" y="26" width="26" height="4" rx="2" fill="#f7b62c" stroke="#d18a00" stroke-width="2"/>
+                <circle cx="3" cy="8" r="3" fill="#ffd25e"/><circle cx="20" cy="3" r="3" fill="#ffd25e"/><circle cx="37" cy="8" r="3" fill="#ffd25e"/>
+            </symbol>
+        </defs>
+    </svg>
 
-    <div class="modes">
-        <a class="mode-btn" data-mode="fruit" href="?mode=fruit">🍓 Fruit</a>
-        <a class="mode-btn" data-mode="animal" href="?mode=animal">🐷 Animals</a>
-        <a class="mode-btn" data-mode="cars" href="?mode=cars">🚗 Cars</a>
-        <a class="mode-btn" data-mode="rocks" href="?mode=rocks">⛏️ Rocks</a>
-        <a class="mode-btn" data-mode="sweets" href="?mode=sweets">🍬 Sweets</a>
-        <a id="btn-size" class="mode-btn" href="?size=reverse" title="Reverse size: higher levels are smaller">↕️ Reverse</a>
-    </div>
-    <div id="car-styles">
-        🎨 <a data-style="cars" href="?mode=cars">Original</a>
-        <a data-style="cars-flat" href="?mode=cars-flat">Flat</a>
-        <a data-style="cars-candy" href="?mode=cars-candy">Candy</a>
+    <div id="app">
+        <div class="topbar">
+            <div class="best" id="best-box"><svg><use href="#crown"/></svg><span id="best-val">0</span></div>
+            <button id="btn-settings" aria-label="Settings">
+                <svg viewBox="0 0 24 24"><path fill="currentColor" style="color: var(--gear);" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
+            </button>
+        </div>
+
+        <div id="score-val">0</div>
+
+        <div id="board" class="game-board">
+            <div id="drop-guide"></div>
+            <div class="danger-line"></div>
+        </div>
+
+        <div class="tray">
+            <span class="tray-label">NEXT</span>
+            <img id="next-img" alt="">
+        </div>
     </div>
 
-    <div class="hud">
-        <div>⭐ <span id="score-val">0</span></div>
-        <div style="color: #f39c12;">🏆 <span id="best-val">0</span></div>
-        <div>Next <img id="next-img" alt=""></div>
+    <!-- Settings: modes, car style, reverse size, restart -->
+    <div id="settings" class="overlay">
+        <div class="panel">
+            <button class="btn-close" id="btn-close-settings" aria-label="Close"></button>
+            <h2>Modes</h2>
+            <div class="modes">
+                <a class="pill mode-btn" data-mode="fruit" href="?mode=fruit"><img src="assets/farm/03_strawberry.png" alt="">Fruit</a>
+                <a class="pill mode-btn" data-mode="animal" href="?mode=animal"><img src="assets/barn/05_pig.png" alt="">Animals</a>
+                <a class="pill mode-btn" data-mode="cars" href="?mode=cars"><img src="assets/cars_candy/02_fiat_500.png" alt="">Cars</a>
+                <a class="pill mode-btn" data-mode="rocks" href="?mode=rocks"><img src="assets/rocks/12_diamond.png" alt="">Rocks</a>
+                <a class="pill mode-btn" data-mode="sweets" href="?mode=sweets"><img src="assets/sweets/07_cupcake.png" alt="">Sweets</a>
+                <a class="pill grey" id="btn-size" href="?size=reverse" title="Reverse size: higher levels are smaller">↕ Reverse</a>
+            </div>
+            <div id="car-styles">
+                <a class="pill small" data-style="cars" href="?mode=cars">Original</a>
+                <a class="pill small" data-style="cars-flat" href="?mode=cars-flat">Flat</a>
+                <a class="pill small" data-style="cars-candy" href="?mode=cars-candy">Candy</a>
+            </div>
+            <div class="row"><button class="pill yellow" id="btn-new-game">Restart</button></div>
+        </div>
     </div>
 
-    <div id="board" class="game-board">
-        <div id="drop-guide"></div>
-        <div class="danger-line"></div>
-    </div>
-
-    <div id="gameover">
-        <h2 style="margin: 0;">Game Over</h2>
-        <div id="gameover-text"></div>
-        <button id="btn-restart">Play Again</button>
+    <div id="gameover" class="overlay">
+        <div class="panel">
+            <h2 id="go-title">The box is full!</h2>
+            <div>Score</div>
+            <div id="go-score">0</div>
+            <div id="go-best"><svg><use href="#crown"/></svg><span id="go-best-val">0</span></div>
+            <div id="go-new">New best score!</div>
+            <div class="row"><button class="pill green" id="btn-restart">Play Again</button></div>
+        </div>
     </div>
 
     <!-- Ad break. Replaced by a real ad when an ad network is configured (see ads.js / README) -->
