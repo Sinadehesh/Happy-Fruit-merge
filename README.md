@@ -8,7 +8,8 @@ Styled after Block Blast: your best score with a crown at the top left, the big 
 ## Combos, effects and sound
 - Every drop that leads to a merge keeps your combo going; two drops in a row without a merge break it (Block Blast rule). Combos multiply points (x1.2 per step, up to x3) and show "COMBO xN"; combos of 3, 5, 7, 10 and 15 show SWEET! YUMMY! JUICY! TASTY! DELICIOUS! (also when you make the biggest item).
 - `fx.js` draws the merge bursts, rings, flying candy pieces, combo labels and praise words with the art in `assets/fx` (cut from the combo sheets).
-- `sound.js` makes soft bubble pops, squishy landings and music-box chimes in code (Web Audio), and plays real background songs by Kevin MacLeod (incompetech.com, CC BY 4.0, credited in the settings and `assets/music/CREDITS.txt`): Carefree, Easy Lemon, Wallpaper and Monkeys Spinning Monkeys. In the settings, Sound switches the effects on and off and Music steps through the songs and off.
+- `sound.js` plays recorded sound effects (`assets/sfx`, all CC0: Kenney's Interface Sounds and male Voiceover Pack, plus OpenGameArt bubble and mouth pops; see `assets/sfx/CREDITS.txt`; prepared with `tools/prep_sound.py`) and real background songs by Kevin MacLeod (incompetech.com, CC BY 4.0, credited in the settings and `assets/music/CREDITS.txt`): Carefree, Easy Lemon, Wallpaper and Monkeys Spinning Monkeys. In the settings, Sound switches the effects on and off and Music steps through the songs and off.
+- Combo voice lines: put recordings of the praise words in `assets/voice` (e.g. `sweet.mp3` … `delicious.mp3`) and list them in `PRAISE_VOICES` in `sound.js`. Each step up the combo ladder plays the voice deeper, louder and punchier.
 
 ## How to play
 - Pick a mode in the settings (gear): **🍓 Fruit**, **🐷 Animals**, **🚗 Cars**, **⛏️ Rocks** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks` / `?mode=sweets`).

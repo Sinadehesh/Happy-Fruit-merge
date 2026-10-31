@@ -346,7 +346,7 @@ function handleCollisions(event) {
         Sound.play('pop', mergedTier);
         if (combo >= 2) Sound.play('combo', combo - 2);
         if (mergedTier === TIERS.length - 1) { FX.praise(4); Sound.play('maxMerge'); }
-        else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise'); }
+        else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise', praiseFor(combo)); }
 
         Composite.remove(engine.world, [bodyA, bodyB]);
         spawnItem(midX, midY, mergedTier, true);

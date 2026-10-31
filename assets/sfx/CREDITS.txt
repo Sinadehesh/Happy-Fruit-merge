@@ -1,0 +1,6 @@
+Sound effects (all CC0 / public domain, free for any use; credit not required):
+- drop, land, chime, praise, fanfare, gameover, tap: "Interface Sounds" by Kenney (www.kenney.nl)
+- voice_new_highscore, voice_game_over, voice_congratulations: "Voiceover Pack" (male voice) by Kenney (www.kenney.nl)
+- pop_1..6: "Pop sounds" on OpenGameArt.org (opengameart.org/content/pop-sounds), CC0
+- bubble_1..3, bubble_big: "Pop sounds" on OpenGameArt.org (opengameart.org/content/pop-sounds-0), CC0
+Files are trimmed and volume-levelled with tools/prep_sound.py.
