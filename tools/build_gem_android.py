@@ -1,14 +1,16 @@
-# Builds the signed Android app (APK) for Gem Jar, straight from the game files in this repo.
+# Builds the signed Android app for Gem Jar, straight from the game files in this repo:
+# an App Bundle (.aab) to upload to Google Play, and an APK to install directly.
 #
-# Needs Java 17+, Python 3 with Pillow, and internet the first time: it downloads Android build-tools 35
-# and platform 35 (into $ANDROID_SDK, default ~/.cache/android-sdk), plus Matter.js and the Poppins font
-# so the app plays offline. No Android Studio or Gradle needed.
+# Needs Java 17+, Python 3 with Pillow, and internet the first time: it downloads Android build-tools
+# and platform 36 (into $ANDROID_SDK, default ~/.cache/android-sdk), Google's bundletool, plus Matter.js
+# and the Poppins font so the app plays offline. No Android Studio or Gradle needed.
 #
 # Signing key (keep it private, never commit it): GEMJAR_KEYSTORE = path to the .jks file,
-# GEMJAR_KEYSTORE_PASS = its password, key alias "gemjar". Every update must be signed with the same key.
+# GEMJAR_KEYSTORE_PASS = its password, key alias "gemjar". On Google Play it is the upload key.
+# Every update must be signed with the same key, and the version code must go up by 1.
 #
-# Usage: GEMJAR_KEYSTORE=... GEMJAR_KEYSTORE_PASS=... python3 tools/build_gem_apk.py [version_name] [version_code]
-# Output: android/build/GemJar-<version_name>.apk
+# Usage: GEMJAR_KEYSTORE=... GEMJAR_KEYSTORE_PASS=... python3 tools/build_gem_android.py [version_name] [version_code]
+# Output: android/build/GemJar-<version_name>.aab and GemJar-<version_name>.apk
 import hashlib, os, re, shutil, subprocess, sys, urllib.request, zipfile
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
@@ -19,12 +21,13 @@ BUILD = ROOT / 'android' / 'build'
 SDK = Path(os.environ.get('ANDROID_SDK', Path.home() / '.cache' / 'android-sdk'))
 VERSION_NAME = sys.argv[1] if len(sys.argv) > 1 else '1.0'
 VERSION_CODE = sys.argv[2] if len(sys.argv) > 2 else '1'
-MIN_SDK, TARGET_SDK = '24', '35'
+MIN_SDK, TARGET_SDK = '24', '36'   # Google Play: new apps and updates must target Android 16 (API 36)
 
 SDK_PARTS = {   # folder in the SDK: (download, sha1)
-    'build-tools/35.0.0': ('build-tools_r35_linux.zip', '2cfaa0bbb2336e9ec18ed3ecea84fa2e2af607bc'),
-    'platforms/android-35': ('platform-35_r02.zip', '0bb560a90a7a2cbd0dd8348224d518b638fe7949'),
+    'build-tools/36.1.0': ('build-tools_r36.1_linux.zip', '936a0d6bd5ae3e2118a7567dddbc95ff67ed46e9'),
+    'platforms/android-36': ('platform-36_r02.zip', '2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576'),
 }
+BUNDLETOOL = ('https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar', None)
 VENDOR = {      # files the web page loads from the internet, packed into the app instead
     'matter.min.js': 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js',
     'fonts/poppins-600.woff2': 'https://cdn.jsdelivr.net/npm/@fontsource/poppins@5.0.8/files/poppins-latin-600-normal.woff2',
@@ -58,14 +61,18 @@ def ensure_sdk():
         shutil.rmtree(tmp, ignore_errors=True)
         with zipfile.ZipFile(z) as zf:
             zf.extractall(tmp)
-        (top,) = list(tmp.iterdir())          # the zip holds one folder (named android-15 / android-35)
+        (top,) = list(tmp.iterdir())          # the zip holds one folder (its name isn't the version)
         target.parent.mkdir(parents=True, exist_ok=True)
         top.rename(target)
         shutil.rmtree(tmp)
         for f in target.rglob('*'):           # zipfile drops the run permission
-            if f.is_file() and (f.parent == target or 'lib64' not in f.parts):
-                f.chmod(f.stat().st_mode | 0o755)
-    return SDK / 'build-tools/35.0.0', SDK / 'platforms/android-35/android.jar'
+            if f.is_file():
+                f.chmod(0o755)
+    jar = SDK / 'bundletool' / BUNDLETOOL[0].rsplit('/', 1)[1]
+    if not jar.exists():
+        print('downloading bundletool')
+        fetch(BUNDLETOOL[0], jar)
+    return SDK / 'build-tools/36.1.0', SDK / 'platforms/android-36/android.jar', jar
 
 
 def build_www(www):
@@ -174,7 +181,7 @@ def main():
     ks, ks_pass = os.environ.get('GEMJAR_KEYSTORE'), os.environ.get('GEMJAR_KEYSTORE_PASS')
     if not ks or not ks_pass or not Path(ks).exists():
         sys.exit('Set GEMJAR_KEYSTORE (the .jks file) and GEMJAR_KEYSTORE_PASS to sign the app.')
-    bt, android_jar = ensure_sdk()
+    bt, android_jar, bundletool = ensure_sdk()
     shutil.rmtree(BUILD, ignore_errors=True)
     BUILD.mkdir(parents=True)
 
@@ -184,28 +191,53 @@ def main():
     shutil.copytree(APP / 'res', res)
     make_icons(res)
 
-    print('building')
+    print('compiling')
     run(bt / 'aapt2', 'compile', '--dir', res, '-o', BUILD / 'res.zip')
+    link = ['-I', android_jar, '--manifest', APP / 'AndroidManifest.xml', '--min-sdk-version', MIN_SDK,
+            '--target-sdk-version', TARGET_SDK, '--version-code', VERSION_CODE, '--version-name', VERSION_NAME,
+            '-A', BUILD / 'assets', BUILD / 'res.zip']
     gen = BUILD / 'gen'
-    run(bt / 'aapt2', 'link', '-o', BUILD / 'unsigned.apk', '-I', android_jar, '--manifest', APP / 'AndroidManifest.xml',
-        '--java', gen, '--min-sdk-version', MIN_SDK, '--target-sdk-version', TARGET_SDK,
-        '--version-code', VERSION_CODE, '--version-name', VERSION_NAME, '-A', BUILD / 'assets', BUILD / 'res.zip')
+    run(bt / 'aapt2', 'link', '-o', BUILD / 'unsigned.apk', '--java', gen, *link)
     classes = BUILD / 'classes'
     sources = list((APP / 'java').rglob('*.java')) + list(gen.rglob('*.java'))
     run('javac', '--release', '11', '-nowarn', '-cp', android_jar, '-d', classes, *sources)
     dex = BUILD / 'dex'
     dex.mkdir()
     run(bt / 'd8', '--release', '--min-api', MIN_SDK, '--lib', android_jar, '--output', dex, *classes.rglob('*.class'))
+
+    print('APK (to install directly)')
     with zipfile.ZipFile(BUILD / 'unsigned.apk', 'a', zipfile.ZIP_DEFLATED) as z:
         z.write(dex / 'classes.dex', 'classes.dex')
     run(bt / 'zipalign', '-f', '-p', '4', BUILD / 'unsigned.apk', BUILD / 'aligned.apk')
-
-    print('signing')
-    out = BUILD / f'GemJar-{VERSION_NAME}.apk'
+    apk = BUILD / f'GemJar-{VERSION_NAME}.apk'
     run(bt / 'apksigner', 'sign', '--ks', ks, '--ks-key-alias', 'gemjar', '--ks-pass', 'env:GEMJAR_KEYSTORE_PASS',
-        '--key-pass', 'env:GEMJAR_KEYSTORE_PASS', '--out', out, BUILD / 'aligned.apk')
-    run(bt / 'apksigner', 'verify', '--verbose', out)
-    print(f'\n{out} ({out.stat().st_size / 1e6:.1f} MB)')
+        '--key-pass', 'env:GEMJAR_KEYSTORE_PASS', '--out', apk, BUILD / 'aligned.apk')
+    run(bt / 'apksigner', 'verify', apk)
+
+    print('App Bundle (for Google Play)')
+    # the same app with its resources in the bundle's (protobuf) format, laid out as the "base" module
+    run(bt / 'aapt2', 'link', '--proto-format', '-o', BUILD / 'proto.apk', *link)
+    base = BUILD / 'base.zip'
+    with zipfile.ZipFile(BUILD / 'proto.apk') as src, zipfile.ZipFile(base, 'w', zipfile.ZIP_DEFLATED) as z:
+        for name in src.namelist():
+            if name == 'AndroidManifest.xml':
+                dest = 'manifest/AndroidManifest.xml'
+            elif name == 'resources.pb' or name.startswith(('res/', 'assets/')):
+                dest = name
+            else:
+                dest = 'root/' + name
+            z.writestr(dest, src.read(name))
+        z.write(dex / 'classes.dex', 'dex/classes.dex')
+    aab = BUILD / f'GemJar-{VERSION_NAME}.aab'
+    run('java', '-jar', bundletool, 'build-bundle', f'--modules={base}', f'--output={aab}')
+    # signed with the upload key; Google Play re-signs what it sends to phones
+    run('jarsigner', '-keystore', ks, '-storepass:env', 'GEMJAR_KEYSTORE_PASS', '-keypass:env', 'GEMJAR_KEYSTORE_PASS',
+        '-sigalg', 'SHA256withRSA', '-digestalg', 'SHA-256', aab, 'gemjar')
+    run('jarsigner', '-verify', aab)
+    run('java', '-jar', bundletool, 'validate', f'--bundle={aab}')
+
+    for f in (aab, apk):
+        print(f'{f} ({f.stat().st_size / 1e6:.1f} MB)')
 
 
 if __name__ == '__main__':
