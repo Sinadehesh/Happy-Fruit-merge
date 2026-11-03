@@ -77,7 +77,7 @@ For an AI sound-effect generator (for example ElevenLabs Sound Effects). Generat
 
 ## Narrator voice (combo words)
 
-**What the narrator says now:** the voice is Kenney's free "Voiceover Pack" (male). It has only 3 lines that fit this game: "Congratulations!" (making the biggest item), "New highscore!" (beating your best) and "Game over" (losing). It has no "Sweet!", "Yummy!" and so on, and no other free pack had them either, so the combo words are silent for now: you see the word and hear a sparkle and a rising chime.
+**Status:** done. The narrator lines are in `assets/voice` (made with ElevenLabs): sweet, juicy, delicious, amazing, incredible, congratulations, new_highscore and game_over. The combo ladder follows them: SWEET! (3), JUICY! (5), DELICIOUS! (7), AMAZING! (10), INCREDIBLE! (15 and every 5 after). YUMMY! and TASTY! are out of the ladder until they have a voice line. The AMAZING!, INCREDIBLE! and CONGRATULATIONS! word art is drawn by `tools/word_art.py`; the prompt in section 3 can replace it with generated art.
 
 **Tool:** ElevenLabs. Make the voice once in Voice Design, then use Text to Speech with that voice and the Eleven v3 model, which understands the [tags] in brackets. Set Stability to Creative or Natural (not Robust) so it sounds human. Any text-to-speech tool that lets you describe a voice works too: leave out the [tags] and follow the "How it should sound" column.
 

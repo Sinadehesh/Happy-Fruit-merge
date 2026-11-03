@@ -389,7 +389,7 @@ function handleCollisions(event) {
         Sound.play('pop', mergedTier);
         if (combo >= 2) Sound.play('combo', combo - 2);
         Haptics.play('merge', mergedTier, combo);
-        if (mergedTier === TIERS.length - 1) { FX.praise(4); Sound.play('maxMerge'); Haptics.play('maxMerge'); }
+        if (mergedTier === TIERS.length - 1) { FX.praise(4, true); Sound.play('maxMerge'); Haptics.play('maxMerge'); }
         else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise', praiseFor(combo)); Haptics.play('praise', praiseFor(combo)); }
 
         Composite.remove(engine.world, [bodyA, bodyB]);

@@ -1,6 +1,6 @@
 // --- SOUND ---
 // Recorded sound effects (assets/sfx, CC0: Kenney + OpenGameArt pops, see assets/sfx/CREDITS.txt),
-// optional combo voice lines (assets/voice), and background songs by Kevin MacLeod
+// narrator voice lines (assets/voice, see assets/voice/CREDITS.txt), and background songs by Kevin MacLeod
 // (assets/music, CC BY 4.0, credited in the settings and assets/music/CREDITS.txt).
 // Sound can be switched off and the song picked (or switched off) in the settings; the choice is remembered.
 
@@ -15,12 +15,13 @@ const Sound = (() => {
     // ---------- recordings ----------
 
     const SAMPLES = ['drop', 'land', 'pop_1', 'pop_2', 'pop_3', 'pop_4', 'pop_5', 'pop_6', 'bubble_1', 'bubble_2', 'bubble_3',
-        'bubble_big', 'chime', 'praise', 'fanfare', 'gameover', 'tap', 'voice_new_highscore', 'voice_game_over', 'voice_congratulations']
+        'bubble_big', 'chime', 'praise', 'fanfare', 'gameover', 'tap']
         .map(n => [n, `assets/sfx/${n}.wav`]);
-    // Combo praise voice, one file per word (SWEET! ... DELICIOUS!), played deeper and punchier the
-    // higher the combo. Add the recordings to assets/voice and list their names here, in ladder order.
-    const PRAISE_VOICES = [];   // e.g. ['sweet', 'yummy', 'juicy', 'tasty', 'delicious']
+    // The narrator (assets/voice): the combo words in ladder order, matching the words on screen,
+    // plus the lines for the biggest item, a new best and game over.
+    const PRAISE_VOICES = ['sweet', 'juicy', 'delicious', 'amazing', 'incredible'];
     PRAISE_VOICES.forEach(n => SAMPLES.push([`praise_${n}`, `assets/voice/${n}.mp3`]));
+    ['congratulations', 'new_highscore', 'game_over'].forEach(n => SAMPLES.push([`voice_${n}`, `assets/voice/${n}.mp3`]));
 
     // download everything now; decode once audio is unlocked
     const raw = {}, buffers = {};
@@ -66,16 +67,18 @@ const Sound = (() => {
     const semitones = n => Math.pow(2, n / 12);
     const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];   // combo chime climbs a pentatonic scale
 
-    // Combo voice: each step up the ladder plays deeper (slower), louder and more compressed (punchier)
-    function praiseVoice(level) {
-        const name = `praise_${PRAISE_VOICES[Math.min(level, PRAISE_VOICES.length - 1)]}`;
+    // Narrator line: the recording as it is (no pitch change), a little warmer, louder and punchier
+    // the higher up the combo ladder; the music dips while he talks
+    function voice(name, level = 0, when = 0) {
         if (!ac || !buffers[name]) return;
-        const warm = ac.createBiquadFilter(); warm.type = 'lowshelf'; warm.frequency.value = 220; warm.gain.value = 2 + level * 1.5;
+        const warm = ac.createBiquadFilter(); warm.type = 'lowshelf'; warm.frequency.value = 200; warm.gain.value = 1 + level * 1.2;
         const punch = ac.createDynamicsCompressor();
-        punch.threshold.value = -20 - level * 3; punch.ratio.value = 3 + level; punch.attack.value = 0.003; punch.release.value = 0.15;
+        punch.threshold.value = -18 - level * 2.5; punch.ratio.value = 2.5 + level; punch.attack.value = 0.004; punch.release.value = 0.18;
         warm.connect(punch); punch.connect(sfxBus);
-        sample(name, { rate: 1 - level * 0.035, gain: 0.9 + level * 0.12, out: warm });
+        sample(name, { gain: 1 + level * 0.08, when, out: warm });
+        Music.duck(when + buffers[name].duration);
     }
+    const praiseVoice = level => voice(`praise_${PRAISE_VOICES[Math.min(level, PRAISE_VOICES.length - 1)]}`, level);
 
     // ---------- game sounds ----------
 
@@ -93,15 +96,15 @@ const Sound = (() => {
         },
         // each step of a combo: a glassy chime, one note higher each time
         combo(step) { sample('chime', { gain: 0.4, rate: semitones(PENTA[Math.min(step, PENTA.length - 1)]) }); },
-        // praise word (SWEET! ... DELICIOUS!): sparkle plus the voice line if recorded
+        // praise word (SWEET! ... INCREDIBLE!): a soft sparkle under the narrator
         praise(level) {
-            sample('praise', { gain: 0.45, rate: semitones(level) });
+            sample('praise', { gain: 0.3, rate: semitones(level) });
             praiseVoice(level);
         },
-        // biggest item made
-        maxMerge() { sample('fanfare', { gain: 0.5 }); sample('voice_congratulations', { gain: 0.85, when: 0.25 }); },
-        newBest() { sample('voice_new_highscore', { gain: 0.85 }); sample('praise', { gain: 0.35, rate: semitones(7), when: 0.9 }); },
-        gameOver() { sample('gameover', { gain: 0.45 }); sample('voice_game_over', { gain: 0.85, when: 0.3 }); },
+        // biggest item made: fanfare, then CONGRATULATIONS!
+        maxMerge() { sample('fanfare', { gain: 0.45 }); voice('voice_congratulations', 4, 0.25); },
+        newBest() { voice('voice_new_highscore', 2); sample('praise', { gain: 0.3, rate: semitones(7), when: 1.8 }); },
+        gameOver() { sample('gameover', { gain: 0.45 }); voice('voice_game_over', 0, 0.3); },
         tap() { sample('tap', { gain: 0.35 }); }
     };
 
@@ -126,6 +129,13 @@ const Sound = (() => {
                 audio.play().catch(() => {});   // blocked until the first tap; unlock() calls this again then
             },
             pause() { if (audio) audio.pause(); },
+            // dip the song for a few seconds so the narrator is clear
+            duck(seconds) {
+                if (!audio) return;
+                clearTimeout(this.unduck);
+                audio.volume = MUSIC_VOLUME * 0.4;
+                this.unduck = setTimeout(() => { audio.volume = MUSIC_VOLUME; }, (seconds + 0.25) * 1000);
+            },
             stop() { if (audio) { audio.pause(); audio.currentTime = 0; } }
         };
     })();

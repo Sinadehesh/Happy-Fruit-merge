@@ -7,7 +7,7 @@ const FX = (() => {
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
-        'word_combo', 'word_sweet', 'word_yummy', 'word_juicy', 'word_tasty', 'word_delicious'];
+        'word_combo', 'word_sweet', 'word_juicy', 'word_delicious', 'word_amazing', 'word_incredible', 'word_congratulations'];
     const img = {};
     NAMES.forEach(n => { img[n] = new Image(); img[n].src = `assets/fx/${n}.png`; });
     const digit = {};
@@ -23,7 +23,8 @@ const FX = (() => {
         return (PIECES.find(p => (r -= p[1]) < 0) || PIECES[0])[0];
     }
 
-    const PRAISE = ['word_sweet', 'word_yummy', 'word_juicy', 'word_tasty', 'word_delicious'];
+    // the combo ladder, matching the narrator: SWEET! JUICY! DELICIOUS! AMAZING! INCREDIBLE!
+    const PRAISE = ['word_sweet', 'word_juicy', 'word_delicious', 'word_amazing', 'word_incredible'];
 
     let canvas, ctx, effects = [], last = performance.now();
     const rand = (a, b) => a + Math.random() * (b - a);
@@ -84,12 +85,12 @@ const FX = (() => {
         }
     }
 
-    // Praise word for a long combo: 0 = SWEET! ... 4 = DELICIOUS!
-    function praise(level) {
-        const name = PRAISE[Math.min(level, PRAISE.length - 1)];
+    // Praise word for a long combo: 0 = SWEET! ... 4 = INCREDIBLE!  big = CONGRATULATIONS! for the biggest item
+    function praise(level, big = false) {
+        const name = big ? 'word_congratulations' : PRAISE[Math.min(level, PRAISE.length - 1)];
         effects = effects.filter(e => e.kind !== 'praise');   // one at a time
-        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: 200 + level * 45, t: 0, dur: 1.5 });
-        for (let i = 0; i < 18; i++) {
+        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: big ? W - 40 : 200 + level * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
+        for (let i = 0; i < (big ? 40 : 18); i++) {
             const a = rand(0, Math.PI * 2), sp = rand(160, 300);
             effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.2) });
@@ -146,7 +147,8 @@ const FX = (() => {
             } else if (e.kind === 'combo') {
                 drawCombo(e);
             } else if (e.kind === 'praise') {
-                const s = elastic(Math.min(1, e.t / 0.6));
+                // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
+                const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));
                 const fade = k < 0.75 ? 1 : 1 - (k - 0.75) / 0.25;
                 const im = img[e.name];
                 const size = Math.min(e.size, W - 30);
