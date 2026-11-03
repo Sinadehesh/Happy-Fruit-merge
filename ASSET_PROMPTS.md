@@ -75,7 +75,54 @@ For an AI sound-effect generator (for example ElevenLabs Sound Effects). Generat
 | `button.mp3` | Soft cute bubbly UI button tap, mobile game | 0.15 s |
 | `music_loop.mp3` | Cheerful relaxed candy-land background music for a casual fruit merge puzzle game, xylophone, ukulele, soft bells and light percussion, cozy and bouncy, seamless loop | 60 s, loopable |
 
-Praise voice lines (optional, for a text-to-speech or voice generator, cute excited cartoon voice): "Sweet!", "Yummy!", "Juicy!", "Tasty!", "Delicious!". Name them `voice_sweet.mp3`, `voice_yummy.mp3` and so on.
+## Narrator voice (combo words)
+
+**What the narrator says now:** the voice is Kenney's free "Voiceover Pack" (male). It has only 3 lines that fit this game: "Congratulations!" (making the biggest item), "New highscore!" (beating your best) and "Game over" (losing). It has no "Sweet!", "Yummy!" and so on, and no other free pack had them either, so the combo words are silent for now: you see the word and hear a sparkle and a rising chime.
+
+**Tool:** ElevenLabs. Make the voice once in Voice Design, then use Text to Speech with that voice and the Eleven v3 model, which understands the [tags] in brackets. Set Stability to Creative or Natural (not Robust) so it sounds human. Any text-to-speech tool that lets you describe a voice works too: leave out the [tags] and follow the "How it should sound" column.
+
+### 1. The voice (paste into Voice Design)
+
+```
+A warm, friendly man in his early thirties with a smooth, rich baritone voice. Recorded very close to an expensive studio microphone in a completely dry, quiet room: intimate and cozy, like he is leaning in and speaking softly right next to your ear, with soft natural breaths and a real smile you can hear. Relaxed, playful and genuinely delighted. Never robotic, never a cheesy announcer, never a cartoon voice. Neutral American accent. No reverb, no echo, no music, no background noise.
+```
+
+Preview text for Voice Design: `Mmm... sweet. Oh, that's yummy. Juicy! Tasty! Delicious!`
+
+### 2. The lines
+
+The voice gets deeper, louder and more excited up the ladder. Generate each line on its own (one word per file). Make 3 or 4 takes of each and keep the most natural one, or keep 2 or 3 good takes per word so the game can rotate them and repeats don't sound the same.
+
+| File | Text to type | Plays at | How it should sound |
+|---|---|---|---|
+| `sweet.mp3` | `[softly] [smiling] Sweet.` | combo 3 | Soft and intimate, almost a murmur, a smile in it |
+| `yummy.mp3` | `[warmly] [playful] Yummy!` | combo 5 | Warm and playful, a little brighter |
+| `juicy.mp3` | `[delighted] Juicy!` | combo 7 | Richer and lower, clearly excited |
+| `tasty.mp3` | `[excited] Tasty!` | combo 10 | Deep and punchy, full of energy |
+| `delicious.mp3` | `[very excited] [savoring it] Delicious!` | combo 15 | The deepest so far, big energy, stretched out a little |
+| `amazing.mp3` | `[thrilled] Amazing!` | combo 20 | Even bigger, real hype |
+| `incredible.mp3` | `[amazed] [shouting happily] Incredible!` | combo 25 and up | The peak: booming but still warm, not harsh |
+| `congratulations.mp3` | `[proud] [warmly] Congratulations!` | biggest item | Proud and happy |
+| `new_highscore.mp3` | `[excited] New high score!` | beating your best | Excited and delighted |
+| `game_over.mp3` | `[softly] [kind] Game over...` | when the jar fills | Gentle and kind, a little sad, not dramatic |
+
+The last three replace the Kenney lines, so the whole game has one narrator. Export MP3 or WAV, 44.1 kHz. Silence at the start and end is fine: the files get trimmed, levelled and put in `assets/voice`.
+
+**For a voice that is 100% human:** record yourself or a friend on a phone. Stand inside a wardrobe full of clothes (it kills the echo), hold the phone 15 to 20 cm from your mouth, and say each word 3 times, getting deeper and louder as you go up the list.
+
+### 3. Word art for the new words (so the screen matches the voice)
+
+```
+A sprite sheet of 2 cute candy-style word-art titles for a mobile fruit merge game, side by side on a plain pure white background. Each word is separate, centered in its own half, with clear empty space around it, nothing touching.
+
+STYLE: glossy candy casual mobile game UI style. Chunky, bubbly, rounded cartoon letters, slightly bouncy and tilted for fun. Each word is filled with bright juicy jelly color, lighter on the top half and darker toward the bottom like a candy bevel, with a small white oval shine on the upper left of the letters. Thick dark chocolate-brown outline around every word, plus a second outline in a darker shade of the word's color. Like the praise words in a cozy match-3 candy game. Spell every word exactly as written.
+
+WORDS:
+1. "AMAZING!" in fresh mint green with tiny golden stars around it
+2. "INCREDIBLE!" in bright sky blue with little lightning sparkles and a rainbow sparkle trim, the biggest and fanciest
+
+AVOID: misspelled words, extra letters, extra words, pure white fills, soft glows, shadows on the background, gradients in the background, items touching, items cut off.
+```
 
 ## Blast animation (merge burst, frame by frame)
 

@@ -161,7 +161,7 @@ function tickScore() {
         if (shownScore > startBest) {
             if (!tickScore.crowned) {   // first time past the old best: bounce the crown
                 tickScore.crowned = true;
-                if (startBest > 0) Sound.play('newBest');
+                if (startBest > 0) { Sound.play('newBest'); Haptics.play('newBest'); }
                 document.getElementById('best-box').classList.add('new-best');
             }
             bestEl.textContent = shownScore;
@@ -275,6 +275,7 @@ Events.on(engine, 'beforeUpdate', () => {
             document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
             document.getElementById('gameover').classList.add('show');
             Sound.play('gameOver');
+            Haptics.play('gameOver');
         }
     } else {
         dangerTimer = 0;
@@ -307,6 +308,7 @@ playArea.addEventListener('pointerdown', (e) => {
     try { playArea.setPointerCapture(e.pointerId); } catch (err) {}   // keep following outside the board
     dropX = clampX(pointerToGameX(e), currentTier);
     setHeld(true);
+    Haptics.play('pickup');
     updateUI();
 });
 
@@ -331,6 +333,7 @@ playArea.addEventListener('pointercancel', (e) => {
 
 function dropFruit() {
     Sound.play('drop');
+    Haptics.play('drop');
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
@@ -350,6 +353,11 @@ function dropFruit() {
 function isLanded(body) {
     return body === ground || (body.tier !== undefined && !body.isDropping);
 }
+function landed(body) {
+    body.isDropping = false;
+    Sound.play('land', body.tier);
+    Haptics.play('land', body.tier);
+}
 
 function handleCollisions(event) {
     if (isGameOver) return;
@@ -359,8 +367,8 @@ function handleCollisions(event) {
         const bodyA = pairs[i].bodyA;
         const bodyB = pairs[i].bodyB;
 
-        if (bodyA.isDropping && isLanded(bodyB)) { bodyA.isDropping = false; Sound.play('land', bodyA.tier); }
-        if (bodyB.isDropping && isLanded(bodyA)) { bodyB.isDropping = false; Sound.play('land', bodyB.tier); }
+        if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA);
+        if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB);
         if (bodyA.isDropping || bodyB.isDropping) continue;
 
         if (bodyA.tier === undefined || bodyB.tier === undefined) continue;
@@ -380,8 +388,9 @@ function handleCollisions(event) {
         FX.merge(midX, midY, TIERS[mergedTier], combo);
         Sound.play('pop', mergedTier);
         if (combo >= 2) Sound.play('combo', combo - 2);
-        if (mergedTier === TIERS.length - 1) { FX.praise(4); Sound.play('maxMerge'); }
-        else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise', praiseFor(combo)); }
+        Haptics.play('merge', mergedTier, combo);
+        if (mergedTier === TIERS.length - 1) { FX.praise(4); Sound.play('maxMerge'); Haptics.play('maxMerge'); }
+        else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise', praiseFor(combo)); Haptics.play('praise', praiseFor(combo)); }
 
         Composite.remove(engine.world, [bodyA, bodyB]);
         spawnItem(midX, midY, mergedTier, true);
@@ -521,8 +530,17 @@ function audioButtons() {
 }
 document.getElementById('btn-sfx').addEventListener('click', () => { Sound.setSfx(!Sound.prefs().sfx); Sound.play('tap'); audioButtons(); });
 document.getElementById('btn-music').addEventListener('click', () => { Sound.unlock(); Sound.nextMusic(); Sound.play('tap'); audioButtons(); });
-document.querySelectorAll('#settings a, #settings button').forEach(b => b.addEventListener('pointerdown', () => Sound.play('tap')));
+document.querySelectorAll('#settings a, #settings button').forEach(b => b.addEventListener('pointerdown', () => { Sound.play('tap'); Haptics.play('tap'); }));
+// Vibration switch (hidden where the browser can't vibrate at all)
+const vibeBtn = document.getElementById('btn-vibe');
+function vibeButton() {
+    vibeBtn.className = `pill ${Haptics.isOn() ? 'green' : 'grey'}`;
+    vibeBtn.textContent = `Vibration ${Haptics.isOn() ? 'On' : 'Off'}`;
+}
+if (!Haptics.supported) vibeBtn.style.display = 'none';
+vibeBtn.addEventListener('click', () => { Haptics.setOn(!Haptics.isOn()); Haptics.play('merge', 4, 3); vibeButton(); });
 audioButtons();
+vibeButton();
 FX.init(board);
 
 bestEl.textContent = bestScore;
