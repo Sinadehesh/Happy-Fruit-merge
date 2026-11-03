@@ -70,6 +70,14 @@ The Rocks set as its own game: drop gems in the jar, merge two of a kind into a 
 - The best score and game in progress from the old Rocks mode are carried over the first time it opens.
 - `gems/index.html` is built from `index.html` by `python3 tools/make_gems_page.py`; run it again after changing `index.html`.
 
+## Gem Jar for Android
+
+- Download: `gems/GemJar.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.apk), signed, package `com.sinadehesh.gemjar`, Android 7 and up.
+- The app is one full-screen window running the same game, packed inside the app, so it plays offline. Vibration works, there are no ads yet (the placeholder ads are switched off with `ads: false`), and Back goes to the home screen without closing the game.
+- Source: `android/gemjar` (manifest, theme, `MainActivity.java`). `python3 tools/build_gem_apk.py <version name> <version code>` builds and signs it without Android Studio. It downloads Android build-tools and platform 35 the first time, packs the gem page and only the files it uses, makes the launcher icons from the diamond, and writes `android/build/GemJar-<version>.apk` plus a 512 px store icon (`android/store/icon_512.png`).
+- Signing: set `GEMJAR_KEYSTORE` and `GEMJAR_KEYSTORE_PASS`. The keystore is kept out of the repo (`.gitignore`); every update must be signed with the same key.
+- Google Play needs an App Bundle (.aab) rather than an APK for new apps; the APK is for installing directly and for other stores.
+
 # Zombie Bomber (`/bomber/`)
 A second game built on the same drop-and-merge engine: https://sinadehesh.github.io/Happy-Fruit-merge/bomber/
 

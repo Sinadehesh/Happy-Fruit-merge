@@ -33,6 +33,7 @@ assert n >= 4, n
 html, n = re.subn(r'\s*<div id="car-styles">.*?</div>', '', html, flags=re.S)
 assert n == 1
 swap('<h2>Modes</h2>', '<h2>Settings</h2>')
+swap('<img src="assets/farm/11_sunflower.png" alt="" style="width: 45%;">', '<img src="assets/rocks/12_diamond.png" alt="" style="width: 45%;">')   # placeholder ad picture
 swap('    <script src="config.js"></script>', '''    <script>
         window.GAME_SETUP = {
             id: 'gemJar',

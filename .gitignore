@@ -1,0 +1,4 @@
+# Android build output and signing keys: never commit
+android/build/
+*.jks
+*.keystore

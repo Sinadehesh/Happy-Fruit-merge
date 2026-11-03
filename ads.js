@@ -48,6 +48,7 @@ const Ads = (() => {
     }
 
     function showInterstitial(onClose) {
+        if (GAME.ads === false) { if (onClose) onClose(); return; }   // a build with no ads (the Android app for now)
         if (showing) return;
         showing = true;
         hooks.onPause();
@@ -68,6 +69,7 @@ const Ads = (() => {
         isShowing() { return showing; },
         showInterstitial,
         onDrop() {
+            if (GAME.ads === false) return;
             dropsSinceAd++;
             if (dropsSinceAd >= AD_EVERY_DROPS || Date.now() - lastAdAt >= AD_EVERY_MS) {
                 // Let the item that was just dropped appear before the break

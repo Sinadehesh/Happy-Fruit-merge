@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- the amethyst of the game background (bottom colour in gems/index.html) -->
+    <color name="bg">#4b2f9c</color>
+    <color name="icon_bg">#6a46c2</color>
+</resources>
