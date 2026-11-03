@@ -389,8 +389,11 @@ function handleCollisions(event) {
         Sound.play('pop', mergedTier);
         if (combo >= 2) Sound.play('combo', combo - 2);
         Haptics.play('merge', mergedTier, combo);
-        if (mergedTier === TIERS.length - 1) { FX.praise(4, true); Sound.play('maxMerge'); Haptics.play('maxMerge'); }
-        else if (praiseFor(combo) !== undefined) { FX.praise(praiseFor(combo)); Sound.play('praise', praiseFor(combo)); Haptics.play('praise', praiseFor(combo)); }
+        // the praise word, its voice and its buzz come together; the narrator says one line at a time,
+        // so in a fast chain a word may wait for the one before it to finish (see Sound)
+        const level = praiseFor(combo);
+        if (mergedTier === TIERS.length - 1) Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
+        else if (level !== undefined) Sound.play('praise', level, () => { FX.praise(level); Haptics.play('praise', level); });
 
         Composite.remove(engine.world, [bodyA, bodyB]);
         spawnItem(midX, midY, mergedTier, true);

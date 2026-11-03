@@ -80,8 +80,10 @@ const FX = (() => {
             });
         }
         if (combo >= 2) {
+            // one COMBO label at a time: the one before fades out fast
+            effects.forEach(e => { if (e.kind === 'combo') e.t = Math.max(e.t, e.dur * 0.88); });
             const ly = Math.max(70, y - r - 28);
-            effects.push({ kind: 'combo', x: Math.max(120, Math.min(W - 120, x)), y: ly, count: combo, t: 0, dur: 1.1 });
+            effects.push({ kind: 'combo', x: Math.max(120, Math.min(W - 120, x)), y: ly, count: combo, t: 0, dur: 1.1, off: 0 });
         }
     }
 
@@ -99,11 +101,17 @@ const FX = (() => {
 
     // ---------- animation ----------
 
-    function drawCombo(e) {
+    function drawCombo(e, dt) {
         const k = e.t / e.dur;
         const s = elastic(Math.min(1, e.t / 0.45));
         const alpha = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
-        const y = e.y - k * 30;
+        // slide out of the way of a praise word in the middle, so the two never overlap
+        const pr = effects.find(p => p.kind === 'praise');
+        const base = e.y - k * 30;
+        let goal = 0;
+        if (pr && Math.abs(base - pr.y) < 78) goal = (base < pr.y ? pr.y - 78 : pr.y + 78) - base;
+        e.off += (goal - e.off) * Math.min(1, dt * 14);
+        const y = base + e.off;
         // "COMBO" word, then "x" and the digits, side by side
         const wordH = 34, digH = 40;
         const word = img.word_combo;
@@ -145,7 +153,7 @@ const FX = (() => {
                 const pop = Math.min(1, e.t / 0.12);
                 draw(img[e.name], e.x, e.y, e.size * pop * (k > 0.6 ? 1 - (k - 0.6) / 0.4 * 0.6 : 1), e.rot, k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1);
             } else if (e.kind === 'combo') {
-                drawCombo(e);
+                drawCombo(e, dt);
             } else if (e.kind === 'praise') {
                 // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
                 const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));

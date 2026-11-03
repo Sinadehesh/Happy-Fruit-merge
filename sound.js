@@ -67,18 +67,45 @@ const Sound = (() => {
     const semitones = n => Math.pow(2, n / 12);
     const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];   // combo chime climbs a pentatonic scale
 
-    // Narrator line: the recording as it is (no pitch change), a little warmer, louder and punchier
-    // the higher up the combo ladder; the music dips while he talks
-    function voice(name, level = 0, when = 0) {
-        if (!ac || !buffers[name]) return;
+    // ---------- narrator: one line at a time ----------
+    // He never talks over himself. A line that comes in while he is talking waits until he is done.
+    // If more lines come in meanwhile, only the most important one waits (game over, then
+    // congratulations, then new high score, then the higher combo word; the newest on a tie) and the
+    // others are dropped. Each line's word, sparkle and buzz (onStart) happen when its voice starts,
+    // so the screen always matches what he says.
+    const GAP = 0.12;          // short breath between two lines, seconds
+    let talkingUntil = 0, queued = null, queueTimer = 0;
+
+    function say(line) {   // { name, level, rank, when (delay after the event), extra(delay), onStart() }
+        const b = buffers[line.name];
+        if (!b) { if (line.extra) line.extra(0); if (line.onStart) line.onStart(); return; }   // not loaded yet: no voice
+        const at = ac.currentTime + (line.when || 0);
+        if (at >= talkingUntil && !queued) { speak(line, at); return; }
+        if (!queued || line.rank >= queued.rank) queued = line;
+        clearTimeout(queueTimer);
+        queueTimer = setTimeout(() => {
+            const next = queued; queued = null;
+            if (next) speak(next, Math.max(ac.currentTime, talkingUntil) + (next.when ? 0.05 : 0));
+        }, Math.max(0, (talkingUntil - ac.currentTime) * 1000));
+    }
+
+    // The recording as it is (no pitch change), a little warmer, louder and punchier the higher up
+    // the combo ladder; the music dips while he talks
+    function speak(line, at) {
+        const b = buffers[line.name], level = line.level || 0, delay = Math.max(0, at - ac.currentTime);
+        talkingUntil = at + b.duration + GAP;
         const warm = ac.createBiquadFilter(); warm.type = 'lowshelf'; warm.frequency.value = 200; warm.gain.value = 1 + level * 1.2;
         const punch = ac.createDynamicsCompressor();
         punch.threshold.value = -18 - level * 2.5; punch.ratio.value = 2.5 + level; punch.attack.value = 0.004; punch.release.value = 0.18;
         warm.connect(punch); punch.connect(sfxBus);
-        sample(name, { gain: 1 + level * 0.08, when, out: warm });
-        Music.duck(when + buffers[name].duration);
+        sample(line.name, { gain: 1 + level * 0.08, when: delay, out: warm });
+        if (line.extra) line.extra(delay);
+        Music.duck(delay + b.duration);
+        // the word shows with the event (a line that waited shows when he starts it)
+        const show = Math.max(0, delay - (line.when || 0)) * 1000;
+        if (line.onStart) { if (show < 20) line.onStart(); else setTimeout(line.onStart, show); }
     }
-    const praiseVoice = level => voice(`praise_${PRAISE_VOICES[Math.min(level, PRAISE_VOICES.length - 1)]}`, level);
+    const praiseName = level => `praise_${PRAISE_VOICES[Math.min(level, PRAISE_VOICES.length - 1)]}`;
 
     // ---------- game sounds ----------
 
@@ -96,15 +123,18 @@ const Sound = (() => {
         },
         // each step of a combo: a glassy chime, one note higher each time
         combo(step) { sample('chime', { gain: 0.4, rate: semitones(PENTA[Math.min(step, PENTA.length - 1)]) }); },
-        // praise word (SWEET! ... INCREDIBLE!): a soft sparkle under the narrator
-        praise(level) {
-            sample('praise', { gain: 0.3, rate: semitones(level) });
-            praiseVoice(level);
+        // praise word (SWEET! ... INCREDIBLE!) with a soft sparkle under it; onStart shows the word
+        praise(level, onStart) {
+            say({ name: praiseName(level), level, rank: level, onStart,
+                extra: d => sample('praise', { gain: 0.3, rate: semitones(level), when: d }) });
         },
-        // biggest item made: fanfare, then CONGRATULATIONS!
-        maxMerge() { sample('fanfare', { gain: 0.45 }); voice('voice_congratulations', 4, 0.25); },
-        newBest() { voice('voice_new_highscore', 2); sample('praise', { gain: 0.3, rate: semitones(7), when: 1.8 }); },
-        gameOver() { sample('gameover', { gain: 0.45 }); voice('voice_game_over', 0, 0.3); },
+        // biggest item made: fanfare right away, then CONGRATULATIONS!
+        maxMerge(onStart) { sample('fanfare', { gain: 0.45 }); say({ name: 'voice_congratulations', level: 4, rank: 7, when: 0.25, onStart }); },
+        newBest() {
+            say({ name: 'voice_new_highscore', level: 2, rank: 6,
+                extra: d => sample('praise', { gain: 0.3, rate: semitones(7), when: d + 1.8 }) });
+        },
+        gameOver() { sample('gameover', { gain: 0.45 }); say({ name: 'voice_game_over', level: 0, rank: 9, when: 0.3 }); },
         tap() { sample('tap', { gain: 0.35 }); }
     };
 
@@ -140,7 +170,12 @@ const Sound = (() => {
         };
     })();
 
-    function play(name, ...args) { if (ac && prefs.sfx && sfx[name]) sfx[name](...args); }
+    // Play a game sound. With sound off (or before the first tap) nothing plays, but a callback
+    // (the praise word on screen) still runs right away.
+    function play(name, ...args) {
+        if (ac && prefs.sfx && sfx[name]) sfx[name](...args);
+        else args.forEach(a => { if (typeof a === 'function') a(); });
+    }
 
     function setSfx(on) { prefs.sfx = on; savePrefs(); if (sfxBus) sfxBus.gain.value = on ? 1 : 0; }
     // next song, and after the last one: off
