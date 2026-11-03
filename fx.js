@@ -7,7 +7,7 @@ const FX = (() => {
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
-        'word_combo', 'word_sweet', 'word_juicy', 'word_delicious', 'word_amazing', 'word_incredible', 'word_congratulations'];
+        'word_combo', 'word_congratulations', ...GAME.praise.map(w => `word_${w}`)];
     const img = {};
     NAMES.forEach(n => { img[n] = new Image(); img[n].src = `assets/fx/${n}.png`; });
     const digit = {};
@@ -23,8 +23,8 @@ const FX = (() => {
         return (PIECES.find(p => (r -= p[1]) < 0) || PIECES[0])[0];
     }
 
-    // the combo ladder, matching the narrator: SWEET! JUICY! DELICIOUS! AMAZING! INCREDIBLE!
-    const PRAISE = ['word_sweet', 'word_juicy', 'word_delicious', 'word_amazing', 'word_incredible'];
+    // the combo ladder (config.js), matching the narrator: SWEET! JUICY! DELICIOUS! AMAZING! INCREDIBLE!
+    const PRAISE = GAME.praise.map(w => `word_${w}`);
 
     let canvas, ctx, effects = [], last = performance.now();
     const rand = (a, b) => a + Math.random() * (b - a);
@@ -87,11 +87,12 @@ const FX = (() => {
         }
     }
 
-    // Praise word for a long combo: 0 = SWEET! ... 4 = INCREDIBLE!  big = CONGRATULATIONS! for the biggest item
+    // Praise word for a long combo: 0 = the first word of the ladder (SWEET!) and up; bigger words for
+    // higher steps. big = CONGRATULATIONS! for the biggest item
     function praise(level, big = false) {
         const name = big ? 'word_congratulations' : PRAISE[Math.min(level, PRAISE.length - 1)];
         effects = effects.filter(e => e.kind !== 'praise');   // one at a time
-        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: big ? W - 40 : 200 + level * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
+        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: big ? W - 40 : 200 + GAME.strength(level) * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
         for (let i = 0; i < (big ? 40 : 18); i++) {
             const a = rand(0, Math.PI * 2), sp = rand(160, 300);
             effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,

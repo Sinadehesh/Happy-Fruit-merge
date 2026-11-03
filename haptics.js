@@ -6,7 +6,7 @@
 // moment your finger touches or lifts. Can be switched off in the settings; the choice is remembered.
 
 const Haptics = (() => {
-    const KEY = 'happyFruitMerge.vibration';
+    const KEY = `${GAME.id}.vibration`;
     let on = true;
     try { on = localStorage.getItem(KEY) !== 'off'; } catch (e) {}
 
@@ -65,7 +65,7 @@ const Haptics = (() => {
             const d = Math.min(60, 18 + tier * 4);
             buzz(combo >= 3 ? [d, 35, Math.min(70, d * 0.6 + combo * 3)] : d, 2);
         },
-        praise(level) { buzz([30, 40, 30, 40, 40 + level * 15], 3); },
+        praise(level) { buzz([30, 40, 30, 40, 40 + GAME.strength(level) * 15], 3); },
         maxMerge() { buzz([60, 40, 60, 40, 140], 4); },
         newBest() { buzz([25, 50, 25, 50, 80], 3); },
         gameOver() { buzz([120, 80, 250], 5); },

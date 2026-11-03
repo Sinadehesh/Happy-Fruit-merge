@@ -82,7 +82,9 @@ const MODES = {
     }
 };
 const params = new URLSearchParams(location.search);
-const MODE = MODES[params.get('mode')] ? params.get('mode') : 'fruit';
+// Rocks became its own game (gems/): old links go there
+if (!GAME.mode && params.get('mode') === 'rocks') location.replace('gems/' + (params.get('size') ? '?size=' + params.get('size') : ''));
+const MODE = GAME.mode || (MODES[params.get('mode')] ? params.get('mode') : 'fruit');
 const SPRITES = MODES[MODE].sprites;
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
@@ -110,8 +112,21 @@ let currentTier = randomDropTier();
 let nextTier = randomDropTier();
 let dropX = GAME_WIDTH / 2;
 
+// A game that used to be a mode of another one (GAME.oldId) keeps its best score and game in progress,
+// copied over once
+if (GAME.oldId) try {
+    const done = `${GAME.id}.carriedOver`;
+    if (!localStorage.getItem(done)) {
+        ['', '.reverse'].forEach(r => [[`${GAME.oldId}.best.${MODE}${r}`, `${GAME.id}.best${r}`],
+                                       [`${GAME.oldId}.save.${MODE}${r}`, `${GAME.id}.save.${MODE}${r}`]].forEach(([from, to]) => {
+            if (localStorage.getItem(from) !== null && localStorage.getItem(to) === null) localStorage.setItem(to, localStorage.getItem(from));
+        }));
+        localStorage.setItem(done, '1');
+    }
+} catch (e) {}
+
 // Score: Suika-style triangular points for every merge, best kept across games
-const BEST_KEY = (MODE === 'fruit' ? 'happyFruitMerge.best' : `happyFruitMerge.best.${MODE}`) + (REVERSE ? '.reverse' : '');
+const BEST_KEY = (GAME.mode || MODE === 'fruit' ? `${GAME.id}.best` : `${GAME.id}.best.${MODE}`) + (REVERSE ? '.reverse' : '');
 let score = 0;
 let bestScore = 0;
 try { bestScore = parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) {}
@@ -134,9 +149,11 @@ function randomDropTier() {
 // Combo (Block Blast rule): every merge adds 1; dropping COMBO_BREAK items in a row without
 // any merge breaks it. Long combos earn more points and show praise words.
 const COMBO_BREAK = 2;
-const PRAISE_AT = { 3: 0, 5: 1, 7: 2, 10: 3, 15: 4 };   // combo count -> SWEET! YUMMY! JUICY! TASTY! DELICIOUS!
+// combo count -> praise step (GAME.praise / GAME.praiseAt in config.js); after the last step, every 5 merges
 let combo = 0, dropsWithoutMerge = 0;
-const praiseFor = n => PRAISE_AT[n] !== undefined ? PRAISE_AT[n] : (n > 15 && n % 5 === 0 ? 4 : undefined);
+const LAST_PRAISE = GAME.praiseAt[GAME.praiseAt.length - 1];
+const praiseFor = n => GAME.praiseAt.includes(n) ? GAME.praiseAt.indexOf(n)
+    : (n > LAST_PRAISE && (n - LAST_PRAISE) % 5 === 0 ? GAME.praise.length - 1 : undefined);
 const comboMultiplier = () => 1 + 0.2 * (Math.min(combo, 11) - 1);   // x1, x1.2 ... x3
 
 function addScore(tier) {
@@ -449,7 +466,7 @@ document.getElementById('btn-restart').addEventListener('click', () => {
 // --- SAVE ---
 // The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
-const SAVE_KEY = `happyFruitMerge.save.${MODE}${REVERSE ? '.reverse' : ''}`;
+const SAVE_KEY = `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
 let saving = true;
 
 function saveGame() {
@@ -503,17 +520,19 @@ document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
     btn.href = `?mode=${btn.dataset.mode}${sizeQuery}`;
 });
 // Car art style picker, only shown while playing Cars
-const carStyles = document.getElementById('car-styles');
-carStyles.style.display = MODE.startsWith('cars') ? 'flex' : 'none';
-carStyles.querySelectorAll('a').forEach(btn => btn.classList.add('grey'));
-carStyles.querySelectorAll('a').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.style === MODE);
-    if (btn.dataset.style === MODE) btn.classList.remove('grey');
-    btn.href = `?mode=${btn.dataset.style}${sizeQuery}`;
-});
+const carStyles = document.getElementById('car-styles');   // not on a single-game page (gems/)
+if (carStyles) {
+    carStyles.style.display = MODE.startsWith('cars') ? 'flex' : 'none';
+    carStyles.querySelectorAll('a').forEach(btn => {
+        btn.classList.add('grey');
+        btn.classList.toggle('active', btn.dataset.style === MODE);
+        if (btn.dataset.style === MODE) btn.classList.remove('grey');
+        btn.href = `?mode=${btn.dataset.style}${sizeQuery}`;
+    });
+}
 const sizeBtn = document.getElementById('btn-size');
 sizeBtn.classList.toggle('active', REVERSE);
-sizeBtn.href = `?mode=${MODE}${REVERSE ? '' : '&size=reverse'}`;
+sizeBtn.href = location.pathname + (GAME.mode ? (REVERSE ? '' : '?size=reverse') : `?mode=${MODE}${REVERSE ? '' : '&size=reverse'}`);
 
 // Settings panel (gear)
 const settings = document.getElementById('settings');

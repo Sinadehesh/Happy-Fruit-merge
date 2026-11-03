@@ -13,13 +13,13 @@ Styled after Block Blast: your best score with a crown at the top left, the big 
 - `haptics.js` vibrates the phone: a light tick when you pick up and drop a fruit and when it lands, a buzz on every merge (stronger for bigger items, with a second pulse from a 3-merge combo on), and longer patterns for praise words, the biggest item, a new best and game over. Android phones get the full patterns (`navigator.vibrate`). iPhones don't let websites vibrate; on iOS 18 or newer a hidden switch gives a single light tick instead. Vibration can be switched off in the settings.
 
 ## How to play
-- Pick a mode in the settings (gear): **🍓 Fruit**, **🐷 Animals**, **🚗 Cars**, **⛏️ Rocks** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=rocks` / `?mode=sweets`).
+- Pick a mode in the settings (gear): **🍓 Fruit**, **🐷 Animals**, **🚗 Cars** or **🍬 Sweets** (or open `index.html?mode=fruit` / `?mode=animal` / `?mode=cars` / `?mode=sweets`). Rocks is now its own game, Gem Jar (below); old `?mode=rocks` links open it.
 - Touch the box (or below it) and the item pops a little bigger and follows your finger, with a dashed line showing where it will fall. Let go to drop it. **Next** shows what comes after it.
 - The game is saved as you play (one save per mode), so closing or reloading brings you back exactly where you were. Restart in the settings starts over.
 - Two identical items touching merge into the next one:
   - Fruit: Seed → Sprout → Strawberry → Tomato → Corn → Carrot → Cabbage → Pumpkin → Watermelon → Golden Apple → Giant Sun
   - Animals: Egg → Chick → Chicken → Piglet → Pig → Calf → Cow → Horse → Alpaca → Bull → Unicorn
-  - Rocks (12 levels): Pebble → Sandstone → Coal → Malachite → Rose Quartz → Amethyst Geode → Turquoise → Gold Nugget → Ruby → Opal → Star Sapphire → Diamond
+  - Rocks (12 levels, in Gem Jar): Pebble → Sandstone → Coal → Malachite → Rose Quartz → Amethyst Geode → Turquoise → Gold Nugget → Ruby → Opal → Star Sapphire → Diamond
   - Sweets (12 levels): Jelly Bean → Gummy Bear → Peppermint → Marshmallow → Macaron → Chocolate Truffle → Cupcake → Donut → Ice Cream → Caramel Pudding → Lollipop → Celebration Cake
   - Cars (12 levels, 3 art styles to pick from with 🎨 Original / Flat / Candy): Toyota Corolla → Fiat 500 → VW Bus → Jeep Wrangler → Ford Mustang → Toyota Supra → Nissan GT-R → Mercedes G-Class → Porsche 911 → Lamborghini Aventador → Ferrari LaFerrari → Bugatti Chiron
 - Tap **Reverse** in the settings to flip the sizes: level 1 is the biggest and every merge makes a smaller item. Tap it again to go back. Reverse has its own best score.
@@ -60,6 +60,15 @@ Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest a
 ```
 python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png assets/sweets/[01]*.png
 ```
+
+# Gem Jar (`/gems/`)
+
+The Rocks set as its own game: drop gems in the jar, merge two of a kind into a better one, and make the diamond before the jar fills up. Working store title: **Gem Jar: Jewel Merge Puzzle**.
+
+- Same engine, art, sounds, vibration and saving as Happy Fruit Merge. `config.js` says which game a page is: `gems/index.html` sets `window.GAME_SETUP` (fixed `rocks` item set, its own save slot `gemJar.*`, combo words SWEET! at 3, AMAZING! at 6 and INCREDIBLE! at 10, then every 5).
+- Its own amethyst colours, and Settings only has Reverse, Sound, Music, Vibration and Restart.
+- The best score and game in progress from the old Rocks mode are carried over the first time it opens.
+- `gems/index.html` is built from `index.html` by `python3 tools/make_gems_page.py`; run it again after changing `index.html`.
 
 # Zombie Bomber (`/bomber/`)
 A second game built on the same drop-and-merge engine: https://sinadehesh.github.io/Happy-Fruit-merge/bomber/

@@ -5,7 +5,7 @@
 // Sound can be switched off and the song picked (or switched off) in the settings; the choice is remembered.
 
 const Sound = (() => {
-    const KEY = 'happyFruitMerge.audio';
+    const KEY = `${GAME.id}.audio`;
     // music = index into SONGS, or -1 for off
     let prefs = { sfx: true, music: 0 };
     try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(KEY)) }; } catch (e) {}
@@ -19,7 +19,7 @@ const Sound = (() => {
         .map(n => [n, `assets/sfx/${n}.wav`]);
     // The narrator (assets/voice): the combo words in ladder order, matching the words on screen,
     // plus the lines for the biggest item, a new best and game over.
-    const PRAISE_VOICES = ['sweet', 'juicy', 'delicious', 'amazing', 'incredible'];
+    const PRAISE_VOICES = GAME.praise;   // config.js
     PRAISE_VOICES.forEach(n => SAMPLES.push([`praise_${n}`, `assets/voice/${n}.mp3`]));
     ['congratulations', 'new_highscore', 'game_over'].forEach(n => SAMPLES.push([`voice_${n}`, `assets/voice/${n}.mp3`]));
 
@@ -125,8 +125,9 @@ const Sound = (() => {
         combo(step) { sample('chime', { gain: 0.4, rate: semitones(PENTA[Math.min(step, PENTA.length - 1)]) }); },
         // praise word (SWEET! ... INCREDIBLE!) with a soft sparkle under it; onStart shows the word
         praise(level, onStart) {
-            say({ name: praiseName(level), level, rank: level, onStart,
-                extra: d => sample('praise', { gain: 0.3, rate: semitones(level), when: d }) });
+            const strength = GAME.strength(level);
+            say({ name: praiseName(level), level: strength, rank: level, onStart,
+                extra: d => sample('praise', { gain: 0.3, rate: semitones(strength), when: d }) });
         },
         // biggest item made: fanfare right away, then CONGRATULATIONS!
         maxMerge(onStart) { sample('fanfare', { gain: 0.45 }); say({ name: 'voice_congratulations', level: 4, rank: 7, when: 0.25, onStart }); },
