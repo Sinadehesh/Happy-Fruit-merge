@@ -86,11 +86,14 @@ const params = new URLSearchParams(location.search);
 if (!GAME.mode && params.get('mode') === 'rocks') location.replace('gems/' + (params.get('size') ? '?size=' + params.get('size') : ''));
 const MODE = GAME.mode || (MODES[params.get('mode')] ? params.get('mode') : 'fruit');
 const SPRITES = MODES[MODE].sprites;
+// Daily Challenge (GAME.daily, opened with ?daily): one special game a day, see DAILY CHALLENGE below
+const DAILY = !!GAME.daily && params.has('daily');
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
+// (Not in the Daily Challenge, which is the same game for everyone.)
 // Not a plain flip of the normal sizes, which would make the dropped items nearly box-wide:
 // level 1 starts at a normal drop size and each level shrinks by the same ratio down to the last.
-const REVERSE = params.get('size') === 'reverse';
+const REVERSE = params.get('size') === 'reverse' && !DAILY;
 const REVERSE_LARGEST = 80;
 const REVERSE_SMALLEST = 18;
 function reverseTiers(count) {
@@ -105,6 +108,30 @@ SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
 function spriteScale(radius) {
     return (radius * 2 * SPRITE_FIT) / SPRITE_SIZE;
 }
+
+// Drops are random; in the Daily Challenge they are the same sequence for everyone that day (seeded by the date)
+function localDate(offsetDays) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+const TODAY = localDate(0), YESTERDAY = localDate(-1);
+const DAY_SEED = +TODAY.replace(/-/g, '');
+// mulberry32: small and fast, and its whole state is one number, saved with the game
+function seededRandom(seed) {
+    let a = seed >>> 0;
+    const next = () => {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    next.getState = () => a;
+    next.setState = st => { a = st >>> 0; };
+    return next;
+}
+const dropRandom = DAILY ? seededRandom(DAY_SEED) : Math.random;
 
 // Game state
 let isGameOver = false;
@@ -126,7 +153,8 @@ if (GAME.oldId) try {
 } catch (e) {}
 
 // Score: Suika-style triangular points for every merge, best kept across games
-const BEST_KEY = (GAME.mode || MODE === 'fruit' ? `${GAME.id}.best` : `${GAME.id}.best.${MODE}`) + (REVERSE ? '.reverse' : '');
+const BEST_KEY = DAILY ? `${GAME.id}.best.daily`
+    : (GAME.mode || MODE === 'fruit' ? `${GAME.id}.best` : `${GAME.id}.best.${MODE}`) + (REVERSE ? '.reverse' : '');
 let score = 0;
 let bestScore = 0;
 try { bestScore = parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch (e) {}
@@ -143,7 +171,7 @@ const dropGuide = document.getElementById('drop-guide');
 const aimLine = document.getElementById('aim-line');
 
 function randomDropTier() {
-    return Math.floor(Math.random() * DROP_TIERS);
+    return Math.floor(dropRandom() * DROP_TIERS);
 }
 
 // Combo (Block Blast rule): every merge adds 1; dropping COMBO_BREAK items in a row without
@@ -322,7 +350,8 @@ function setHeld(on) {
 document.addEventListener('pointerdown', () => Sound.unlock(), { capture: true });
 
 playArea.addEventListener('pointerdown', (e) => {
-    if (holding !== null || isGameOver || Ads.isShowing() || e.target.closest('.topbar')) return;
+    if (holding !== null || isGameOver || Ads.isShowing() || e.target.closest('.topbar, #btn-zap')) return;
+    if (zapArmed) { zapAt(e); return; }   // Zap booster: this tap picks the gem to strike
     holding = e.pointerId;
     try { playArea.setPointerCapture(e.pointerId); } catch (err) {}   // keep following outside the board
     dropX = clampX(pointerToGameX(e), currentTier);
@@ -400,6 +429,7 @@ function handleCollisions(event) {
         combo++;
         dropsWithoutMerge = 0;
         const points = addScore(mergedTier);
+        dailyOnMerge(mergedTier);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -490,7 +520,7 @@ function revive() {
 // --- SAVE ---
 // The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
-const SAVE_KEY = `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
+const SAVE_KEY = DAILY ? `${GAME.id}.save.daily` : `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
 let saving = true;
 let revived = false;   // used the "keep going" ad this game
 
@@ -500,6 +530,7 @@ function saveGame() {
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
     const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived, items };
+    if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
@@ -512,6 +543,7 @@ function loadGame() {
     let data = null;
     try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
     if (!data || data.v !== 1 || !Array.isArray(data.items)) return;
+    if (DAILY && data.date !== TODAY) return;   // yesterday's daily game: today's starts fresh
     const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
     for (const [tier, x, y, angle] of data.items) {
         if (!okTier(tier)) continue;
@@ -527,6 +559,11 @@ function loadGame() {
     combo = data.combo | 0;
     dropsWithoutMerge = data.dropsWithoutMerge | 0;
     revived = !!data.revived;
+    if (DAILY) {
+        if (Number.isInteger(data.rng)) dropRandom.setState(data.rng);
+        if (Array.isArray(data.made)) data.made.forEach((n, t) => { if (t < made.length) made[t] = n | 0; });
+        maxCombo = data.maxCombo | 0;
+    }
 }
 
 setInterval(saveGame, 1000);
@@ -558,6 +595,7 @@ if (carStyles) {
 }
 const sizeBtn = document.getElementById('btn-size');
 sizeBtn.classList.toggle('active', REVERSE);
+if (DAILY) sizeBtn.style.display = 'none';
 sizeBtn.href = location.pathname + (GAME.mode ? (REVERSE ? '' : '?size=reverse') : `?mode=${MODE}${REVERSE ? '' : '&size=reverse'}`);
 
 // Settings panel (gear)
@@ -591,8 +629,176 @@ audioButtons();
 vibeButton();
 FX.init(board);
 
+// --- DAILY CHALLENGE ---
+// One special game a day (GAME.daily; the Daily button opens it): the same drops and the same goal for
+// everyone that day, picked from the date. Reaching the goal the first time that day gives Zaps
+// (3 on every 7th day in a row) and keeps the streak going. Its game and best score are kept apart
+// from the main game, and it can be replayed as often as you like.
+const DAILY_KEY = `${GAME.id}.daily`;
+const made = new Array(TIERS.length).fill(0);   // items made in today's daily game, per level
+let maxCombo = 0;
+const tierName = t => SPRITES[t].split('/').pop().replace(/^\d+_|\.png$/g, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const aOrAn = name => (/^[AEIOU]/.test(name) ? 'an ' : 'a ') + name;
+const short = n => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
+
+const GOAL = (() => {
+    const pick = seededRandom(DAY_SEED * 7919 + 13);
+    const top = TIERS.length - 1;
+    const goals = [
+        ...[6, 7, 8, 9].map(t => ({ kind: 'make', tier: Math.min(t, top - 2), count: 1 })),
+        ...[5, 6].map(t => ({ kind: 'make', tier: t, count: 2 })),
+        ...[2500, 4000, 6000].map(n => ({ kind: 'score', target: n })),
+        ...[5, 6, 8].map(n => ({ kind: 'combo', target: n }))
+    ];
+    return goals[Math.floor(pick() * goals.length)];
+})();
+function goalText(g) {
+    if (g.kind === 'make') return g.count === 1 ? `Make ${aOrAn(tierName(g.tier))}` : `Make ${g.count} ${tierName(g.tier)}s`;
+    if (g.kind === 'score') return `Score ${g.target.toLocaleString()}`;
+    return `Get a ${g.target}x combo`;
+}
+function goalProgress(g) {   // [have, need]
+    if (g.kind === 'make') return [made[g.tier], g.count];
+    if (g.kind === 'score') return [score, g.target];
+    return [maxCombo, g.target];
+}
+function dailyState() {
+    try { return JSON.parse(localStorage.getItem(DAILY_KEY)) || {}; } catch (e) { return {}; }
+}
+const doneToday = () => dailyState().lastDone === TODAY;
+
+function dailyOnMerge(tier) {
+    if (!DAILY) return;
+    made[tier]++;
+    maxCombo = Math.max(maxCombo, combo);
+    dailyCheck();
+}
+
+function dailyCheck() {
+    if (!DAILY) return;
+    updateGoal();
+    if (doneToday()) return;
+    const [have, need] = goalProgress(GOAL);
+    if (have < need) return;
+    const st = dailyState();
+    st.streak = st.lastDone === YESTERDAY ? (st.streak || 0) + 1 : 1;
+    st.lastDone = TODAY;
+    st.total = (st.total || 0) + 1;
+    try { localStorage.setItem(DAILY_KEY, JSON.stringify(st)); } catch (e) {}
+    const reward = st.streak % 7 === 0 ? 3 : 1;
+    addZaps(reward);
+    updateGoal();
+    Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
+    showToast(`Daily Challenge done! +${reward} Zap${reward > 1 ? 's' : ''}`);
+}
+
+function updateGoal() {
+    const box = document.getElementById('goal');
+    if (doneToday()) {
+        const streak = dailyState().streak || 1;
+        box.classList.add('done');
+        document.getElementById('goal-text').textContent = 'Done!';
+        document.getElementById('goal-progress').textContent = streak > 1 ? `${streak} days in a row` : 'Come back tomorrow';
+    } else {
+        const [have, need] = goalProgress(GOAL);
+        document.getElementById('goal-text').textContent = goalText(GOAL);
+        document.getElementById('goal-progress').textContent = GOAL.kind === 'score' ? `${short(Math.min(have, need))}/${short(need)}` : `${Math.min(have, need)}/${need}`;
+    }
+}
+
+function initDaily() {
+    if (!GAME.daily) return;
+    if (DAILY) {
+        document.getElementById('best-box').style.display = 'none';
+        document.getElementById('goal').style.display = '';
+        const exit = document.getElementById('btn-exit-daily');
+        exit.style.display = '';
+        exit.addEventListener('click', () => { saveGame(); location.href = location.pathname; });
+        updateGoal();
+    } else {
+        const btn = document.getElementById('btn-daily');
+        btn.style.display = '';
+        btn.classList.toggle('done', doneToday());
+        btn.addEventListener('click', () => { saveGame(); location.href = location.pathname + '?daily'; });
+    }
+}
+
+// --- ZAP BOOSTER ---
+// Lightning that strikes one gem you choose and clears it away (GAME.boosters). You start with 2, earn
+// more from the Daily Challenge, and in the Android app can watch an ad for one when you run out.
+const ZAP_KEY = `${GAME.id}.zaps`;
+const zapBtn = document.getElementById('btn-zap');
+let zaps = 2;
+try { const v = localStorage.getItem(ZAP_KEY); if (v !== null) zaps = Math.max(0, parseInt(v, 10) || 0); } catch (e) {}
+let zapArmed = false;
+
+function storeZaps() { try { localStorage.setItem(ZAP_KEY, zaps); } catch (e) {} }
+function addZaps(n) { zaps = Math.min(99, zaps + n); storeZaps(); zapUI(); }
+function zapUI() {
+    zapBtn.classList.toggle('armed', zapArmed);
+    zapBtn.classList.toggle('empty', zaps === 0);
+    document.getElementById('zap-count').textContent = zaps > 0 ? zaps : (Ads.rewardedReady() ? 'AD' : '0');
+}
+function setZapArmed(on) {
+    zapArmed = on;
+    zapUI();
+    if (on) showToast('Tap a gem to zap it');
+}
+
+zapBtn.addEventListener('click', () => {
+    if (isGameOver || Ads.isShowing()) return;
+    Sound.play('tap');
+    if (zapArmed) { setZapArmed(false); return; }
+    if (zaps > 0) { setZapArmed(true); return; }
+    if (Ads.rewardedReady()) Ads.showRewarded(watched => { if (watched) { addZaps(1); setZapArmed(true); } });
+    else showToast(GAME.daily ? 'Finish the Daily Challenge for more Zaps' : 'No Zaps left');
+});
+
+// a tap on the board while armed: the gem under the finger (or the nearest one within a finger's width)
+function zapAt(e) {
+    const rect = board.getBoundingClientRect();
+    const p = { x: (e.clientX - rect.left) * (GAME_WIDTH / rect.width), y: (e.clientY - rect.top) * (GAME_HEIGHT / rect.height) };
+    const items = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    let target = Matter.Query.point(items, p)[0];
+    if (!target) {
+        let nearest = 24;
+        for (const b of items) {
+            const gap = Math.hypot(b.position.x - p.x, b.position.y - p.y) - TIERS[b.tier];
+            if (gap < nearest) { nearest = gap; target = b; }
+        }
+    }
+    if (!target) { showToast('Tap a gem to zap it'); return; }
+    FX.zap(target.position.x, target.position.y, TIERS[target.tier]);
+    Composite.remove(engine.world, target);
+    Sound.play('pop', Math.max(6, target.tier));
+    Sound.play('combo', 6);
+    Haptics.play('merge', 9, 0);
+    zaps--;
+    storeZaps();
+    setZapArmed(false);
+    saveGame();
+}
+
+function initZap() {
+    if (!GAME.boosters) return;
+    zapBtn.style.display = '';
+    zapUI();
+    setInterval(zapUI, 2000);   // the "AD" badge follows whether a rewarded ad is ready
+}
+
+// short message over the board
+const toastEl = document.getElementById('toast');
+function showToast(text) {
+    toastEl.textContent = text;
+    toastEl.classList.remove('show');
+    void toastEl.offsetWidth;   // restart the animation
+    toastEl.classList.add('show');
+}
+
 bestEl.textContent = bestScore;
 loadGame();
+initDaily();
+initZap();
 window.addEventListener('resize', updateUI);
 updateUI();
 tickScore();

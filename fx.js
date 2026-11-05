@@ -100,6 +100,38 @@ const FX = (() => {
         }
     }
 
+    // Zap booster: a lightning bolt from the top of the board down to the gem, then a burst where it was
+    function zap(x, y, r) {
+        const pts = [];
+        const startX = Math.max(30, Math.min(W - 30, x + rand(-60, 60)));
+        const steps = 10;
+        for (let i = 0; i <= steps; i++) {
+            const k = i / steps;
+            const along = startX + (x - startX) * k;
+            pts.push([i === steps ? x : along + rand(-22, 22) * (1 - k * 0.6), k * y]);
+        }
+        effects.push({ kind: 'bolt', pts, t: 0, dur: 0.42 });
+        effects.push({ kind: 'ring', x, y, size: r * 3, t: 0, dur: 0.5 });
+        merge(x, y, r, 0);
+    }
+
+    function drawBolt(e) {
+        const k = e.t / e.dur;
+        const alpha = k < 0.55 ? (Math.sin(e.t * 95) > -0.3 ? 1 : 0.45) : 1 - (k - 0.55) / 0.45;
+        ctx.save();
+        ctx.lineJoin = ctx.lineCap = 'round';
+        ctx.shadowColor = 'rgba(255, 225, 110, 0.95)';
+        ctx.shadowBlur = 22;
+        for (const [width, color] of [[12, `rgba(255, 214, 79, ${alpha * 0.85})`], [5, `rgba(255, 255, 255, ${alpha})`]]) {
+            ctx.beginPath();
+            e.pts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
+            ctx.lineWidth = width;
+            ctx.strokeStyle = color;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
     // ---------- animation ----------
 
     function drawCombo(e, dt) {
@@ -155,6 +187,8 @@ const FX = (() => {
                 draw(img[e.name], e.x, e.y, e.size * pop * (k > 0.6 ? 1 - (k - 0.6) / 0.4 * 0.6 : 1), e.rot, k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1);
             } else if (e.kind === 'combo') {
                 drawCombo(e, dt);
+            } else if (e.kind === 'bolt') {
+                drawBolt(e);
             } else if (e.kind === 'praise') {
                 // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
                 const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));
@@ -168,5 +202,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, merge, praise };
+    return { init, merge, praise, zap };
 })();

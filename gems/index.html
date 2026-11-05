@@ -121,7 +121,48 @@
         }
 
         /* Tray under the board: what comes next */
-        .tray { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 80px; }
+        .tray { position: relative; width: 100%; flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 80px; }
+        /* Daily Challenge button, goal and way back (game.js) */
+        #btn-daily {
+            position: relative; display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 16px 0 8px;
+            border: none; border-radius: 19px; background: rgba(255, 255, 255, 0.15); color: white;
+            font: 800 15px 'Poppins', sans-serif; cursor: pointer;
+        }
+        #btn-daily img { width: 28px; height: 28px; object-fit: contain; }
+        #btn-daily .dot { position: absolute; top: 1px; right: 3px; width: 11px; height: 11px; border-radius: 50%; background: #ff4d6d; box-shadow: 0 0 0 2px var(--bg-top); }
+        #btn-daily.done .dot { display: none; }
+        #btn-daily.done span::after { content: ' \2713'; color: #7dff9b; }
+        #goal {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 62%;
+            padding: 3px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.15);
+            font-weight: 700; font-size: 13px; line-height: 1.25; text-align: center;
+        }
+        #goal b { color: var(--gold); font-size: 10px; letter-spacing: 1px; }
+        #goal-progress { color: var(--gear); }
+        #goal.done #goal-progress { color: #7dff9b; }
+        #btn-exit-daily { width: 38px; height: 38px; border: none; padding: 0; background: url('assets/ui/btn_close.png') center/contain no-repeat; cursor: pointer; }
+        /* Zap booster button by NEXT, with how many you have */
+        #btn-zap { position: absolute; right: 2px; top: 50%; width: 64px; height: 64px; transform: translateY(-50%); border: none; padding: 0; background: none; cursor: pointer; }
+        #btn-zap img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3)); }
+        #zap-count {
+            position: absolute; right: -4px; bottom: 0; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box;
+            border-radius: 12px; background: #ff4d6d; color: white; font: 800 13px/24px 'Poppins', sans-serif; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+        }
+        #btn-zap.empty img { filter: grayscale(0.6) brightness(0.85); }
+        #btn-zap.armed img { animation: zap-pulse 0.7s ease-in-out infinite; }
+        @keyframes zap-pulse { 50% { transform: scale(1.15) rotate(-6deg); filter: drop-shadow(0 0 12px #ffe66d); } }
+        /* short messages over the board ("Tap a gem to zap it", "Daily Challenge done!") */
+        #toast {
+            position: absolute; left: 50%; top: 31%; z-index: 14;   /* above where the praise words pop (fx.js y = 270) */ pointer-events: none; opacity: 0; transform: translate(-50%, -50%);
+            padding: 8px 18px; border-radius: 18px; background: rgba(20, 12, 50, 0.8); color: white;
+            font-weight: 800; font-size: 15px; white-space: nowrap;
+        }
+        #toast.show { animation: toast 2.4s ease forwards; }
+        @keyframes toast {
+            0% { opacity: 0; transform: translate(-50%, -30%) scale(0.9); }
+            10%, 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -65%) scale(1); }
+        }
         .tray-label { color: var(--gear); font-weight: 700; font-size: 15px; letter-spacing: 1px; }
         #next-img { width: 68px; height: 68px; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
 
@@ -196,6 +237,9 @@
             .game-board { width: min(100%, 450px, calc((100vh - 176px) * 450 / 640)); }
             .tray { min-height: 60px; }
             #next-img { width: 52px; height: 52px; }
+            #btn-zap { width: 50px; height: 50px; }
+            #btn-daily { height: 32px; font-size: 13px; }
+            #btn-daily img { width: 22px; height: 22px; }
         }
         /* Gem Jar colours */
         :root {
@@ -223,7 +267,11 @@
 
     <div id="app">
         <div class="topbar">
+            <!-- Daily Challenge (GAME.daily): in the daily game, a way back and the goal instead of the best score -->
+            <button id="btn-exit-daily" aria-label="Back to the main game" style="display: none"></button>
             <div class="best" id="best-box"><svg><use href="#crown"/></svg><span id="best-val">0</span></div>
+            <button id="btn-daily" style="display: none"><img src="assets/ui/icon_star.png" alt=""><span>Daily</span><i class="dot"></i></button>
+            <div id="goal" style="display: none"><b>DAILY CHALLENGE</b><div><span id="goal-text"></span> <span id="goal-progress"></span></div></div>
             <button id="btn-settings" aria-label="Settings">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" style="color: var(--gear);" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
             </button>
@@ -232,6 +280,7 @@
         <div id="score-val">0</div>
 
         <div id="board" class="game-board">
+            <div id="toast"></div>
             <div id="aim-line"></div>
             <div id="drop-guide"></div>
             <div class="danger-line"></div>
@@ -240,6 +289,8 @@
         <div class="tray">
             <span class="tray-label">NEXT</span>
             <img id="next-img" alt="">
+            <!-- Zap booster (GAME.boosters): lightning that clears one gem you tap -->
+            <button id="btn-zap" aria-label="Zap a gem" style="display: none"><img src="assets/ui/icon_bolt.png" alt=""><span id="zap-count">0</span></button>
         </div>
     </div>
 
@@ -301,7 +352,9 @@
             oldId: 'happyFruitMerge',   // was the Rocks mode of Happy Fruit Merge: keep its best score and saved game
             mode: 'rocks',
             praise: ['sweet', 'amazing', 'incredible'],
-            praiseAt: [3, 6, 10]
+            praiseAt: [3, 6, 10],
+            daily: true,
+            boosters: true
         };
     </script>
     <script src="config.js"></script>

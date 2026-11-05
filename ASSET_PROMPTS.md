@@ -124,6 +124,150 @@ WORDS:
 AVOID: misspelled words, extra letters, extra words, pure white fills, soft glows, shadows on the background, gradients in the background, items touching, items cut off.
 ```
 
+## Gem Jar: unlockable gem sets
+
+Five new looks for Gem Jar that players can unlock. Each sheet is a full set of 12 merge levels in the same candy style as the rocks, without faces. Generate each prompt on its own (one sheet each). The game keeps the same sizes and merge rules for every set, so each item replaces the rock at the same level. If two items come out looking alike, regenerate, or move the "IMPORTANT" paragraph to the very start of the prompt.
+
+### 1. Crystal Cave
+
+```
+A sprite sheet of 12 candy-style gems for a mobile merge game: the "Crystal Cave" collection, glowing raw crystals from a magical cave.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color, so no two items look alike. Only item 12 is a faceted cut gem; items 1 to 11 are raw or polished crystals, NOT cut like jewelry.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy, jelly and gummy sweets: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, thick glossy candy-coating, sugar-glass shine and big bright white specular highlights. Colors are maximum saturation, neon-bright and electric. No dull, grey, brown or muddy tones anywhere. Soft rainbow color shifts inside the candy, like light through a lollipop. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Shapes are fat, chunky, puffy and rounded, with no long thin spikes, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more magical than the one before:
+1. Frosted milky quartz pebble, round and smooth, glowing faintly pink inside
+2. A single clear quartz point, a short fat six-sided crystal, icy and see-through
+3. Citrine cluster, a chunky bunch of lemon-yellow crystal points
+4. Fluorite cube, a chunky cube with glowing lime-green and teal stripes
+5. Celestite cluster, sky-blue crystal points sitting on a soft white sugar rock
+6. Pink spinel, a glossy bubblegum-pink double-pyramid crystal
+7. Lapis lazuli egg, polished deep royal blue with sparkling gold flecks
+8. Fire agate nugget, glossy tangerine and cherry-red bubbly layers that glow
+9. Bismuth crystal, a chunky square staircase spiral shining in rainbow metallic colors
+10. Watermelon tourmaline, a chunky crystal column, bubblegum-pink in the middle and lime-green around the outside
+11. Ametrine crystal, a fat crystal point, grape-purple at the top and honey-gold at the bottom
+12. Rainbow crystal heart, the only faceted cut gem, sparkling with every color, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 2. Ocean Jewels
+
+```
+A sprite sheet of 12 candy-style gems for a mobile merge game: the "Ocean Jewels" collection, treasures from the bottom of a tropical sea.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color, so no two items look alike. Only item 12 is a faceted cut gem; items 1 to 11 are NOT faceted or cut like jewelry.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy, jelly and gummy sweets: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, thick glossy candy-coating, sugar-glass shine and big bright white specular highlights. Colors are maximum saturation, neon-bright and electric. No dull, grey, brown or muddy tones anywhere. Soft rainbow color shifts inside the candy, like light through a lollipop. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Shapes are fat, chunky, puffy and rounded, with no long thin spikes, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more magical than the one before:
+1. Lime-green sea glass, a smooth frosted rounded chunk
+2. Cream freshwater pearl, slightly lumpy and oval, with a soft pink sheen
+3. Red coral, a chunky rounded bundle of glossy cherry-red coral (short fat branches only)
+4. Abalone shell slice, an oval swirling with blue, green and purple rainbow shine
+5. Amber drop, honey-orange and see-through, with a tiny air bubble inside
+6. Larimar stone, a smooth round sky-blue dome with white wave patterns
+7. Jellyfish crystal, a round dome of glowing violet jelly with swirls inside
+8. Black pearl, perfectly round, with a peacock green and purple sheen
+9. Ammolite, a chunky coiled spiral ammonite shell flashing red, green and blue
+10. Paraiba tourmaline nugget, electric neon turquoise, glowing from inside
+11. Pink conch pearl resting in a small open golden scallop shell
+12. Ocean diamond, the only faceted gem: a round brilliant-cut sea-blue diamond with sparkles, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 3. Royal Treasury
+
+```
+A sprite sheet of 12 candy-style gems for a mobile merge game: the "Royal Treasury" collection, the polished and cut jewels of a royal treasure vault.
+
+IMPORTANT: Every item is a polished or cut jewel, and each one must have a completely different cut shape AND a different main color, so no two items look alike.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy, jelly and gummy sweets: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, thick glossy candy-coating, sugar-glass shine and big bright white specular highlights. Colors are maximum saturation, neon-bright and electric. No dull, grey, brown or muddy tones anywhere. Soft rainbow color shifts inside the candy, like light through a lollipop. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Shapes are fat, chunky, puffy and rounded, with no long thin spikes, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more magical than the one before:
+1. Jade cabochon, a smooth polished sour-apple green dome
+2. Carnelian bead, round and glossy, blood-orange
+3. Citrine cushion cut, a lemon-yellow square with rounded corners
+4. Aquamarine pear cut, a pale aqua teardrop
+5. Amethyst heart cut, grape purple
+6. Pink sapphire oval cut, bubblegum pink
+7. Emerald-cut emerald, a deep green rectangle with stepped facets
+8. Tanzanite trillion cut, a rounded triangle of violet-blue
+9. Ruby marquise cut, a chunky cherry-red boat shape
+10. Black opal cabochon, a dark galaxy-colored dome with neon rainbow flashes
+11. Sapphire star cut, a royal-blue five-pointed star gem with fat rounded tips
+12. The Royal Diamond, a big round brilliant-cut diamond, ice-clear with rainbow sparkles, topped with a tiny chunky gold crown, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 4. Cosmic Gems
+
+```
+A sprite sheet of 12 candy-style gems for a mobile merge game: the "Cosmic Gems" collection, gems fallen from outer space.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color, so no two items look alike. Only item 12 is a faceted cut gem; items 1 to 11 are NOT faceted or cut like jewelry.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy, jelly and gummy sweets: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, thick glossy candy-coating, sugar-glass shine and big bright white specular highlights. Colors are maximum saturation, neon-bright and electric. No dull, grey, brown or muddy tones anywhere. Soft rainbow color shifts inside the candy, like light through a lollipop. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Shapes are fat, chunky, puffy and rounded, with no long thin spikes, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more magical than the one before:
+1. Moon rock, a pale lilac rounded stone with little round craters
+2. Meteorite, a lumpy glossy cherry-cola chunk with shiny silver speckles
+3. Stardust crystals, a chunky cluster of glittering mint-green crystal points
+4. Comet ice, a frosted icy-blue teardrop crystal with a short rounded tail
+5. Moonstone crescent, a fat milky-white crescent moon with a glowing blue shimmer
+6. Nebula marble, a glass sphere with swirling pink, purple and blue clouds inside
+7. Saturn gem, a round coral-orange gem with a chunky glossy ring around it
+8. Aurora crystal, a chunky crystal column glowing green into violet like the northern lights
+9. Sun stone, a round glowing golden-yellow gem with short fat rounded rays
+10. Galaxy opal egg, deep navy blue with swirling tiny stars and neon flashes
+11. Black hole gem, a thick glossy black disc with a glowing purple swirl spiraling into its center
+12. Star heart, the only faceted gem: a chunky faceted star-shaped crystal with fat rounded points, sparkling rainbow-white, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 5. Volcano Gems
+
+```
+A sprite sheet of 12 candy-style gems for a mobile merge game: the "Volcano Gems" collection, fiery gems born inside a volcano.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color, so no two items look alike. Only item 12 is a faceted cut gem; items 1 to 11 are NOT faceted or cut like jewelry.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy, jelly and gummy sweets: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, thick glossy candy-coating, sugar-glass shine and big bright white specular highlights. Colors are maximum saturation, neon-bright and electric. No dull, grey, brown or muddy tones anywhere. Soft rainbow color shifts inside the candy, like light through a lollipop. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Shapes are fat, chunky, puffy and rounded, with no long thin spikes, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more magical than the one before:
+1. Pumice, a light bubbly rounded stone in frosted vanilla cream
+2. Obsidian, a smooth rounded chunk of glossy black glass with a purple shine
+3. Sulfur crystals, a chunky cluster of bright lemon-yellow crystal points
+4. Garnet orb, a round deep cherry-red gem with a soft inner glow
+5. Blue fire crystal, a chunky crystal column glowing electric blue like the blue flames of a volcano
+6. Peridot nugget, bright lime-green, bumpy and glowing
+7. Fire opal drop, a teardrop flashing orange, red and pink
+8. Magma glass, a fat rounded triangle of hot-magenta glass with a swirling glow inside
+9. Sunstone dome, peach-orange with glittering copper sparkles
+10. Molten gold, a shiny liquid-gold blob with a glowing orange core
+11. Phoenix egg, a glossy red, orange and gold egg with flame swirls
+12. Dragon's eye diamond, the only faceted gem: a round faceted fiery red-orange diamond with a glowing golden core, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
 ## Blast animation (merge burst, frame by frame)
 
 An 8-frame animation of one candy burst, played in order when two items merge.

@@ -67,6 +67,10 @@ The Rocks set as its own game: drop gems in the jar, merge two of a kind into a 
 
 - Same engine, art, sounds, vibration and saving as Happy Fruit Merge. `config.js` says which game a page is: `gems/index.html` sets `window.GAME_SETUP` (fixed `rocks` item set, its own save slot `gemJar.*`, combo words SWEET! at 3, AMAZING! at 6 and INCREDIBLE! at 10, then every 5).
 - Its own amethyst colours, and Settings only has Reverse, Sound, Music, Vibration and Restart.
+- **Daily Challenge** (top bar, star button; a red dot until today's is done): one special game a day with the same drops and the same goal for everyone that day, both picked from the date. Goals are things like "Make a Ruby", "Make 2 Amethyst Geodes", "Score 4,000" or "Get a 6x combo". Finishing it the first time that day gives 1 Zap (3 on every 7th day in a row) and keeps a streak. It has its own save and best score, can be replayed, and the X in the top bar goes back to the main game, which is kept as it was.
+- **Zap booster** (the lightning bolt by NEXT, with how many you have): tap it, then tap any gem, and lightning strikes it away. You start with 2 and earn more from the Daily Challenge; in the Android app, when you have none, the badge says AD and watching a rewarded ad gives one.
+- Both are switched on by `daily: true` and `boosters: true` in the gem page's `GAME_SETUP`, so Happy Fruit Merge could have them too.
+- New unlockable gem sets: prompts for 5 more 12-level sheets (Crystal Cave, Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems) are in `ASSET_PROMPTS.md`.
 - The best score and game in progress from the old Rocks mode are carried over the first time it opens.
 - `gems/index.html` is built from `index.html` by `python3 tools/make_gems_page.py`; run it again after changing `index.html`.
 

@@ -41,7 +41,9 @@ swap('    <script src="config.js"></script>', '''    <script>
             oldId: 'happyFruitMerge',   // was the Rocks mode of Happy Fruit Merge: keep its best score and saved game
             mode: 'rocks',
             praise: ['sweet', 'amazing', 'incredible'],
-            praiseAt: [3, 6, 10]
+            praiseAt: [3, 6, 10],
+            daily: true,
+            boosters: true
         };
     </script>
     <script src="config.js"></script>''')

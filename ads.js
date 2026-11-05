@@ -83,7 +83,8 @@ const Ads = (() => {
         isShowing() { return showing; },
         showInterstitial,
         // "Keep going" rewarded ad (Android app only; the player chooses to watch it)
-        canRevive() { return !!(App && App.rewardedReady()); },
+        rewardedReady() { return !!(App && App.rewardedReady()); },
+        canRevive() { return this.rewardedReady(); },
         showRewarded(done) {
             if (!App || showing) { done(false); return; }
             showing = true;
