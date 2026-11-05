@@ -1,9 +1,16 @@
-# Builds the signed Android app for Gem Jar, straight from the game files in this repo:
-# an App Bundle (.aab) to upload to Google Play, and an APK to install directly.
+# Builds the signed Android app for Gem Jar from the game files in this repo: an App Bundle (.aab)
+# to upload to Google Play, and an APK to install directly. The app has AdMob ads (a banner and a
+# full-screen ad between games) and a one-time "No Ads" purchase through Google Play.
 #
-# Needs Java 17+, Python 3 with Pillow, and internet the first time: it downloads Android build-tools
-# and platform 36 (into $ANDROID_SDK, default ~/.cache/android-sdk), Google's bundletool, plus Matter.js
-# and the Poppins font so the app plays offline. No Android Studio or Gradle needed.
+# What it does: packs the gem page and only the files it uses (plus Matter.js and the Poppins font, so
+# it plays offline) into android/build/assets, makes the launcher icons from the diamond into
+# android/build/icons, then builds and signs with Gradle (android/gradlew, Android Gradle plugin).
+# Needs Java 17+, Python 3 with Pillow, and internet the first time: it installs the Android SDK
+# pieces it needs into $ANDROID_SDK (default ~/.cache/android-sdk-gradle), accepting the Android SDK
+# license, and Gradle downloads itself and the ads and billing libraries.
+#
+# AdMob IDs: android/gemjar/admob.properties. While they are empty, Google's test ads are used and only
+# a "TEST-ADS" APK is made (never a Play bundle), so a test build can't be uploaded by mistake.
 #
 # Signing key (keep it private, never commit it): GEMJAR_KEYSTORE = path to the .jks file,
 # GEMJAR_KEYSTORE_PASS = its password, key alias "gemjar". On Google Play it is the upload key.
@@ -16,18 +23,16 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
-APP = ROOT / 'android' / 'gemjar'
-BUILD = ROOT / 'android' / 'build'
-SDK = Path(os.environ.get('ANDROID_SDK', Path.home() / '.cache' / 'android-sdk'))
+ANDROID = ROOT / 'android'
+APP = ANDROID / 'gemjar'
+BUILD = ANDROID / 'build'
+SDK = Path(os.environ.get('ANDROID_SDK', Path.home() / '.cache' / 'android-sdk-gradle'))
 VERSION_NAME = sys.argv[1] if len(sys.argv) > 1 else '1.0'
 VERSION_CODE = sys.argv[2] if len(sys.argv) > 2 else '1'
-MIN_SDK, TARGET_SDK = '24', '36'   # Google Play: new apps and updates must target Android 16 (API 36)
 
-SDK_PARTS = {   # folder in the SDK: (download, sha1)
-    'build-tools/36.1.0': ('build-tools_r36.1_linux.zip', '936a0d6bd5ae3e2118a7567dddbc95ff67ed46e9'),
-    'platforms/android-36': ('platform-36_r02.zip', '2c1a80dd4d9f7d0e6dd336ec603d9b5c55a6f576'),
-}
-BUNDLETOOL = ('https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar', None)
+CMDLINE_TOOLS = ('commandlinetools-linux-16111833_latest.zip', 'e025545c62a8e64c7559119566a569fb1dec5f60')
+SDK_PACKAGES = ['platforms;android-36', 'build-tools;36.1.0']   # keep in step with android/gemjar/build.gradle.kts
+BUNDLETOOL = 'https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar'
 VENDOR = {      # files the web page loads from the internet, packed into the app instead
     'matter.min.js': 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js',
     'fonts/poppins-600.woff2': 'https://cdn.jsdelivr.net/npm/@fontsource/poppins@5.0.8/files/poppins-latin-600-normal.woff2',
@@ -48,31 +53,38 @@ def fetch(url, dest):
 
 
 def ensure_sdk():
-    for folder, (zname, sha1) in SDK_PARTS.items():
-        target = SDK / folder
-        if target.exists():
-            continue
+    """The Android SDK pieces Gradle needs, installed with Google's sdkmanager; and bundletool for checking."""
+    sdkmanager = SDK / 'cmdline-tools' / 'latest' / 'bin' / 'sdkmanager'
+    if not sdkmanager.exists():
+        zname, sha1 = CMDLINE_TOOLS
         z = SDK / 'dl' / zname
-        if not z.exists() or hashlib.sha1(z.read_bytes()).hexdigest() != sha1:
-            print('downloading', zname)
-            fetch('https://dl.google.com/android/repository/' + zname, z)
+        print('downloading the Android SDK command-line tools')
+        fetch('https://dl.google.com/android/repository/' + zname, z)
         assert hashlib.sha1(z.read_bytes()).hexdigest() == sha1, 'bad download: ' + zname
         tmp = SDK / 'tmp'
         shutil.rmtree(tmp, ignore_errors=True)
-        with zipfile.ZipFile(z) as zf:
-            zf.extractall(tmp)
-        (top,) = list(tmp.iterdir())          # the zip holds one folder (its name isn't the version)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        top.rename(target)
+        run('unzip', '-q', z, '-d', tmp)            # unzip keeps the run permissions
+        (SDK / 'cmdline-tools').mkdir(parents=True, exist_ok=True)
+        (tmp / 'cmdline-tools').rename(SDK / 'cmdline-tools' / 'latest')
         shutil.rmtree(tmp)
-        for f in target.rglob('*'):           # zipfile drops the run permission
-            if f.is_file():
-                f.chmod(0o755)
-    jar = SDK / 'bundletool' / BUNDLETOOL[0].rsplit('/', 1)[1]
+    missing = [p for p in SDK_PACKAGES if not (SDK / p.replace(';', '/')).exists()]
+    if missing:
+        subprocess.run([str(sdkmanager), f'--sdk_root={SDK}', '--licenses'], input='y\n' * 20, text=True, capture_output=True)
+        run(sdkmanager, f'--sdk_root={SDK}', *missing)
+    jar = SDK / 'bundletool' / BUNDLETOOL.rsplit('/', 1)[1]
     if not jar.exists():
         print('downloading bundletool')
-        fetch(BUNDLETOOL[0], jar)
-    return SDK / 'build-tools/36.1.0', SDK / 'platforms/android-36/android.jar', jar
+        fetch(BUNDLETOOL, jar)
+    return SDK / 'build-tools' / '36.1.0', jar
+
+
+def admob_ids():
+    ids = {}
+    for line in (APP / 'admob.properties').read_text().splitlines():
+        if '=' in line and not line.lstrip().startswith('#'):
+            k, v = line.split('=', 1)
+            ids[k.strip()] = v.strip()
+    return ids
 
 
 def build_www(www):
@@ -96,7 +108,6 @@ def build_www(www):
              for w in (600, 700, 800)) + '    </style>\n')
     swap('<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>',
          '<script src="matter.min.js"></script>')
-    swap("            mode: 'rocks',\n", "            mode: 'rocks',\n            ads: false,                 // the app has no ads yet\n")
     assert 'https://' not in html, 'the app page must not load anything from the internet'
     (www / 'index.html').write_text(html)
 
@@ -181,63 +192,38 @@ def main():
     ks, ks_pass = os.environ.get('GEMJAR_KEYSTORE'), os.environ.get('GEMJAR_KEYSTORE_PASS')
     if not ks or not ks_pass or not Path(ks).exists():
         sys.exit('Set GEMJAR_KEYSTORE (the .jks file) and GEMJAR_KEYSTORE_PASS to sign the app.')
-    bt, android_jar, bundletool = ensure_sdk()
+    ids = admob_ids()
+    test_ads = not all(ids.get(k) for k in ('app_id', 'interstitial_id', 'banner_id', 'rewarded_id'))
+    build_tools, bundletool = ensure_sdk()
     shutil.rmtree(BUILD, ignore_errors=True)
     BUILD.mkdir(parents=True)
 
     print('packing the game')
     build_www(BUILD / 'assets' / 'www')
-    res = BUILD / 'res'
-    shutil.copytree(APP / 'res', res)
-    make_icons(res)
+    make_icons(BUILD / 'icons')
 
-    print('compiling')
-    run(bt / 'aapt2', 'compile', '--dir', res, '-o', BUILD / 'res.zip')
-    link = ['-I', android_jar, '--manifest', APP / 'AndroidManifest.xml', '--min-sdk-version', MIN_SDK,
-            '--target-sdk-version', TARGET_SDK, '--version-code', VERSION_CODE, '--version-name', VERSION_NAME,
-            '-A', BUILD / 'assets', BUILD / 'res.zip']
-    gen = BUILD / 'gen'
-    run(bt / 'aapt2', 'link', '-o', BUILD / 'unsigned.apk', '--java', gen, *link)
-    classes = BUILD / 'classes'
-    sources = list((APP / 'java').rglob('*.java')) + list(gen.rglob('*.java'))
-    run('javac', '--release', '11', '-nowarn', '-cp', android_jar, '-d', classes, *sources)
-    dex = BUILD / 'dex'
-    dex.mkdir()
-    run(bt / 'd8', '--release', '--min-api', MIN_SDK, '--lib', android_jar, '--output', dex, *classes.rglob('*.class'))
+    print('building with Gradle' + ('  (TEST ADS: admob.properties is not filled in)' if test_ads else ''))
+    tasks = [':gemjar:assembleRelease'] + ([] if test_ads else [':gemjar:bundleRelease'])
+    env = dict(os.environ, ANDROID_HOME=str(SDK), GEMJAR_KEYSTORE=str(Path(ks).resolve()))
+    run(ANDROID / 'gradlew', '-p', ANDROID, '--no-daemon', '-q', '--max-workers=2', f'-PversionCode={VERSION_CODE}', f'-PversionName={VERSION_NAME}',
+        *tasks, env=env)
 
-    print('APK (to install directly)')
-    with zipfile.ZipFile(BUILD / 'unsigned.apk', 'a', zipfile.ZIP_DEFLATED) as z:
-        z.write(dex / 'classes.dex', 'classes.dex')
-    run(bt / 'zipalign', '-f', '-p', '4', BUILD / 'unsigned.apk', BUILD / 'aligned.apk')
-    apk = BUILD / f'GemJar-{VERSION_NAME}.apk'
-    run(bt / 'apksigner', 'sign', '--ks', ks, '--ks-key-alias', 'gemjar', '--ks-pass', 'env:GEMJAR_KEYSTORE_PASS',
-        '--key-pass', 'env:GEMJAR_KEYSTORE_PASS', '--out', apk, BUILD / 'aligned.apk')
-    run(bt / 'apksigner', 'verify', apk)
-
-    print('App Bundle (for Google Play)')
-    # the same app with its resources in the bundle's (protobuf) format, laid out as the "base" module
-    run(bt / 'aapt2', 'link', '--proto-format', '-o', BUILD / 'proto.apk', *link)
-    base = BUILD / 'base.zip'
-    with zipfile.ZipFile(BUILD / 'proto.apk') as src, zipfile.ZipFile(base, 'w', zipfile.ZIP_DEFLATED) as z:
-        for name in src.namelist():
-            if name == 'AndroidManifest.xml':
-                dest = 'manifest/AndroidManifest.xml'
-            elif name == 'resources.pb' or name.startswith(('res/', 'assets/')):
-                dest = name
-            else:
-                dest = 'root/' + name
-            z.writestr(dest, src.read(name))
-        z.write(dex / 'classes.dex', 'dex/classes.dex')
-    aab = BUILD / f'GemJar-{VERSION_NAME}.aab'
-    run('java', '-jar', bundletool, 'build-bundle', f'--modules={base}', f'--output={aab}')
-    # signed with the upload key; Google Play re-signs what it sends to phones
-    run('jarsigner', '-keystore', ks, '-storepass:env', 'GEMJAR_KEYSTORE_PASS', '-keypass:env', 'GEMJAR_KEYSTORE_PASS',
-        '-sigalg', 'SHA256withRSA', '-digestalg', 'SHA-256', aab, 'gemjar')
-    run('jarsigner', '-verify', aab)
-    run('java', '-jar', bundletool, 'validate', f'--bundle={aab}')
-
-    for f in (aab, apk):
+    outputs = APP / 'build' / 'outputs'
+    tag = '-TEST-ADS' if test_ads else ''
+    apk = BUILD / f'GemJar-{VERSION_NAME}{tag}.apk'
+    shutil.copy(outputs / 'apk' / 'release' / 'gemjar-release.apk', apk)
+    run(build_tools / 'apksigner', 'verify', apk)
+    made = [apk]
+    if not test_ads:
+        aab = BUILD / f'GemJar-{VERSION_NAME}.aab'
+        shutil.copy(outputs / 'bundle' / 'release' / 'gemjar-release.aab', aab)
+        run('jarsigner', '-verify', aab, stdout=subprocess.DEVNULL)
+        run('java', '-jar', bundletool, 'validate', f'--bundle={aab}', stdout=subprocess.DEVNULL)
+        made.insert(0, aab)
+    for f in made:
         print(f'{f} ({f.stat().st_size / 1e6:.1f} MB)')
+    if test_ads:
+        print('\nTEST ADS build: fill in android/gemjar/admob.properties to build the real app and the Play bundle.')
 
 
 if __name__ == '__main__':

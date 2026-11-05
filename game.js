@@ -291,6 +291,8 @@ Events.on(engine, 'beforeUpdate', () => {
             document.getElementById('go-best-val').textContent = bestScore;
             document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
             document.getElementById('gameover').classList.add('show');
+            // in the app: once a game, the player may watch an ad to keep going
+            document.getElementById('revive').style.display = !revived && Ads.canRevive() ? 'block' : 'none';
             Sound.play('gameOver');
             Haptics.play('gameOver');
         }
@@ -463,18 +465,41 @@ document.getElementById('btn-restart').addEventListener('click', () => {
     Ads.showInterstitial(() => { clearSave(); location.reload(); });
 });
 
+// Keep going (Android app): the player chose to watch a rewarded ad, so the top of the jar is cleared
+// with a burst and the same game goes on, score and all. Once a game.
+document.getElementById('btn-revive').addEventListener('click', () => {
+    Ads.showRewarded(watched => { if (watched) revive(); });
+});
+
+function revive() {
+    revived = true;
+    const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar
+    Composite.allBodies(engine.world).filter(b => b.tier !== undefined && b.bounds.min.y < clearAbove).forEach(b => {
+        FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
+        Composite.remove(engine.world, b);
+    });
+    isGameOver = false;
+    dangerTimer = 0;
+    saving = true;
+    document.getElementById('gameover').classList.remove('show');
+    Sound.play('praise', 2);
+    Haptics.play('praise', 2);
+    saveGame();
+}
+
 // --- SAVE ---
 // The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
 const SAVE_KEY = `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
 let saving = true;
+let revived = false;   // used the "keep going" ad this game
 
 function saveGame() {
     if (!saving || isGameOver) return;
     const items = Composite.allBodies(engine.world)
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
-    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, items };
+    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived, items };
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
@@ -501,6 +526,7 @@ function loadGame() {
     if (okTier(data.next)) nextTier = data.next;
     combo = data.combo | 0;
     dropsWithoutMerge = data.dropsWithoutMerge | 0;
+    revived = !!data.revived;
 }
 
 setInterval(saveGame, 1000);

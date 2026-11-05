@@ -74,10 +74,26 @@ The Rocks set as its own game: drop gems in the jar, merge two of a kind into a 
 
 - **Google Play:** upload `gems/GemJar.aab` (App Bundle, https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.aab).
 - **Install directly:** `gems/GemJar.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.apk).
-- Both are version 1.0 (code 1), package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
-- The app is one full-screen window running the same game, packed inside the app, so it plays offline. Vibration works, there are no ads yet (the placeholder ads are switched off with `ads: false`), and Back goes to the home screen without closing the game.
-- Source: `android/gemjar` (manifest, theme, `MainActivity.java`). `python3 tools/build_gem_android.py <version name> <version code>` builds and signs both without Android Studio or Gradle. It downloads Android build-tools and platform 36 and Google's bundletool the first time, packs the gem page and only the files it uses, makes the launcher icons from the diamond, and writes `android/build/GemJar-<version>.aab` and `.apk` plus a 512 px store icon (`android/store/icon_512.png`).
-- Signing: set `GEMJAR_KEYSTORE` and `GEMJAR_KEYSTORE_PASS`. The keystore is kept out of the repo (`.gitignore`). On Google Play it is the upload key; every update must be signed with it and have a higher version code.
+- The files there are version 1.0 (code 1), with no ads. Version 1.1 (code 2), with ads and the No Ads purchase, is built once the AdMob IDs are in `android/gemjar/admob.properties`.
+- Package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
+- **Privacy policy** (for the Play listing and AdMob): `gems/privacy.html` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/privacy.html).
+
+### How the app makes money
+
+- **Banner** under the game: the large adaptive banner on tall phones, the regular one on short phones so the jar stays big.
+- **Full-screen ad between games** (on Play Again), at most one a minute, never in the middle of a game.
+- **Keep Going:** when the jar fills up, the player can choose to watch a rewarded ad to clear the top of the jar and carry on with the same game and score, once a game.
+- **No Ads** ($5.99, a one-time Google Play purchase, product ID `remove_ads`): switches the banner and full-screen ads off for good and comes back on a new phone or after reinstalling. Keep Going stays on offer, since the player chooses to watch it. The price is set in Play Console (Monetize, Products, In-app products); the button shows Google Play's price in the player's currency.
+- **Consent:** Google's consent message (UMP) is shown where the law asks for it (EU, UK, some US states). Settings then has a Privacy button to change the choice.
+- The game is fair: difficulty never depends on ads or on the player.
+- On the website none of this applies: the web page keeps its placeholder ad breaks.
+
+### Building
+
+- `python3 tools/build_gem_android.py <version name> <version code>` packs the gem page and only the files it uses (plus Matter.js and the Poppins font, so it plays offline), makes the launcher icons from the diamond, then builds and signs with Gradle (`android/gradlew`, Gradle 9.8.2, Android Gradle plugin 9.5.0; Google Mobile Ads 25.5.0, User Messaging Platform 4.0.0, Play Billing 9.1.0). It installs the Android SDK pieces it needs the first time.
+- **AdMob IDs:** `android/gemjar/admob.properties` (app ID, and the banner, interstitial and rewarded ad units). While it is empty, Google's test ads are used and only a `GemJar-<version>-TEST-ADS.apk` is made, never a Play bundle.
+- **Signing:** set `GEMJAR_KEYSTORE` and `GEMJAR_KEYSTORE_PASS`. The keystore is kept out of the repo (`.gitignore`). On Google Play it is the upload key; every update must be signed with it and have a higher version code.
+- Android source: `android/gemjar` (manifest, theme, `MainActivity.java`: the game window, ads, consent and billing). The game talks to it through `window.AndroidApp` (see `ads.js`).
 
 # Zombie Bomber (`/bomber/`)
 A second game built on the same drop-and-merge engine: https://sinadehesh.github.io/Happy-Fruit-merge/bomber/

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Gem Jar for Android: one full-screen window running the game from the files packed in the app. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.sinadehesh.gemjar">
+<!-- Gem Jar for Android: one full-screen window running the game from the files packed in the app,
+     with AdMob ads and a one-time "No Ads" purchase. Package name and versions are in build.gradle.kts. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -13,6 +13,10 @@
         android:allowBackup="true"
         android:hardwareAccelerated="true"
         android:theme="@style/GemJar">
+        <!-- AdMob app ID, from admob.properties -->
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${admobAppId}" />
+        <meta-data android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION" android:value="true" />
+        <meta-data android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING" android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

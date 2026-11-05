@@ -156,6 +156,8 @@
         .pill.yellow, #btn-size.active { background-image: url('assets/ui/pill_yellow.png'); }
         .pill.grey { background-image: url('assets/ui/pill_grey.png'); }
         .pill.small { width: 100px; font-size: 13px; }
+        #btn-no-ads { font-size: 14px; }
+        #revive-text { margin-top: 4px; font-size: 12px; font-weight: 600; color: #8a5a35; }
         .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-items: center; }
         .modes .wide { grid-column: 1 / -1; }   /* an odd last button sits in the middle */
         #car-styles { display: none; justify-content: center; gap: 6px; margin-top: 10px; }
@@ -180,6 +182,18 @@
             border-radius: 20px; font-size: 15px; font-weight: bold;
         }
         #ad-close:enabled { background: #e74c3c; cursor: pointer; }
+        /* short screens (small phones, or the app with an ad banner under it): a smaller top and tray, a bigger jar */
+        @media (max-height: 620px) {
+            #app { padding-top: 6px; }
+            .topbar { height: 36px; }
+            .best { font-size: 22px; }
+            .best svg { width: 32px; height: 26px; }
+            #btn-settings { width: 34px; height: 34px; }
+            #score-val { font-size: 44px; margin: 2px 0 8px; }
+            .game-board { width: min(100%, 450px, calc((100vh - 176px) * 450 / 640)); }
+            .tray { min-height: 60px; }
+            #next-img { width: 52px; height: 52px; }
+        }
     </style>
     <!-- Include Matter.js for 2D Physics -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -239,6 +253,11 @@
                 <button class="pill" id="btn-music">Music</button>
             </div>
             <div id="song-name"></div>
+            <!-- Android app only (ads.js): buy "No Ads", and change ad consent where the law asks for it -->
+            <div class="row" id="store-row" style="display: none">
+                <button class="pill yellow" id="btn-no-ads">No Ads</button>
+                <button class="pill" id="btn-privacy">Privacy</button>
+            </div>
             <div class="row">
                 <button class="pill" id="btn-vibe">Vibration</button>
                 <button class="pill yellow" id="btn-new-game">Restart</button>
@@ -253,6 +272,11 @@
             <div id="go-score">0</div>
             <div id="go-best"><svg><use href="#crown"/></svg><span id="go-best-val">0</span></div>
             <div id="go-new">New best score!</div>
+            <!-- Android app only (ads.js): watch an ad to clear the top of the jar and keep going, once a game -->
+            <div id="revive" style="display: none">
+                <div class="row"><button class="pill yellow" id="btn-revive">▶ Keep Going</button></div>
+                <div id="revive-text">Watch a short ad to clear the top of the jar</div>
+            </div>
             <div class="row"><button class="pill green" id="btn-restart">Play Again</button></div>
         </div>
     </div>

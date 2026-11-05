@@ -1,4 +1,8 @@
 # Android build output and signing keys: never commit
 android/build/
+android/gemjar/build/
+android/.gradle/
+android/.kotlin/
+android/local.properties
 *.jks
 *.keystore
