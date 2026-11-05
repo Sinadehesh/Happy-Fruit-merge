@@ -9,7 +9,10 @@ const GAME = Object.assign({
     praise: ['sweet', 'juicy', 'delicious', 'amazing', 'incredible'],
     praiseAt: [3, 5, 7, 10, 15],
     daily: false,                   // the Daily Challenge (game.js)
-    boosters: false                 // the Zap booster (game.js)
+    boosters: false,                // the Zap and Star boosters (game.js)
+    rush: false,                    // Gem Rush, the 90-second race (game.js, meta.js)
+    meta: false,                    // levels, quests, jar colours, tutorial (meta.js)
+    menu: false                     // the home menu (meta.js)
 }, window.GAME_SETUP || {});
 // how big a praise step is, 0 (the first word) to 4 (the last), whatever the ladder's length
 GAME.strength = level => level * 4 / Math.max(1, GAME.praise.length - 1);

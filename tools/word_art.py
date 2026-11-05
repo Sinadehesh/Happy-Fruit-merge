@@ -24,6 +24,9 @@ pad = 60 * SS
 letters = []
 x = pad
 for i, ch in enumerate(text):
+    if ch == ' ':                          # a gap between words
+        x += int(FS * 0.32)
+        continue
     bb = font.getbbox(ch)
     w, h = bb[2] - bb[0], bb[3] - bb[1]
     im = Image.new('L', (w + 40 * SS, int(FS * 1.4)), 0)

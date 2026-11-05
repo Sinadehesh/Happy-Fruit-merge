@@ -7,7 +7,7 @@
 const Sound = (() => {
     const KEY = `${GAME.id}.audio`;
     // music = index into SONGS, or -1 for off
-    let prefs = { sfx: true, music: 0 };
+    let prefs = { sfx: true, music: 0, voice: true };
     try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(KEY)) }; } catch (e) {}
     if (typeof prefs.music !== 'number') prefs.music = prefs.music === false ? -1 : 0;   // older saves stored true/false
     const savePrefs = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch (e) {} };
@@ -76,8 +76,13 @@ const Sound = (() => {
     const GAP = 0.12;          // short breath between two lines, seconds
     let talkingUntil = 0, queued = null, queueTimer = 0;
 
-    function say(line) {   // { name, level, rank, when (delay after the event), extra(delay), onStart() }
-        const b = buffers[line.name];
+    // He also speaks a quarter less than the game asks: every 4th of the lines that come up all the time
+    // (combo words, game over; marked often) stays silent, and with Voice off he is silent. The word on
+    // screen, its sparkle and its buzz still come.
+    let oftenCount = 0;
+    function say(line) {   // { name, level, rank, when (delay after the event), extra(delay), onStart(), often }
+        const quiet = !prefs.voice || (line.often && ++oftenCount % 4 === 0);
+        const b = quiet ? null : buffers[line.name];
         if (!b) { if (line.extra) line.extra(0); if (line.onStart) line.onStart(); return; }   // not loaded yet: no voice
         const at = ac.currentTime + (line.when || 0);
         if (at >= talkingUntil && !queued) { speak(line, at); return; }
@@ -126,7 +131,7 @@ const Sound = (() => {
         // praise word (SWEET! ... INCREDIBLE!) with a soft sparkle under it; onStart shows the word
         praise(level, onStart) {
             const strength = GAME.strength(level);
-            say({ name: praiseName(level), level: strength, rank: level, onStart,
+            say({ name: praiseName(level), level: strength, rank: level, onStart, often: true,
                 extra: d => sample('praise', { gain: 0.3, rate: semitones(strength), when: d }) });
         },
         // biggest item made: fanfare right away, then CONGRATULATIONS!
@@ -135,8 +140,17 @@ const Sound = (() => {
             say({ name: 'voice_new_highscore', level: 2, rank: 6,
                 extra: d => sample('praise', { gain: 0.3, rate: semitones(7), when: d + 1.8 }) });
         },
-        gameOver() { sample('gameover', { gain: 0.45 }); say({ name: 'voice_game_over', level: 0, rank: 9, when: 0.3 }); },
-        tap() { sample('tap', { gain: 0.35 }); }
+        gameOver() { sample('gameover', { gain: 0.45 }); say({ name: 'voice_game_over', level: 0, rank: 9, when: 0.3, often: true }); },
+        tap() { sample('tap', { gain: 0.35 }); },
+        // levels, quests and Gem Rush (meta.js): soft fanfares and rising glassy chimes
+        levelUp() {
+            sample('fanfare', { gain: 0.38 });
+            [0, 4, 7, 12].forEach((n, i) => sample('chime', { gain: 0.28, rate: semitones(n + 12), when: 0.32 + i * 0.09 }));
+        },
+        claim() { [0, 4, 7, 12, 16].forEach((n, i) => sample('chime', { gain: 0.26, rate: semitones(n + 7), when: i * 0.07 })); },
+        star(i) { sample('chime', { gain: 0.38, rate: semitones([12, 16, 19][i] || 12) }); sample('praise', { gain: 0.22, rate: semitones(i * 2) }); },
+        tick(urgent) { sample('tap', { gain: urgent ? 0.4 : 0.22, rate: urgent ? 1.55 : 1.25 }); },
+        fill(k) { sample('chime', { gain: 0.12, rate: semitones(PENTA[Math.min(k, PENTA.length - 1)] + 12) }); }
     };
 
     // ---------- music: songs by Kevin MacLeod, one plays on repeat ----------
@@ -187,5 +201,7 @@ const Sound = (() => {
     }
     const songTitle = () => prefs.music < 0 ? null : SONGS[prefs.music].title;
 
-    return { unlock, play, setSfx, nextMusic, songTitle, prefs: () => ({ ...prefs }) };
+    function setVoice(on) { prefs.voice = on; savePrefs(); }
+
+    return { unlock, play, setSfx, setVoice, nextMusic, songTitle, prefs: () => ({ ...prefs }) };
 })();

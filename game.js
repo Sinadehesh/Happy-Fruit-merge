@@ -10,6 +10,11 @@ const Engine = Matter.Engine,
       Events = Matter.Events,
       Vertices = Matter.Vertices;
 
+// Game events for the metagame (meta.js: levels, quests, Gem Rush, home menu, tutorial)
+const gameEvents = {};
+function onGame(name, fn) { (gameEvents[name] = gameEvents[name] || []).push(fn); }
+function emitGame(name, ...args) { (gameEvents[name] || []).forEach(fn => fn(...args)); }
+
 const GAME_WIDTH = 450;
 const GAME_HEIGHT = 640;   // 20% shorter than the original 800
 const DANGER_Y = 150;      // keep in sync with .danger-line in index.html
@@ -114,12 +119,14 @@ const SKIN = (() => {
 const SPRITES = MODES[SKIN ? SKIN.id : MODE].sprites;
 // Daily Challenge (GAME.daily, opened with ?daily): one special game a day, see DAILY CHALLENGE below
 const DAILY = !!GAME.daily && params.has('daily');
+// Gem Rush (GAME.rush, opened with ?rush): a 90-second race for points (the clock is in meta.js); not saved
+const RUSH = !!GAME.rush && params.has('rush') && !DAILY;
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
 // (Not in the Daily Challenge, which is the same game for everyone.)
 // Not a plain flip of the normal sizes, which would make the dropped items nearly box-wide:
 // level 1 starts at a normal drop size and each level shrinks by the same ratio down to the last.
-const REVERSE = params.get('size') === 'reverse' && !DAILY;
+const REVERSE = params.get('size') === 'reverse' && !DAILY && !RUSH;
 const REVERSE_LARGEST = 80;
 const REVERSE_SMALLEST = 18;
 function reverseTiers(count) {
@@ -179,7 +186,7 @@ if (GAME.oldId) try {
 } catch (e) {}
 
 // Score: Suika-style triangular points for every merge, best kept across games
-const BEST_KEY = DAILY ? `${GAME.id}.best.daily`
+const BEST_KEY = RUSH ? `${GAME.id}.best.rush` : DAILY ? `${GAME.id}.best.daily`
     : (GAME.mode || MODE === 'fruit' ? `${GAME.id}.best` : `${GAME.id}.best.${MODE}`) + (REVERSE ? '.reverse' : '');
 let score = 0;
 let bestScore = 0;
@@ -338,23 +345,31 @@ Events.on(engine, 'beforeUpdate', () => {
 
     if (isAnyBodyAboveLine) {
         dangerTimer++;
-        if (dangerTimer > 180) {
-            isGameOver = true;
-            clearSave();   // the next visit starts a fresh game
-            document.getElementById('go-score').textContent = score;
-            document.getElementById('go-best-val').textContent = bestScore;
-            document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
-            document.getElementById('gameover').classList.add('show');
-            // in the app: once a game, the player may watch an ad to keep going
-            document.getElementById('revive').style.display = !revived && Ads.canRevive() ? 'block' : 'none';
-            showNextSetProgress();
-            Sound.play('gameOver');
-            Haptics.play('gameOver');
-        }
+        if (dangerTimer > 180) gameOver('full');
     } else {
         dangerTimer = 0;
     }
 });
+
+// The end of a game: the jar is full ('full'), or in Gem Rush the clock ran out ('time', from meta.js)
+const FULL_TITLE = document.getElementById('go-title').textContent;
+function gameOver(reason) {
+    if (isGameOver) return;
+    isGameOver = true;
+    clearSave();   // the next visit starts a fresh game
+    zapArmed = starArmed = false;
+    document.getElementById('go-title').textContent = reason === 'time' ? "Time's up!" : FULL_TITLE;
+    document.getElementById('go-score').textContent = score;
+    document.getElementById('go-best-val').textContent = bestScore;
+    document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
+    document.getElementById('gameover').classList.add('show');
+    // in the app: once a game, the player may watch an ad to keep going (clearing the top of the jar)
+    document.getElementById('revive').style.display = reason === 'full' && !revived && Ads.canRevive() ? 'block' : 'none';
+    showNextSetProgress();
+    Sound.play('gameOver');
+    Haptics.play('gameOver');
+    emitGame('gameOver', reason, score);
+}
 
 // --- INPUT ---
 // Touch (or press) anywhere on the board or below it: the fruit pops a little bigger and follows your
@@ -377,13 +392,15 @@ function setHeld(on) {
 document.addEventListener('pointerdown', () => Sound.unlock(), { capture: true });
 
 playArea.addEventListener('pointerdown', (e) => {
-    if (holding !== null || isGameOver || Ads.isShowing() || e.target.closest('.topbar, #btn-zap')) return;
-    if (zapArmed) { zapAt(e); return; }   // Zap booster: this tap picks the gem to strike
+    if (holding !== null || isGameOver || Ads.isShowing() || e.target.closest('.topbar, .booster, .no-drop')) return;
+    if (zapArmed) { zapAt(e); return; }     // Zap booster: this tap picks the gem to strike
+    if (starArmed) { starAt(e); return; }   // Star booster: this tap picks the gem to lift
     holding = e.pointerId;
     try { playArea.setPointerCapture(e.pointerId); } catch (err) {}   // keep following outside the board
     dropX = clampX(pointerToGameX(e), currentTier);
     setHeld(true);
     Haptics.play('pickup');
+    emitGame('pickup');
     updateUI();
 });
 
@@ -407,6 +424,7 @@ playArea.addEventListener('pointercancel', (e) => {
 });
 
 function dropFruit() {
+    emitGame('drop', currentTier, dropX);
     Sound.play('drop');
     Haptics.play('drop');
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
@@ -458,6 +476,7 @@ function handleCollisions(event) {
         const points = addScore(mergedTier);
         dailyOnMerge(mergedTier);
         countForNextSet(mergedTier);
+        emitGame('merge', mergedTier, points, combo);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -543,13 +562,14 @@ function revive() {
     Sound.play('praise', 2);
     Haptics.play('praise', 2);
     saveGame();
+    emitGame('revive');
 }
 
 // --- SAVE ---
 // The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
 const SAVE_KEY = DAILY ? `${GAME.id}.save.daily` : `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
-let saving = true;
+let saving = !RUSH;     // a Gem Rush is not saved: leaving it ends it
 let revived = false;   // used the "keep going" ad this game
 
 function saveGame() {
@@ -568,6 +588,7 @@ function clearSave() {
 }
 
 function loadGame() {
+    if (RUSH) return;
     let data = null;
     try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
     if (!data || data.v !== 1 || !Array.isArray(data.items)) return;
@@ -599,9 +620,10 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) saveG
 window.addEventListener('pagehide', saveGame);
 
 // Physics is paused while an ad is on screen
+// (and stays paused after it while a panel or the home menu is still covering the game)
 Ads.init({
     onPause: () => Runner.stop(runner),
-    onResume: () => Runner.run(runner, engine)
+    onResume: () => { if (!document.querySelector('.overlay.show') && !(window.Meta && Meta.menuOpen)) Runner.run(runner, engine); }
 });
 
 // Mode links keep the size setting; the size button flips it and keeps the mode
@@ -641,9 +663,12 @@ function audioButtons() {
     document.getElementById('btn-music').className = `pill ${song ? 'green' : 'grey'}`;
     document.getElementById('btn-music').textContent = song ? '♪ Music On' : 'Music Off';
     document.getElementById('song-name').textContent = song ? `♪ "${song}" Kevin MacLeod (incompetech.com), CC BY 4.0` : 'Tap Music to pick a song';
+    document.getElementById('btn-voice').className = `pill ${p.voice ? 'green' : 'grey'}`;
+    document.getElementById('btn-voice').textContent = `Voice ${p.voice ? 'On' : 'Off'}`;
 }
 document.getElementById('btn-sfx').addEventListener('click', () => { Sound.setSfx(!Sound.prefs().sfx); Sound.play('tap'); audioButtons(); });
 document.getElementById('btn-music').addEventListener('click', () => { Sound.unlock(); Sound.nextMusic(); Sound.play('tap'); audioButtons(); });
+document.getElementById('btn-voice').addEventListener('click', () => { Sound.setVoice(!Sound.prefs().voice); audioButtons(); });
 document.querySelectorAll('#settings a, #settings button').forEach(b => b.addEventListener('pointerdown', () => { Sound.play('tap'); Haptics.play('tap'); }));
 // Vibration switch (hidden where the browser can't vibrate at all)
 const vibeBtn = document.getElementById('btn-vibe');
@@ -718,6 +743,7 @@ function dailyCheck() {
     updateGoal();
     Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
     showToast(`Daily Challenge done! +${reward} Zap${reward > 1 ? 's' : ''}`);
+    emitGame('daily', st.streak);
 }
 
 function updateGoal() {
@@ -741,11 +767,11 @@ function initDaily() {
         document.getElementById('goal').style.display = '';
         const exit = document.getElementById('btn-exit-daily');
         exit.style.display = '';
-        exit.addEventListener('click', () => { saveGame(); location.href = location.pathname; });
+        exit.addEventListener('click', () => { saveGame(); goHome(); });
         updateGoal();
     } else {
         const btn = document.getElementById('btn-daily');
-        btn.style.display = '';
+        if (!GAME.menu) btn.style.display = '';   // with the home menu, the Daily Challenge is opened from there
         btn.classList.toggle('done', doneToday());
         btn.addEventListener('click', () => { saveGame(); location.href = location.pathname + '?daily'; });
     }
@@ -769,6 +795,7 @@ function zapUI() {
 }
 function setZapArmed(on) {
     zapArmed = on;
+    if (on && starArmed) setStarArmed(false);
     zapUI();
     if (on) showToast('Tap a gem to zap it');
 }
@@ -782,8 +809,8 @@ zapBtn.addEventListener('click', () => {
     else showToast(GAME.daily ? 'Finish the Daily Challenge for more Zaps' : 'No Zaps left');
 });
 
-// a tap on the board while armed: the gem under the finger (or the nearest one within a finger's width)
-function zapAt(e) {
+// the gem under the finger (or the nearest one within a finger's width) for a booster
+function gemAt(e) {
     const rect = board.getBoundingClientRect();
     const p = { x: (e.clientX - rect.left) * (GAME_WIDTH / rect.width), y: (e.clientY - rect.top) * (GAME_HEIGHT / rect.height) };
     const items = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
@@ -795,6 +822,12 @@ function zapAt(e) {
             if (gap < nearest) { nearest = gap; target = b; }
         }
     }
+    return target || null;
+}
+
+// a tap on the board while the Zap is armed
+function zapAt(e) {
+    const target = gemAt(e);
     if (!target) { showToast('Tap a gem to zap it'); return; }
     FX.zap(target.position.x, target.position.y, TIERS[target.tier]);
     Composite.remove(engine.world, target);
@@ -805,13 +838,67 @@ function zapAt(e) {
     storeZaps();
     setZapArmed(false);
     saveGame();
+    emitGame('booster', 'zap');
 }
 
 function initZap() {
     if (!GAME.boosters) return;
     zapBtn.style.display = '';
     zapUI();
-    setInterval(zapUI, 2000);   // the "AD" badge follows whether a rewarded ad is ready
+    setInterval(() => { zapUI(); starUI(); }, 2000);   // the "AD" badge follows whether a rewarded ad is ready
+}
+
+// --- STAR BOOSTER ---
+// Lifts one gem you choose to the next level (not the best gem, which has nowhere to go). It opens at a
+// level (meta.js calls setStarOpen); Stars come from levels and quests, or an ad in the Android app.
+// A lifted gem doesn't count toward gem sets or the Daily Challenge: only merges do.
+const STAR_KEY = `${GAME.id}.stars`;
+const starBtn = document.getElementById('btn-star');
+let stars = 0;
+try { const v = localStorage.getItem(STAR_KEY); if (v !== null) stars = Math.max(0, parseInt(v, 10) || 0); } catch (e) {}
+let starArmed = false;
+
+function storeStars() { try { localStorage.setItem(STAR_KEY, stars); } catch (e) {} }
+function addStars(n) { stars = Math.min(99, stars + n); storeStars(); starUI(); }
+function starUI() {
+    starBtn.classList.toggle('armed', starArmed);
+    starBtn.classList.toggle('empty', stars === 0);
+    document.getElementById('star-count').textContent = stars > 0 ? stars : (Ads.rewardedReady() ? 'AD' : '0');
+}
+function setStarArmed(on) {
+    starArmed = on;
+    if (on && zapArmed) setZapArmed(false);
+    starUI();
+    if (on) showToast('Tap a gem to make it better');
+}
+function setStarOpen(on) { starBtn.style.display = on && GAME.boosters ? '' : 'none'; starUI(); }
+
+starBtn.addEventListener('click', () => {
+    if (isGameOver || Ads.isShowing()) return;
+    Sound.play('tap');
+    if (starArmed) { setStarArmed(false); return; }
+    if (stars > 0) { setStarArmed(true); return; }
+    if (Ads.rewardedReady()) Ads.showRewarded(watched => { if (watched) { addStars(1); setStarArmed(true); } });
+    else showToast('Level up and finish quests for Stars');
+});
+
+function starAt(e) {
+    const target = gemAt(e);
+    if (!target) { showToast('Tap a gem to make it better'); return; }
+    if (target.tier >= TIERS.length - 1) { showToast('That one is already the best'); return; }
+    const { x, y } = target.position, tier = target.tier + 1;
+    Composite.remove(engine.world, target);
+    const lifted = spawnItem(x, y, tier, true);
+    lifted.isDropping = false;
+    FX.merge(x, y, TIERS[tier], 0);
+    Sound.play('star', 2);
+    Sound.play('pop', tier);
+    Haptics.play('praise', 2);
+    stars--;
+    storeStars();
+    setStarArmed(false);
+    saveGame();
+    emitGame('booster', 'star');
 }
 
 // --- GEM SETS ---
@@ -902,9 +989,16 @@ function initSkins() {
     if (SKINS.length < 2) return;
     const btn = document.getElementById('btn-gems');
     btn.style.display = '';
-    btn.addEventListener('click', () => { settings.classList.remove('show'); renderSets(); collection.classList.add('show'); });
-    document.getElementById('btn-close-collection').addEventListener('click', () => { collection.classList.remove('show'); settings.classList.add('show'); });
+    btn.addEventListener('click', () => { settings.classList.remove('show'); renderSets(); collection.dataset.from = 'settings'; collection.classList.add('show'); });
+    // back to where it was opened from: the settings, or the home menu (meta.js)
+    document.getElementById('btn-close-collection').addEventListener('click', () => {
+        collection.classList.remove('show');
+        if (collection.dataset.from !== 'menu') settings.classList.add('show');
+    });
 }
+
+// back to the main game (meta.js replaces this with the home menu)
+function goHome() { location.href = location.pathname; }
 
 // short message over the board
 const toastEl = document.getElementById('toast');

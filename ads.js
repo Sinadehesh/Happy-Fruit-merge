@@ -92,8 +92,8 @@ const Ads = (() => {
             window.onRewardedDone = watched => {
                 window.onRewardedDone = null;
                 showing = false;
-                hooks.onResume();
-                done(!!watched);
+                done(!!watched);      // the reward first (it may close a panel, like Keep Going)...
+                hooks.onResume();     // ...then the game resumes, if nothing else is covering it
             };
             App.showRewardedAd();
         },

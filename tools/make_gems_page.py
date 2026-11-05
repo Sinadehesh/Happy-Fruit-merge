@@ -44,6 +44,9 @@ swap('    <script src="config.js"></script>', '''    <script>
             praiseAt: [3, 6, 10],
             daily: true,
             boosters: true,
+            rush: true,
+            meta: true,
+            menu: true,
             // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },

@@ -7,7 +7,7 @@ const FX = (() => {
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
-        'word_combo', 'word_congratulations', ...GAME.praise.map(w => `word_${w}`)];
+        'word_combo', 'word_congratulations', 'word_levelup', 'word_timesup', ...GAME.praise.map(w => `word_${w}`)];
     const img = {};
     NAMES.forEach(n => { img[n] = new Image(); img[n].src = `assets/fx/${n}.png`; });
     const digit = {};
@@ -97,6 +97,18 @@ const FX = (() => {
             const a = rand(0, Math.PI * 2), sp = rand(160, 300);
             effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.2) });
+        }
+    }
+
+    // Any word art from assets/fx (LEVEL UP!, TIME'S UP!), popped in the middle like the biggest praise
+    function banner(name) {
+        if (!img[name]) { img[name] = new Image(); img[name].src = `assets/fx/${name}.png`; }
+        effects = effects.filter(e => e.kind !== 'praise');
+        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: W - 60, big: true, t: 0, dur: 2.0 });
+        for (let i = 0; i < 30; i++) {
+            const a = rand(0, Math.PI * 2), sp = rand(160, 320);
+            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.3) });
         }
     }
 
@@ -202,5 +214,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, merge, praise, zap };
+    return { init, merge, praise, zap, banner };
 })();

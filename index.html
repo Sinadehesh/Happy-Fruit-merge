@@ -138,15 +138,17 @@
         #goal-progress { color: var(--gear); }
         #goal.done #goal-progress { color: #7dff9b; }
         #btn-exit-daily { width: 38px; height: 38px; border: none; padding: 0; background: url('assets/ui/btn_close.png') center/contain no-repeat; cursor: pointer; }
-        /* Zap booster button by NEXT, with how many you have */
-        #btn-zap { position: absolute; right: 2px; top: 50%; width: 64px; height: 64px; transform: translateY(-50%); border: none; padding: 0; background: none; cursor: pointer; }
-        #btn-zap img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3)); }
-        #zap-count {
+        /* Booster buttons on both sides of NEXT (Star on the left, Zap on the right), with how many you have */
+        .booster { position: absolute; top: 50%; width: 64px; height: 64px; transform: translateY(-50%); border: none; padding: 0; background: none; cursor: pointer; }
+        #btn-zap { right: 2px; }
+        #btn-star { left: 2px; }
+        .booster img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3)); }
+        .booster .count {
             position: absolute; right: -4px; bottom: 0; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box;
             border-radius: 12px; background: #ff4d6d; color: white; font: 800 13px/24px 'Poppins', sans-serif; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
         }
-        #btn-zap.empty img { filter: grayscale(0.6) brightness(0.85); }
-        #btn-zap.armed img { animation: zap-pulse 0.7s ease-in-out infinite; }
+        .booster.empty img { filter: grayscale(0.6) brightness(0.85); }
+        .booster.armed img { animation: zap-pulse 0.7s ease-in-out infinite; }
         @keyframes zap-pulse { 50% { transform: scale(1.15) rotate(-6deg); filter: drop-shadow(0 0 12px #ffe66d); } }
         /* short messages over the board ("Tap a gem to zap it", "Daily Challenge done!") */
         #toast {
@@ -243,6 +245,166 @@
             border-radius: 20px; font-size: 15px; font-weight: bold;
         }
         #ad-close:enabled { background: #e74c3c; cursor: pointer; }
+
+        /* ---------- metagame (meta.js): levels, menu, quests, Gem Rush, tutorial ----------
+           Proportions follow the golden ratio (phi = 1.618): the menu is split 38.2 / 61.8 between the logo and
+           the actions, the Play button is 61.8% of the width, tiles are phi wide for 1 tall, and spacing and type
+           step through the Fibonacci numbers 8, 13, 21, 34, 55. */
+        :root { --phi: 1.618; }
+        .xp-bar { position: relative; display: block; height: 8px; border-radius: 4px; background: rgba(0, 0, 0, 0.28); overflow: hidden; }
+        .xp-bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: linear-gradient(90deg, #ffd36b, #ff9f1c); transition: width 0.45s ease; }
+        .xp-bar.near i { background: linear-gradient(90deg, #ffe66d, #7dff9b); animation: xp-glow 1.3s ease-in-out infinite; }   /* almost there */
+        @keyframes xp-glow { 50% { filter: brightness(1.35); } }
+        .lvl-star { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: none; }
+        .lvl-star img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+        .lvl-star b { position: relative; top: 2px; font-size: 12px; font-weight: 800; color: #7a3a00; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+        .lvl-star.big { width: 55px; height: 55px; }
+        .lvl-star.big b { font-size: 17px; }
+        .lvl-star.huge { width: 89px; height: 89px; margin: 4px auto 2px; display: flex; }
+        .lvl-star.huge b { font-size: 26px; }
+        #lvl-chip { display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 12px 0 6px; border: none; border-radius: 19px; background: rgba(255, 255, 255, 0.15); cursor: pointer; }
+        #lvl-chip .xp-bar { width: 89px; }
+        #lvl-chip.bump .lvl-star { animation: crown-bounce 0.6s ease; }
+        #rush-timer {
+            display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 120px; padding: 3px 14px 5px;
+            border-radius: 14px; background: rgba(255, 255, 255, 0.15); font-weight: 800;
+        }
+        #rush-timer b { color: var(--gold); font-size: 10px; letter-spacing: 1px; }
+        #rush-time { font-size: 17px; line-height: 1; }
+        #rush-timer .xp-bar { width: 100%; height: 6px; }
+        #rush-timer .xp-bar i { transition: width 0.25s linear; background: linear-gradient(90deg, #7dff9b, #ffd36b); }
+        #rush-timer.urgent { animation: urgent 0.5s ease-in-out infinite alternate; }
+        #rush-timer.urgent .xp-bar i { background: linear-gradient(90deg, #ff4d6d, #ff9f1c); }
+        @keyframes urgent { to { background: rgba(255, 77, 109, 0.35); } }
+
+        /* game over: stars, XP, the next level */
+        #go-stars { display: flex; justify-content: center; gap: 8px; margin: 6px 0 2px; }
+        #go-stars img { width: 44px; height: 44px; object-fit: contain; filter: grayscale(1) brightness(0.7) opacity(0.5); transform: scale(0.8); transition: transform 0.35s cubic-bezier(0.34, 1.8, 0.64, 1), filter 0.2s; }
+        #go-stars img.on { filter: none; transform: scale(1.1); }
+        #go-xp { margin-top: 8px; padding: 6px 10px 8px; border-radius: 12px; background: rgba(107, 61, 30, 0.1); }
+        .go-xp-row { display: flex; align-items: center; gap: 8px; }
+        .go-xp-row .xp-bar { flex: 1; height: 10px; }
+        #go-xp-gain { font-size: 14px; color: #4e9a1e; }
+        #go-xp-hint { margin-top: 4px; font-size: 12px; font-weight: 700; color: #8a5a35; }
+        #go-xp-hint b { color: #d6337a; }
+
+        /* the home menu */
+        #menu {
+            position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column; overflow: hidden;
+            background: radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.16), transparent 61.8%), linear-gradient(var(--bg-top), var(--bg-bottom));
+            padding: 13px 21px 21px; box-sizing: border-box; color: white;
+        }
+        #menu-floaters { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+        #menu-floaters img { position: absolute; opacity: 0.32; animation: float var(--dur, 8s) ease-in-out infinite alternate; filter: blur(0.3px); }
+        @keyframes float { from { transform: translateY(-13px) rotate(-8deg); } to { transform: translateY(13px) rotate(8deg); } }
+        .menu-top { position: relative; display: flex; justify-content: space-between; align-items: center; width: min(100%, 440px); margin: 0 auto; }
+        .menu-profile { display: flex; align-items: center; gap: 8px; }
+        .menu-rank { display: flex; flex-direction: column; gap: 4px; min-width: 144px; }
+        #menu-rank-name { font-weight: 800; font-size: 15px; }
+        .menu-rank .xp-bar { width: 144px; }
+        #menu-xp-text { font-size: 11px; font-weight: 600; color: var(--gear); }
+        #menu-settings { width: 42px; height: 42px; border: none; background: none; padding: 0; cursor: pointer; }
+        #menu-settings svg { width: 100%; height: 100%; }
+        .menu-hero { position: relative; flex: 0.382; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
+        #menu-logo { width: min(80%, 340px); filter: drop-shadow(0 8px 13px rgba(0, 0, 0, 0.3)); animation: logo-bob 3.2s ease-in-out infinite; }
+        @keyframes logo-bob { 50% { transform: translateY(-5px) rotate(-1deg); } }
+        #menu-best { display: flex; align-items: center; gap: 6px; color: var(--gold); font-weight: 800; font-size: 21px; }
+        #menu-best svg { width: 34px; height: 27px; }
+        .menu-actions { position: relative; flex: 0.618; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 21px; width: min(100%, 440px); margin: 0 auto; }
+        #menu-play { width: 61.8%; max-width: 300px; font-size: 26px; animation: play-breathe 2.6s ease-in-out infinite; }
+        @keyframes play-breathe { 50% { transform: scale(1.045); } }
+        .menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; width: 100%; }
+        .menu-tile {
+            position: relative; aspect-ratio: 1.618; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+            border: none; border-radius: 21px; background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+            color: white; font-family: 'Poppins', sans-serif; cursor: pointer; padding: 8px;
+        }
+        .menu-tile:active { transform: scale(0.96); }
+        .menu-tile img, .menu-tile .icon-watch { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.25)); }
+        .menu-tile b { font-size: 17px; font-weight: 800; line-height: 1.1; }
+        .menu-tile small { font-size: 11px; font-weight: 600; color: var(--gear); }
+        .menu-tile .dot { position: absolute; top: 8px; right: 10px; width: 13px; height: 13px; border-radius: 50%; background: #ff4d6d; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); display: none; }
+        .menu-tile.has-news .dot { display: block; animation: crown-bounce 1.6s ease infinite; }
+        .menu-tile.locked { background: rgba(0, 0, 0, 0.18); }
+        .menu-tile.locked img, .menu-tile.locked .icon-watch { filter: grayscale(1) opacity(0.55); }
+        .menu-tile.locked b { opacity: 0.6; }
+        #menu-next { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 21px; background: rgba(0, 0, 0, 0.18); font-size: 13px; font-weight: 700; color: var(--gear); }
+        #menu-next img, #menu-next .icon-watch { width: 26px; height: 26px; object-fit: contain; }
+        #menu-next .swatch { width: 21px; height: 21px; border-radius: 6px; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.3); }
+
+        /* quests */
+        #quests-timer { margin: -6px 0 10px; font-size: 13px; font-weight: 700; color: #8a5a35; }
+        .quest { margin: 0 0 10px; padding: 8px 10px; border-radius: 14px; background: rgba(107, 61, 30, 0.1); text-align: left; }
+        .quest.done { box-shadow: inset 0 0 0 3px #7cc242; }
+        .quest.claimed { opacity: 0.55; }
+        .quest-head { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; }
+        .quest-head img { width: 26px; height: 26px; object-fit: contain; }
+        .quest-head .diff { margin-left: auto; font-size: 10px; letter-spacing: 1px; color: #8a5a35; }
+        .quest .xp-bar { margin: 6px 0; background: rgba(107, 61, 30, 0.2); }
+        .quest-foot { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 800; color: #6b3d1e; }
+        .quest-foot .reward { display: flex; align-items: center; gap: 2px; }
+        .quest-foot .reward img { width: 22px; height: 22px; object-fit: contain; }
+        .quest-foot .pill { margin-left: auto; width: 96px; font-size: 13px; }
+        .quest-foot .pill + .pill { margin-left: 4px; }
+
+        /* level up: above the game-over panel it follows */
+        #levelup { z-index: 220; }
+        #lu-word { width: 100%; margin-top: -8px; animation: logo-bob 2.4s ease-in-out infinite; }
+        #lu-rank { font-size: 16px; font-weight: 800; color: #d6337a; min-height: 20px; }
+        #lu-rewards { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px; margin: 10px 0 4px; font-weight: 800; font-size: 16px; }
+        #lu-rewards span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+        #lu-rewards img { width: 30px; height: 30px; object-fit: contain; }
+        #lu-rewards .swatch { width: 26px; height: 26px; border-radius: 8px; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2); }
+        #lu-lucky { min-height: 18px; font-size: 13px; font-weight: 800; color: #4e9a1e; }
+
+        /* jar colours in the Collection */
+        #collection .scroll { max-height: 66vh; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+        #collection #sets { max-height: none; overflow: visible; }
+        #themes-title { margin: 14px 0 8px; font-size: 20px; }
+        #themes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 8px; }
+        .theme { display: flex; flex-direction: column; align-items: center; gap: 3px; border: none; background: none; padding: 0; cursor: pointer; font: 700 11px 'Poppins', sans-serif; color: #6b3d1e; }
+        .theme i { width: 100%; aspect-ratio: 1; border-radius: 13px; box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.15); }
+        .theme.on i { box-shadow: inset 0 0 0 3px #7cc242, 0 0 0 2px #7cc242; }
+        .theme.locked i { filter: grayscale(0.85) brightness(0.7); }
+        .theme .need-chip { display: flex; align-items: center; gap: 2px; font-weight: 800; }
+        .theme .need-chip img, .theme .need-chip svg { width: 16px; height: 16px; object-fit: contain; }
+
+        /* tutorial: a pulsing ring where to touch, and a bubble with the step */
+        #tut-ring {
+            position: absolute; z-index: 15; width: 55px; height: 55px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none; display: none;
+            border: 4px solid rgba(255, 255, 255, 0.9); box-shadow: 0 0 21px rgba(255, 230, 109, 0.8); animation: tut-pulse 1.1s ease-out infinite;
+        }
+        #tut-ring.slide { animation: tut-pulse 1.1s ease-out infinite, tut-slide 2.2s ease-in-out infinite; }
+        @keyframes tut-pulse { 0% { transform: scale(0.7); opacity: 1; } 100% { transform: scale(1.35); opacity: 0.2; } }
+        @keyframes tut-slide { 0%, 100% { translate: -89px 0; } 50% { translate: 89px 0; } }
+        #tut-bubble {
+            position: absolute; z-index: 15; left: 50%; top: 38%; transform: translateX(-50%); width: 82%; display: none;
+            padding: 13px 13px 8px; border-radius: 21px; background: rgba(255, 248, 236, 0.96); color: #6b3d1e; text-align: center;
+            font-weight: 800; font-size: 16px; line-height: 1.35; box-shadow: 0 8px 21px rgba(0, 0, 0, 0.3); pointer-events: none;
+        }
+        #tut-skip { display: block; margin: 8px auto 0; border: none; background: none; color: #a8805f; font: 700 12px 'Poppins', sans-serif; text-decoration: underline; cursor: pointer; pointer-events: auto; }
+        .danger-line.highlight { border-top-color: #ff4d6d; box-shadow: 0 0 13px #ff4d6d; animation: urgent 0.6s ease-in-out infinite alternate; }
+
+        /* panels taller than the screen scroll instead of being cut off */
+        .overlay { overflow-y: auto; align-items: flex-start; padding: 21px 0; box-sizing: border-box; }
+        .overlay > .panel { margin: auto; }
+
+        /* jar colours (meta.js THEMES): each one swaps the page's colours */
+        :root[data-theme="ocean"] { --bg-top: #2f86de; --bg-bottom: #1b4f9c; --board: #0e2347; --grid: #0b1c3a; --board-edge: #67b8ff; --gear: #c4e6ff; }
+        :root[data-theme="mint"] { --bg-top: #2bbf9f; --bg-bottom: #137565; --board: #0d2d2a; --grid: #0a2421; --board-edge: #74e8cb; --gear: #ccfff2; }
+        :root[data-theme="sunset"] { --bg-top: #ff8a5c; --bg-bottom: #c2456e; --board: #3a1530; --grid: #2e1027; --board-edge: #ffb38a; --gear: #ffe0d2; }
+        :root[data-theme="rose"] { --bg-top: #ff74ac; --bg-bottom: #b83b78; --board: #3d1430; --grid: #321027; --board-edge: #ffa6ca; --gear: #ffdcea; }
+        :root[data-theme="midnight"] { --bg-top: #2c3f86; --bg-bottom: #111a42; --board: #0a0f26; --grid: #070b1d; --board-edge: #6079dd; --gear: #c0ccff; }
+        :root[data-theme="gold"] { --bg-top: #f0b232; --bg-bottom: #b06a12; --board: #3a2508; --grid: #2e1d06; --board-edge: #ffd76e; --gear: #fff0c8; }
+        :root[data-theme="aurora"] { --bg-top: #27c7a8; --bg-bottom: #6a3fc8; --board: #10223a; --grid: #0c1b2f; --board-edge: #7af0d0; --gear: #dafff6; }
+        :root[data-theme="candy"] { --bg-top: #ff7ac6; --bg-bottom: #8b5cf6; --board: #2a1846; --grid: #22133a; --board-edge: #ffb6e3; --gear: #ffe6f5; }
+        :root[data-theme="cosmos"] { --bg-top: #3d1f72; --bg-bottom: #0c0a2c; --board: #070616; --grid: #050412; --board-edge: #8f72ff; --gear: #d2c6ff; }
+        :root[data-theme="lava"] { --bg-top: #d0362a; --bg-bottom: #4c0d0d; --board: #250807; --grid: #1c0605; --board-edge: #ff8a5c; --gear: #ffd0c0; }
+        :root[data-theme="royal"] { --bg-top: #7b22a6; --bg-bottom: #3a0c5a; --board: #1c0830; --grid: #160626; --board-edge: #e2b034; --gear: #ffe6a0; }
+        :root[data-theme="diamond"] { --bg-top: #8fcdf2; --bg-bottom: #4f74b8; --board: #16243d; --grid: #111d32; --board-edge: #ffffff; --gear: #f2fbff; }
+        :root[data-theme="ember"] { --bg-top: #ffa34a; --bg-bottom: #e04848; --board: #2b0d06; --grid: #220a05; --board-edge: #ffc283; --gear: #ffe6cf; }
+        :root[data-theme="frost"] { --bg-top: #a5e9ff; --bg-bottom: #4a8fd9; --board: #0f2440; --grid: #0b1c33; --board-edge: #e0f8ff; --gear: #ffffff; }
+        :root[data-theme="lagoon"] { --bg-top: #22d6c4; --bg-bottom: #1f6fbf; --board: #0b2a3c; --grid: #082231; --board-edge: #86f7ea; --gear: #d4fffa; }
         /* short screens (small phones, or the app with an ad banner under it): a smaller top and tray, a bigger jar */
         @media (max-height: 620px) {
             #app { padding-top: 6px; }
@@ -254,7 +416,17 @@
             .game-board { width: min(100%, 450px, calc((100vh - 176px) * 450 / 640)); }
             .tray { min-height: 60px; }
             #next-img { width: 52px; height: 52px; }
-            #btn-zap { width: 50px; height: 50px; }
+            .booster { width: 50px; height: 50px; }
+            #menu { padding-top: 8px; }
+            #menu-logo { width: min(61.8%, 280px); }
+            .menu-actions { gap: 13px; }
+            .menu-tile { aspect-ratio: 2; }
+            .menu-tile img, .menu-tile .icon-watch { width: 30px; height: 30px; }
+            .panel { padding: 26px 22px 22px; }
+            .panel h2 { font-size: 22px; margin-bottom: 6px; }
+            #go-score { font-size: 42px; }
+            .panel .row { margin-top: 10px; }
+            #go-xp, #go-unlock { margin-top: 6px; padding-top: 4px; padding-bottom: 6px; }
             #btn-daily { height: 32px; font-size: 13px; }
             #btn-daily img { width: 22px; height: 22px; }
         }
@@ -280,6 +452,13 @@
             <div class="best" id="best-box"><svg><use href="#crown"/></svg><span id="best-val">0</span></div>
             <button id="btn-daily" style="display: none"><img src="assets/ui/icon_star.png" alt=""><span>Daily</span><i class="dot"></i></button>
             <div id="goal" style="display: none"><b>DAILY CHALLENGE</b><div><span id="goal-text"></span> <span id="goal-progress"></span></div></div>
+            <!-- levels (meta.js): your level and how far the next one is; tap for the home menu -->
+            <button id="lvl-chip" style="display: none" aria-label="Home">
+                <span class="lvl-star"><img src="assets/ui/icon_star.png" alt=""><b id="lvl-num">1</b></span>
+                <span class="xp-bar"><i id="lvl-fill"></i></span>
+            </button>
+            <!-- Gem Rush (meta.js): the clock -->
+            <div id="rush-timer" style="display: none"><b>GEM RUSH</b><span id="rush-time">1:30</span><span class="xp-bar"><i id="rush-fill"></i></span></div>
             <button id="btn-settings" aria-label="Settings">
                 <svg viewBox="0 0 24 24"><path fill="currentColor" style="color: var(--gear);" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>
             </button>
@@ -289,16 +468,20 @@
 
         <div id="board" class="game-board">
             <div id="toast"></div>
+            <!-- first-time tutorial (meta.js) -->
+            <div id="tut-ring"></div>
+            <div id="tut-bubble"><span id="tut-text"></span><button id="tut-skip" class="no-drop">Skip</button></div>
             <div id="aim-line"></div>
             <div id="drop-guide"></div>
             <div class="danger-line"></div>
         </div>
 
         <div class="tray">
+            <!-- Boosters (GAME.boosters, game.js): Star lifts a gem you tap one level, Zap clears one -->
+            <button id="btn-star" class="booster" aria-label="Make a gem better" style="display: none"><img src="assets/ui/icon_star.png" alt=""><span id="star-count" class="count">0</span></button>
             <span class="tray-label">NEXT</span>
             <img id="next-img" alt="">
-            <!-- Zap booster (GAME.boosters): lightning that clears one gem you tap -->
-            <button id="btn-zap" aria-label="Zap a gem" style="display: none"><img src="assets/ui/icon_bolt.png" alt=""><span id="zap-count">0</span></button>
+            <button id="btn-zap" class="booster" aria-label="Zap a gem" style="display: none"><img src="assets/ui/icon_bolt.png" alt=""><span id="zap-count" class="count">0</span></button>
         </div>
     </div>
 
@@ -325,15 +508,72 @@
                 <button class="pill" id="btn-music">Music</button>
             </div>
             <div id="song-name"></div>
+            <div class="row">
+                <button class="pill" id="btn-voice">Voice</button>
+                <button class="pill" id="btn-vibe">Vibration</button>
+            </div>
             <!-- Android app only (ads.js): buy "No Ads", and change ad consent where the law asks for it -->
             <div class="row" id="store-row" style="display: none">
                 <button class="pill yellow" id="btn-no-ads">No Ads</button>
                 <button class="pill" id="btn-privacy">Privacy</button>
             </div>
             <div class="row">
-                <button class="pill" id="btn-vibe">Vibration</button>
+                <!-- the home menu (GAME.menu, meta.js) -->
+                <button class="pill" id="btn-home" style="display: none">Home</button>
                 <button class="pill yellow" id="btn-new-game">Restart</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Home menu (GAME.menu, meta.js): the first screen when the game opens -->
+    <div id="menu" style="display: none">
+        <div id="menu-floaters"></div>
+        <div class="menu-top">
+            <div class="menu-profile">
+                <span class="lvl-star big"><img src="assets/ui/icon_star.png" alt=""><b id="menu-level">1</b></span>
+                <div class="menu-rank">
+                    <div id="menu-rank-name">Pebble Picker</div>
+                    <span class="xp-bar"><i id="menu-xp-fill"></i></span>
+                    <div id="menu-xp-text"></div>
+                </div>
+            </div>
+            <button id="menu-settings" aria-label="Settings"><svg viewBox="0 0 24 24"><path fill="currentColor" style="color: var(--gear);" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
+        </div>
+        <div class="menu-hero">
+            <img id="menu-logo" src="assets/fx/logo_gemjar.png" alt="Gem Jar">
+            <div id="menu-best"><svg><use href="#crown"/></svg><span id="menu-best-val">0</span></div>
+        </div>
+        <div class="menu-actions">
+            <button class="pill green" id="menu-play">Play</button>
+            <div class="menu-grid">
+                <button class="menu-tile" id="tile-daily"><img src="assets/ui/icon_coin.png" alt=""><b>Daily</b><small id="tile-daily-sub"></small><i class="dot"></i></button>
+                <button class="menu-tile" id="tile-rush"><svg class="icon-watch" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="watchG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd36b"/><stop offset="1" stop-color="#ff8a2a"/></linearGradient></defs><rect x="26" y="3" width="12" height="9" rx="3" fill="#ff8a2a" stroke="#7a3410" stroke-width="3"/><circle cx="32" cy="37" r="24" fill="url(#watchG)" stroke="#7a3410" stroke-width="4"/><circle cx="32" cy="37" r="17" fill="#fff8ec" stroke="#e07a1f" stroke-width="2"/><path d="M32 37 L32 25 M32 37 L41 42" stroke="#7a3410" stroke-width="4" stroke-linecap="round"/><ellipse cx="22" cy="24" rx="6" ry="3" fill="#fff" opacity="0.8" transform="rotate(-30 22 24)"/></svg><b>Gem Rush</b><small id="tile-rush-sub"></small><i class="dot"></i></button>
+                <button class="menu-tile" id="tile-quests"><img src="assets/ui/btn_check.png" alt=""><b>Quests</b><small id="tile-quests-sub"></small><i class="dot"></i></button>
+                <button class="menu-tile" id="tile-gems"><img src="assets/ui/icon_gem.png" alt=""><b>Collection</b><small>Gems &amp; colours</small><i class="dot"></i></button>
+            </div>
+            <div id="menu-next"></div>
+        </div>
+    </div>
+
+    <!-- Quests (meta.js): three at a time, new ones every 8 hours -->
+    <div id="quests" class="overlay">
+        <div class="panel">
+            <button class="btn-close" id="btn-close-quests" aria-label="Close"></button>
+            <h2>Quests</h2>
+            <div id="quests-timer"></div>
+            <div id="quest-list"></div>
+        </div>
+    </div>
+
+    <!-- Level up (meta.js): the new level, its title and rewards -->
+    <div id="levelup" class="overlay">
+        <div class="panel">
+            <img id="lu-word" src="assets/fx/word_levelup.png" alt="Level up!">
+            <span class="lvl-star huge"><img src="assets/ui/icon_star.png" alt=""><b id="lu-level">2</b></span>
+            <div id="lu-rank"></div>
+            <div id="lu-rewards"></div>
+            <div id="lu-lucky"></div>
+            <div class="row"><button class="pill yellow" id="lu-double" style="display: none">▶ Double</button><button class="pill green" id="lu-collect">Collect</button></div>
         </div>
     </div>
 
@@ -341,8 +581,13 @@
     <div id="collection" class="overlay">
         <div class="panel">
             <button class="btn-close" id="btn-close-collection" aria-label="Close"></button>
-            <h2>Gem Sets</h2>
-            <div id="sets"></div>
+            <div class="scroll">
+                <h2>Gem Sets</h2>
+                <div id="sets"></div>
+                <!-- jar colours (meta.js): opened by levels and by challenges -->
+                <h3 id="themes-title" style="display: none">Jar Colours</h3>
+                <div id="themes"></div>
+            </div>
         </div>
     </div>
 
@@ -353,14 +598,27 @@
             <div id="go-score">0</div>
             <div id="go-best"><svg><use href="#crown"/></svg><span id="go-best-val">0</span></div>
             <div id="go-new">New best score!</div>
+            <!-- Gem Rush (meta.js): stars for the score -->
+            <div id="go-stars" style="display: none"><img src="assets/ui/icon_star.png" alt=""><img src="assets/ui/icon_star.png" alt=""><img src="assets/ui/icon_star.png" alt=""></div>
+            <!-- levels (meta.js): XP from this game, how far the next level is, the best gem made -->
+            <div id="go-xp" style="display: none">
+                <div class="go-xp-row">
+                    <span class="lvl-star"><img src="assets/ui/icon_star.png" alt=""><b id="go-level">1</b></span>
+                    <span class="xp-bar"><i id="go-xp-fill"></i></span>
+                    <b id="go-xp-gain">+0</b>
+                </div>
+                <div id="go-xp-hint"></div>
+            </div>
             <!-- gem sets (game.js): the next set's name and the gems still to make -->
             <div id="go-unlock" style="display: none"></div>
+            <!-- Gem Rush in the app (meta.js): an ad for 15 more seconds, once a run -->
+            <div id="more-time" style="display: none"><div class="row"><button class="pill yellow" id="btn-more-time">▶ +15 seconds</button></div></div>
             <!-- Android app only (ads.js): watch an ad to clear the top of the jar and keep going, once a game -->
             <div id="revive" style="display: none">
                 <div class="row"><button class="pill yellow" id="btn-revive">▶ Keep Going</button></div>
                 <div id="revive-text">Watch a short ad to clear the top of the jar</div>
             </div>
-            <div class="row"><button class="pill green" id="btn-restart">Play Again</button></div>
+            <div class="row"><button class="pill" id="btn-go-home" style="display: none">Home</button><button class="pill green" id="btn-restart">Play Again</button></div>
         </div>
     </div>
 
@@ -382,5 +640,6 @@
     <script src="sound.js"></script>
     <script src="haptics.js"></script>
     <script src="game.js"></script>
+    <script src="meta.js"></script>
 </body>
 </html>
