@@ -202,6 +202,18 @@
         .pill.small { width: 100px; font-size: 13px; }
         #btn-no-ads { font-size: 14px; }
         #revive-text { margin-top: 4px; font-size: 12px; font-weight: 600; color: #8a5a35; }
+        /* Gem Sets screen */
+        #sets { max-height: 62vh; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+        .set-card { margin: 0 0 10px; padding: 8px 10px 10px; border-radius: 14px; background: rgba(107, 61, 30, 0.1); }
+        .set-card.in-use { box-shadow: inset 0 0 0 3px #7cc242; }
+        .set-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; text-align: left; }
+        .set-head b { font-size: 17px; white-space: nowrap; }
+        .set-head span { font-size: 12px; font-weight: 700; color: #8a5a35; text-align: right; }
+        .set-card.in-use .set-head span { color: #4e9a1e; }
+        .set-gems { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
+        .set-gems img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+        .set-card.locked .set-gems img { filter: grayscale(0.85) brightness(0.75); opacity: 0.6; }
+        .set-card .pill { margin-top: 8px; }
         .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-items: center; }
         .modes .wide { grid-column: 1 / -1; }   /* an odd last button sits in the middle */
         #car-styles { display: none; justify-content: center; gap: 6px; margin-top: 10px; }
@@ -300,6 +312,7 @@
             <button class="btn-close" id="btn-close-settings" aria-label="Close"></button>
             <h2>Settings</h2>
             <div class="modes">
+                <button class="pill yellow wide" id="btn-gems" style="display: none"><img src="assets/ui/icon_gem.png" alt="">Gems</button>
                 <a class="pill grey wide" id="btn-size" href="?size=reverse" title="Reverse size: higher levels are smaller">↕ Reverse</a>
             </div>
             <div class="row">
@@ -316,6 +329,15 @@
                 <button class="pill" id="btn-vibe">Vibration</button>
                 <button class="pill yellow" id="btn-new-game">Restart</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Gem sets (GAME.skins): pick a look, see what opens the locked ones (game.js) -->
+    <div id="collection" class="overlay">
+        <div class="panel">
+            <button class="btn-close" id="btn-close-collection" aria-label="Close"></button>
+            <h2>Gem Sets</h2>
+            <div id="sets"></div>
         </div>
     </div>
 
@@ -354,7 +376,12 @@
             praise: ['sweet', 'amazing', 'incredible'],
             praiseAt: [3, 6, 10],
             daily: true,
-            boosters: true
+            boosters: true,
+            // gem sets to pick from (Settings > Gems); dailies = Daily Challenges to finish to open it
+            skins: [
+                { id: 'rocks', name: 'Rocks & Gems' },
+                { id: 'crystal', name: 'Crystal Cave', dailies: 1 }
+            ]
         };
     </script>
     <script src="config.js"></script>

@@ -69,6 +69,17 @@ const MODES = {
             'assets/rocks/10_opal.png', 'assets/rocks/11_star_sapphire.png', 'assets/rocks/12_diamond.png'
         ]
     },
+    // Gem Jar's unlockable gem sets (GAME.skins): same sizes and levels as rocks, another look
+    'crystal': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: [
+            'assets/crystal/01_frosted_quartz.png', 'assets/crystal/02_clear_quartz.png', 'assets/crystal/03_citrine.png',
+            'assets/crystal/04_fluorite.png', 'assets/crystal/05_celestite.png', 'assets/crystal/06_pink_spinel.png',
+            'assets/crystal/07_lapis_lazuli.png', 'assets/crystal/08_fire_agate.png', 'assets/crystal/09_bismuth.png',
+            'assets/crystal/10_watermelon_tourmaline.png', 'assets/crystal/11_ametrine.png', 'assets/crystal/12_crystal_heart.png'
+        ]
+    },
     'sweets': {
         background: '#fdf2f8',
         // like rocks, sweets fill most of their picture
@@ -85,7 +96,17 @@ const params = new URLSearchParams(location.search);
 // Rocks became its own game (gems/): old links go there
 if (!GAME.mode && params.get('mode') === 'rocks') location.replace('gems/' + (params.get('size') ? '?size=' + params.get('size') : ''));
 const MODE = GAME.mode || (MODES[params.get('mode')] ? params.get('mode') : 'fruit');
-const SPRITES = MODES[MODE].sprites;
+// Gem sets (GAME.skins): the same game and saves with another look. The first is always open; the others
+// open by finishing Daily Challenges. The chosen one is remembered.
+const DAILIES_DONE = (() => { try { return (JSON.parse(localStorage.getItem(`${GAME.id}.daily`)) || {}).total || 0; } catch (e) { return 0; } })();
+const SKINS = (GAME.skins || []).filter(sk => MODES[sk.id]);
+const SKIN = (() => {
+    if (!SKINS.length) return null;
+    let id = null;
+    try { id = localStorage.getItem(`${GAME.id}.skin`); } catch (e) {}
+    return SKINS.find(sk => sk.id === id && DAILIES_DONE >= (sk.dailies || 0)) || SKINS[0];
+})();
+const SPRITES = MODES[SKIN ? SKIN.id : MODE].sprites;
 // Daily Challenge (GAME.daily, opened with ?daily): one special game a day, see DAILY CHALLENGE below
 const DAILY = !!GAME.daily && params.has('daily');
 
@@ -690,6 +711,8 @@ function dailyCheck() {
     updateGoal();
     Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
     showToast(`Daily Challenge done! +${reward} Zap${reward > 1 ? 's' : ''}`);
+    const opened = SKINS.find(sk => sk.dailies === st.total);
+    if (opened) setTimeout(() => showToast(`New gems unlocked: ${opened.name}!`), 2600);
 }
 
 function updateGoal() {
@@ -786,6 +809,51 @@ function initZap() {
     setInterval(zapUI, 2000);   // the "AD" badge follows whether a rewarded ad is ready
 }
 
+// --- GEM SETS SCREEN ---
+// Settings > Gems: every set with its 12 gems, the one in use, and what opens the locked ones.
+// Picking a set reloads the page: the game in progress goes on with the new look.
+const collection = document.getElementById('collection');
+function renderSets() {
+    const done = dailyState().total || 0;
+    const list = document.getElementById('sets');
+    list.innerHTML = '';
+    for (const sk of SKINS) {
+        const need = sk.dailies || 0, open = done >= need, inUse = sk === SKIN;
+        const card = document.createElement('div');
+        card.className = 'set-card' + (open ? '' : ' locked') + (inUse ? ' in-use' : '');
+        const head = document.createElement('div');
+        head.className = 'set-head';
+        const name = document.createElement('b');
+        name.textContent = sk.name;
+        const state = document.createElement('span');
+        state.textContent = inUse ? 'In use' : open ? '' : `Finish ${need} Daily Challenge${need > 1 ? 's' : ''} (${Math.min(done, need)}/${need})`;
+        head.append(name, state);
+        const gems = document.createElement('div');
+        gems.className = 'set-gems';
+        MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
+        card.append(head, gems);
+        if (open && !inUse) {
+            const use = document.createElement('button');
+            use.className = 'pill small green';
+            use.textContent = 'Use';
+            use.addEventListener('click', () => {
+                try { localStorage.setItem(`${GAME.id}.skin`, sk.id); } catch (e) {}
+                saveGame();
+                location.reload();
+            });
+            card.append(use);
+        }
+        list.append(card);
+    }
+}
+function initSkins() {
+    if (SKINS.length < 2) return;
+    const btn = document.getElementById('btn-gems');
+    btn.style.display = '';
+    btn.addEventListener('click', () => { settings.classList.remove('show'); renderSets(); collection.classList.add('show'); });
+    document.getElementById('btn-close-collection').addEventListener('click', () => { collection.classList.remove('show'); settings.classList.add('show'); });
+}
+
 // short message over the board
 const toastEl = document.getElementById('toast');
 function showToast(text) {
@@ -799,6 +867,7 @@ bestEl.textContent = bestScore;
 loadGame();
 initDaily();
 initZap();
+initSkins();
 window.addEventListener('resize', updateUI);
 updateUI();
 tickScore();

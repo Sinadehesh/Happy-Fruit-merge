@@ -130,6 +130,8 @@ Five new looks for Gem Jar that players can unlock. Each sheet is a full set of 
 
 ### 1. Crystal Cave
 
+Done: in the game as `assets/crystal` (levels 1 to 3 and 10 to 12 from one sheet, 4 to 9 from another).
+
 ```
 A sprite sheet of 12 candy-style gems for a mobile merge game: the "Crystal Cave" collection, glowing raw crystals from a magical cave.
 

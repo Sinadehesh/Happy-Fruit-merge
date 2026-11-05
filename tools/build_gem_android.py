@@ -33,6 +33,7 @@ VERSION_CODE = sys.argv[2] if len(sys.argv) > 2 else '1'
 CMDLINE_TOOLS = ('commandlinetools-linux-16111833_latest.zip', 'e025545c62a8e64c7559119566a569fb1dec5f60')
 SDK_PACKAGES = ['platforms;android-36', 'build-tools;36.1.0']   # keep in step with android/gemjar/build.gradle.kts
 BUNDLETOOL = 'https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar'
+GEM_SETS = ['rocks', 'crystal']   # art folders of the gem sets in the gem page's GAME_SETUP skins
 VENDOR = {      # files the web page loads from the internet, packed into the app instead
     'matter.min.js': 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js',
     'fonts/poppins-600.woff2': 'https://cdn.jsdelivr.net/npm/@fontsource/poppins@5.0.8/files/poppins-latin-600-normal.woff2',
@@ -128,7 +129,8 @@ def build_www(www):
             dest = www / f.relative_to(ROOT)
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(f, dest)
-    copy('assets/rocks/*.png')
+    for gem_set in GEM_SETS:
+        copy(f'assets/{gem_set}/*.png')
     copy('assets/fx/*.png', skip=('sheet',))
     copy('assets/sfx/*.wav', skip=('voice_',))
     copy('assets/sfx/CREDITS.txt')

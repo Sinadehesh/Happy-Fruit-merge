@@ -58,7 +58,7 @@ Until an ad network is connected it shows a placeholder ad. To show real ads on 
 Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest against each other where the art touches instead of overlapping. If you change or add sprites, regenerate it with:
 
 ```
-python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png assets/sweets/[01]*.png
+python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png assets/sweets/[01]*.png assets/crystal/[01]*.png
 ```
 
 # Gem Jar (`/gems/`)
@@ -70,7 +70,8 @@ The Rocks set as its own game: drop gems in the jar, merge two of a kind into a 
 - **Daily Challenge** (top bar, star button; a red dot until today's is done): one special game a day with the same drops and the same goal for everyone that day, both picked from the date. Goals are things like "Make a Ruby", "Make 2 Amethyst Geodes", "Score 4,000" or "Get a 6x combo". Finishing it the first time that day gives 1 Zap (3 on every 7th day in a row) and keeps a streak. It has its own save and best score, can be replayed, and the X in the top bar goes back to the main game, which is kept as it was.
 - **Zap booster** (the lightning bolt by NEXT, with how many you have): tap it, then tap any gem, and lightning strikes it away. You start with 2 and earn more from the Daily Challenge; in the Android app, when you have none, the badge says AD and watching a rewarded ad gives one.
 - Both are switched on by `daily: true` and `boosters: true` in the gem page's `GAME_SETUP`, so Happy Fruit Merge could have them too.
-- New unlockable gem sets: prompts for 5 more 12-level sheets (Crystal Cave, Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems) are in `ASSET_PROMPTS.md`.
+- **Gem sets** (Settings > Gems): the same game with another look, set in the gem page's `GAME_SETUP.skins`. Rocks & Gems is always open; **Crystal Cave** (`assets/crystal`, mode `crystal`) opens after 1 Daily Challenge. Locked sets show their 12 gems greyed out with what opens them; picking one reloads the page and the game in progress goes on with the new look. Prompts for 4 more sets (Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems) are in `ASSET_PROMPTS.md`; each new set is added to `MODES` in `game.js`, to `skins` in `tools/make_gems_page.py` and to `GEM_SETS` in `tools/build_gem_android.py`.
+- Cutting tools for gem art: `tools/cut_light.py` (pale or clear items, whose light outline lets the background leak in) and `tools/cut_glow.py` (a saturated item with a baked-in glow: solid body, see-through halo, cropped so the body fills the sprite).
 - The best score and game in progress from the old Rocks mode are carried over the first time it opens.
 - `gems/index.html` is built from `index.html` by `python3 tools/make_gems_page.py`; run it again after changing `index.html`.
 

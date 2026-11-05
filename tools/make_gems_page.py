@@ -43,7 +43,12 @@ swap('    <script src="config.js"></script>', '''    <script>
             praise: ['sweet', 'amazing', 'incredible'],
             praiseAt: [3, 6, 10],
             daily: true,
-            boosters: true
+            boosters: true,
+            // gem sets to pick from (Settings > Gems); dailies = Daily Challenges to finish to open it
+            skins: [
+                { id: 'rocks', name: 'Rocks & Gems' },
+                { id: 'crystal', name: 'Crystal Cave', dailies: 1 }
+            ]
         };
     </script>
     <script src="config.js"></script>''')
