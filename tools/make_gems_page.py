@@ -44,10 +44,20 @@ swap('    <script src="config.js"></script>', '''    <script>
             praiseAt: [3, 6, 10],
             daily: true,
             boosters: true,
-            // gem sets to pick from (Settings > Gems); dailies = Daily Challenges to finish to open it
+            // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },
-                { id: 'crystal', name: 'Crystal Cave', dailies: 1 }
+                { id: 'crystal', name: 'Crystal Cave' }
+            ],
+            // what to make to open each next set: [level, how many], counted from when the set before it opened.
+            // Measured (22 hours of simulated play): about 49 Gold Nuggets (7), 13 Rubies (8) and 1 Opal (9)
+            // an hour, so the sets take about 1, 2, 4, 8 and 16 hours of play. Higher levels are too rare to ask for.
+            unlocks: [
+                [[7, 40], [8, 12]],
+                [[8, 25], [9, 2]],
+                [[8, 50], [9, 4]],
+                [[8, 100], [9, 8]],
+                [[8, 200], [9, 16]]
             ]
         };
     </script>

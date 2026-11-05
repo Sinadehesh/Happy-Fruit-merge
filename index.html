@@ -211,6 +211,14 @@
         .set-gems img { width: 100%; aspect-ratio: 1; object-fit: contain; }
         .set-card.locked .set-gems img { filter: grayscale(0.85) brightness(0.75); opacity: 0.6; }
         .set-card .pill { margin-top: 8px; }
+        /* the gems to make to open a set: picture and count */
+        .need { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin-top: 8px; }
+        .need span { display: flex; align-items: center; gap: 4px; font-weight: 800; font-size: 15px; color: #6b3d1e; }
+        .need img { width: 34px; height: 34px; object-fit: contain; }
+        .need.later { opacity: 0.45; }
+        #go-unlock { margin-top: 10px; padding: 6px 8px 8px; border-radius: 12px; background: rgba(107, 61, 30, 0.1); }
+        .go-unlock-name { font-size: 13px; font-weight: 800; color: #8a5a35; }
+        #go-unlock .need { margin-top: 4px; }
         .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; justify-items: center; }
         .modes .wide { grid-column: 1 / -1; }   /* an odd last button sits in the middle */
         #car-styles { display: none; justify-content: center; gap: 6px; margin-top: 10px; }
@@ -345,6 +353,8 @@
             <div id="go-score">0</div>
             <div id="go-best"><svg><use href="#crown"/></svg><span id="go-best-val">0</span></div>
             <div id="go-new">New best score!</div>
+            <!-- gem sets (game.js): the next set's name and the gems still to make -->
+            <div id="go-unlock" style="display: none"></div>
             <!-- Android app only (ads.js): watch an ad to clear the top of the jar and keep going, once a game -->
             <div id="revive" style="display: none">
                 <div class="row"><button class="pill yellow" id="btn-revive">▶ Keep Going</button></div>

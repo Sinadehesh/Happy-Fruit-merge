@@ -96,15 +96,20 @@ const params = new URLSearchParams(location.search);
 // Rocks became its own game (gems/): old links go there
 if (!GAME.mode && params.get('mode') === 'rocks') location.replace('gems/' + (params.get('size') ? '?size=' + params.get('size') : ''));
 const MODE = GAME.mode || (MODES[params.get('mode')] ? params.get('mode') : 'fruit');
-// Gem sets (GAME.skins): the same game and saves with another look. The first is always open; the others
-// open by finishing Daily Challenges. The chosen one is remembered.
-const DAILIES_DONE = (() => { try { return (JSON.parse(localStorage.getItem(`${GAME.id}.daily`)) || {}).total || 0; } catch (e) { return 0; } })();
+// Gem sets (GAME.skins): the same game and saves with another look. The first is always open; each next one
+// opens by making the gems GAME.unlocks asks for (counted from the moment the set before it opened), in order.
+// The chosen set is remembered.
+const UNLOCK_KEY = `${GAME.id}.unlock`;
+const UNLOCK = (() => { try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)) || {}; } catch (e) { return {}; } })();
+UNLOCK.opened = UNLOCK.opened | 0;                                 // how many sets after the first are open
+UNLOCK.made = Array.isArray(UNLOCK.made) ? UNLOCK.made : [];      // gems made toward the next one, per level
 const SKINS = (GAME.skins || []).filter(sk => MODES[sk.id]);
+const skinOpen = i => i <= UNLOCK.opened;
 const SKIN = (() => {
     if (!SKINS.length) return null;
     let id = null;
     try { id = localStorage.getItem(`${GAME.id}.skin`); } catch (e) {}
-    return SKINS.find(sk => sk.id === id && DAILIES_DONE >= (sk.dailies || 0)) || SKINS[0];
+    return SKINS.find((sk, i) => sk.id === id && skinOpen(i)) || SKINS[0];
 })();
 const SPRITES = MODES[SKIN ? SKIN.id : MODE].sprites;
 // Daily Challenge (GAME.daily, opened with ?daily): one special game a day, see DAILY CHALLENGE below
@@ -342,6 +347,7 @@ Events.on(engine, 'beforeUpdate', () => {
             document.getElementById('gameover').classList.add('show');
             // in the app: once a game, the player may watch an ad to keep going
             document.getElementById('revive').style.display = !revived && Ads.canRevive() ? 'block' : 'none';
+            showNextSetProgress();
             Sound.play('gameOver');
             Haptics.play('gameOver');
         }
@@ -451,6 +457,7 @@ function handleCollisions(event) {
         dropsWithoutMerge = 0;
         const points = addScore(mergedTier);
         dailyOnMerge(mergedTier);
+        countForNextSet(mergedTier);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -711,8 +718,6 @@ function dailyCheck() {
     updateGoal();
     Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
     showToast(`Daily Challenge done! +${reward} Zap${reward > 1 ? 's' : ''}`);
-    const opened = SKINS.find(sk => sk.dailies === st.total);
-    if (opened) setTimeout(() => showToast(`New gems unlocked: ${opened.name}!`), 2600);
 }
 
 function updateGoal() {
@@ -809,16 +814,50 @@ function initZap() {
     setInterval(zapUI, 2000);   // the "AD" badge follows whether a rewarded ad is ready
 }
 
-// --- GEM SETS SCREEN ---
-// Settings > Gems: every set with its 12 gems, the one in use, and what opens the locked ones.
-// Picking a set reloads the page: the game in progress goes on with the new look.
+// --- GEM SETS ---
+// The next locked set (if its art is in the game) opens when enough of the gems it asks for have been made:
+// GAME.unlocks[k] lists [level, how many] for the k-th set after the first. Every game counts, daily ones too.
+// The Gems screen (Settings > Gems) and the game-over panel show what to make as pictures of the gems, with counts.
+const nextSetIndex = () => (UNLOCK.opened + 1 < SKINS.length && GAME.unlocks && GAME.unlocks[UNLOCK.opened]) ? UNLOCK.opened + 1 : -1;
+const needsFor = i => (GAME.unlocks && GAME.unlocks[i - 1]) || [];
+
+function countForNextSet(tier) {
+    const next = nextSetIndex();
+    if (next < 0) return;
+    const needs = needsFor(next);
+    if (!needs.some(([t]) => t === tier)) return;
+    UNLOCK.made[tier] = (UNLOCK.made[tier] | 0) + 1;
+    const done = needs.every(([t, n]) => (UNLOCK.made[t] | 0) >= n);
+    if (done) { UNLOCK.opened++; UNLOCK.made = []; }
+    try { localStorage.setItem(UNLOCK_KEY, JSON.stringify(UNLOCK)); } catch (e) {}
+    if (done) {
+        Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
+        showToast(`New gems unlocked: ${SKINS[next].name}!`);
+    }
+}
+
+// the gems to make, as pictures (in the look in use) with how many so far
+function needChips(i, counting) {
+    const row = document.createElement('div');
+    row.className = 'need' + (counting ? '' : ' later');
+    for (const [t, n] of needsFor(i)) {
+        const chip = document.createElement('span');
+        const im = document.createElement('img');
+        im.src = SPRITES[t];
+        im.alt = '';
+        chip.append(im, `${counting ? Math.min(UNLOCK.made[t] | 0, n) : 0}/${n}`);
+        row.append(chip);
+    }
+    return row;
+}
+
 const collection = document.getElementById('collection');
 function renderSets() {
-    const done = dailyState().total || 0;
     const list = document.getElementById('sets');
     list.innerHTML = '';
-    for (const sk of SKINS) {
-        const need = sk.dailies || 0, open = done >= need, inUse = sk === SKIN;
+    const next = nextSetIndex();
+    SKINS.forEach((sk, i) => {
+        const open = skinOpen(i), inUse = sk === SKIN;
         const card = document.createElement('div');
         card.className = 'set-card' + (open ? '' : ' locked') + (inUse ? ' in-use' : '');
         const head = document.createElement('div');
@@ -826,12 +865,13 @@ function renderSets() {
         const name = document.createElement('b');
         name.textContent = sk.name;
         const state = document.createElement('span');
-        state.textContent = inUse ? 'In use' : open ? '' : `Finish ${need} Daily Challenge${need > 1 ? 's' : ''} (${Math.min(done, need)}/${need})`;
+        state.textContent = inUse ? 'In use' : '';
         head.append(name, state);
         const gems = document.createElement('div');
         gems.className = 'set-gems';
         MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
         card.append(head, gems);
+        if (!open) card.append(needChips(i, i === next));
         if (open && !inUse) {
             const use = document.createElement('button');
             use.className = 'pill small green';
@@ -844,7 +884,19 @@ function renderSets() {
             card.append(use);
         }
         list.append(card);
-    }
+    });
+}
+// on the game-over panel: how far the next set is
+function showNextSetProgress() {
+    const box = document.getElementById('go-unlock');
+    const next = nextSetIndex();
+    box.innerHTML = '';
+    box.style.display = next < 0 ? 'none' : 'block';
+    if (next < 0) return;
+    const name = document.createElement('div');
+    name.className = 'go-unlock-name';
+    name.textContent = SKINS[next].name;
+    box.append(name, needChips(next, true));
 }
 function initSkins() {
     if (SKINS.length < 2) return;
