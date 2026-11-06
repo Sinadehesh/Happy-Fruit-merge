@@ -426,9 +426,13 @@ More ideas in the same format, if you want them: Crystal Fruit (fruit carved fro
 
 ## Fixes: what to make again
 
-What came out wrong is marked on `assets/templates/fix_overview.jpg`. For the four sets, edit the sheet you already have (upload it with the prompt) so the rest stays exactly the same. The Gem Mine parts and the feature graphic are new pictures, each with a template in `assets/templates/`.
+What came out wrong is marked on `assets/templates/fix_overview.jpg`. Every fix is a new picture made from scratch (no editing needed). When only one gem of a set was wrong, the picture has 4 versions of just that gem: pick the one that fits the set best, and it goes in that gem's place while the other 11 stay as they are.
 
-### Fix 1. Gem Mine parts: plank, peg and signpost (new picture, template `fix1_mine_parts.jpg`)
+Before sending a picture, check: the background is plain pure white, nothing touches anything else, the number of items is right, there is no writing, and no two items look alike.
+
+### Fix 1. Gem Mine parts: plank, peg and signpost (template `fix1_mine_parts.jpg`)
+
+The shelves, posts and slopes in the jar are drawn from one long plank repeated end to end, so the plank must be a long flat strip seen straight from the front (the first one came out as a short 3D block). The peg must be a perfect circle (the first one came out lumpy). The signpost goes at the bottom of the map, under "Deeper soon"; the game writes on it.
 
 ```
 A sprite sheet of 3 wooden game parts for a cute mobile puzzle game, on a plain pure white background, everything seen exactly from the front like flat 2D art, with no perspective.
@@ -444,40 +448,93 @@ STYLE: ultra-saturated candy style like a premium candy match-3 game: glossy, ju
 AVOID: 3D blocks, bricks or beams, perspective, a visible top or side face, a lumpy or egg-shaped peg, text or letters on the sign, numbers, logos, watermarks, shadows on the background, gradients or textures in the background, items touching each other, items cut off at the edges.
 ```
 
-### Fix 2. Cosmic Gems, item 5 (edit: upload the Cosmic Gems sheet)
+### Fix 2. Cosmic Gems, item 5: the moonstone crescent (4 versions)
+
+Items 4 and 5 of Cosmic Gems came out almost the same: two pale blue drops. In a merge game every level has to be recognised at a glance, or players drop gems on the wrong ones. Item 4 stays; item 5 becomes a white crescent moon.
 
 ```
-Edit this picture: change only item 5 (the first item in the second row) and keep everything else exactly the same.
-Replace it with a moonstone crescent: a fat, chunky crescent moon, a thick C shape with round plump tips, milky white with a soft glowing blue and pink shimmer, in exactly the same style, size and outline thickness as the other items. It must look clearly different from item 4 above it (the pale blue drop): white, and shaped like a moon.
+A sprite sheet with 4 versions of ONE candy-style gem for a mobile merge game, in a neat grid of 2 rows and 2 columns on a plain pure white background: the moonstone crescent from a "Cosmic Gems" collection.
+
+THE ITEM: a fat, chunky crescent moon, a thick C shape with round plump tips, milky pearl-white with a soft glowing blue and pink shimmer inside, a big glossy white highlight, and a thick smooth outline in soft steel-blue. Clearly a moon and clearly white, never a drop or a bean. The 4 versions differ only a little (the tilt of the crescent, the shimmer).
+
+STYLE: cute glossy cartoon candy style, exactly like a premium candy match-3 game: smooth juicy surfaces with light glowing through the edges, big bright white highlights, colors at maximum saturation, a thick smooth outline in a darker shade of the item's own color. A fat, chunky, rounded shape with no thin parts and no holes. No faces.
+
+LAYOUT: each version separate and centered in its own quarter of the picture, all about the same size, with clear empty space around them and nothing touching.
+
+AVOID: drop or teardrop shapes, beans, mostly blue colors, text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, items touching each other, items cut off at the edges.
 ```
 
-### Fix 3. Volcano Gems, item 11 (edit: upload the Volcano Gems sheet)
+### Fix 3. Volcano Gems, item 11: the phoenix egg (4 versions)
+
+Items 7 (fire opal) and 11 (phoenix egg) of Volcano Gems are both red eggs, and 11 is the second-best gem of the set, so it has to stand out. Item 7 stays; item 11 becomes a gold egg with feathers.
 
 ```
-Edit this picture: change only item 11 (the third item in the bottom row) and keep everything else exactly the same.
-Replace it with a phoenix egg: a glossy golden-yellow and orange egg wrapped in red-tipped, flame-shaped feathers, in exactly the same style and size as the other items. It must be mostly gold, so it looks clearly different from item 7 (the red egg in the middle row).
+A sprite sheet with 4 versions of ONE candy-style gem for a mobile merge game, in a neat grid of 2 rows and 2 columns on a plain pure white background: the phoenix egg from a "Volcano Gems" collection.
+
+THE ITEM: a glossy egg that is mostly bright GOLD and golden-yellow, wrapped in a few chunky flame-shaped feathers that are orange with red tips, glowing warm from inside, with a big glossy white highlight and a smooth outline in dark amber. Clearly gold, not red. The 4 versions differ only a little (the feather pattern).
+
+STYLE: glossy painted candy style, exactly like a premium candy match-3 game: juicy, wet-looking surfaces with light glowing through the edges, big bright white highlights, colors at maximum saturation, a smooth outline in a darker shade of the item's own color. A fat, chunky, rounded shape with no thin parts and no holes. No faces.
+
+LAYOUT: each version separate and centered in its own quarter of the picture, all about the same size, with clear empty space around them and nothing touching.
+
+AVOID: a red or mostly red egg, thin feathers sticking out, text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, items touching each other, items cut off at the edges.
 ```
 
-### Fix 4. Neon Nights, items 9 to 12 (edit: upload the Neon Nights sheet)
+### Fix 4. Neon Nights, items 9 to 12 (one picture with these 4)
+
+The last four Neon gems came out as round discs with a picture drawn inside (a cloud, an eye, a crown, a diamond in circles), so the four best levels all look like the same round coin. Items 1 to 8 are good: each is shaped like the thing itself, and these four must be too.
 
 ```
-Edit this picture: change only the four items in the bottom row and keep the top two rows exactly the same.
-In the top two rows, each item's own outline is its shape (an oval, a heart, a triangle and so on). Make the bottom row the same way, with no round discs or circles behind them: the item itself is the shape, a dark glossy glass body with a glowing neon tube along its edge, in the same size, spacing and style as the other eight.
-9. A mint-green neon cloud, fluffy and round
-10. A magenta neon cat's-eye gem: an almond shape with a glowing line across the middle
-11. A gold neon crown gem: a chunky crown with three rounded points, sitting on a round gem
-12. A rainbow neon diamond: a diamond shape outlined in every neon color, with a small soft glow (the final, priceless item)
+A sprite sheet of 4 neon gems for a mobile merge game, in a neat grid of 2 rows and 2 columns on a plain pure white background: the last four items of the "Neon Nights" collection.
+
+IMPORTANT: each item's outline IS its shape. No round discs, no circles, no frames or plates behind it. Each item is a SOLID filled shape: a body of dark glossy glass in a deep shade of its own color, with its edge and a few inner lines drawn as a thick glowing neon tube with a white-hot center.
+
+ITEMS, left to right, top to bottom:
+1. A mint-green neon cloud, fluffy and round, shaped like a cloud
+2. A magenta neon cat's-eye gem: an almond shape with a glowing line across the middle
+3. A gold neon crown gem: a chunky crown with three rounded points, sitting on a round gem
+4. A rainbow neon diamond: a classic diamond shape (flat top, pointed bottom) outlined in every neon color, with a small soft glow (the most precious item)
+
+STYLE: bright neon-sign style for a premium mobile game: electric glowing colors at maximum saturation, glossy white reflections on the dark glass, a tight glow close around each item (only a few pixels; only the rainbow diamond has a small soft glow). Fat, chunky, rounded shapes with no thin spikes and no holes. No faces.
+
+LAYOUT: each item separate and centered in its own quarter of the picture, all about the same size, with clear empty space around them and nothing touching.
+
+AVOID: round discs or coins, circles behind the shapes, outline-only shapes, a dark or black background, text, letters, logos, watermarks, faces, big soft glows, shadows on the background, items touching each other, items cut off at the edges.
 ```
 
-### Fix 5. Pixel Treasure, all 12 (edit first: upload the Pixel Treasure sheet)
+### Fix 5. Pixel Treasure, the whole set again (template `fix2_pixel_treasure.jpg`)
+
+The first sheet has a glitch effect: cyan and pink fringes along every edge and streaks sticking out sideways. In the jar those would show as colored lines around every item, and the streaks glue items together so they can't be cut out cleanly. The items themselves were good, so the list is the same.
 
 ```
-Edit this picture: keep every item exactly as it is, but remove the glitch effect. No cyan or pink color fringes along the edges, no horizontal streaks or lines sticking out of the items, and no sparkle marks touching them. Clean, crisp pixel art with plain pure white all around every item.
+A sprite sheet of 12 pixel-art treasures for a mobile merge game: the "Pixel Treasure" collection, in classic 16-bit video game style.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color. Each item is drawn with big, clearly visible square pixels, as if it was made on a 32 by 32 pixel grid and then scaled up: crisp hard pixel edges, no blur, no smooth gradients, no anti-aliasing. Clean pixel art only: NO glitch effect, NO color fringes, NO streaks.
+
+STYLE: bright, cheerful 16-bit retro game pixel art. A small bold palette per item (3 to 5 shades of its own color), a 1-pixel dark outline in a darker shade of the item's color, a few pure white pixels for shine, a little dithering only where needed. Chunky, rounded silhouettes, no thin parts and no holes. No faces.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable than the one before:
+1. A grey pixel pebble
+2. A copper coin, round, with a pixel shine
+3. A green slime drop, round and wobbly (no face)
+4. A blue mana potion in a round bottle with a cork
+5. A red pixel heart, the classic video game heart
+6. A shiny gold coin
+7. A purple magic orb on a small gold stand
+8. An emerald, the classic eight-sided pixel gem
+9. A ruby with one small pixel sparkle inside its outline
+10. A closed treasure chest, gold and brown
+11. A golden crown with three gems
+12. The Pixel Diamond, a big white and cyan pixel diamond, the final, priceless item
+
+AVOID: glitch effect, chromatic aberration, cyan or pink color fringes, RGB split, VHS or scan-line effects, streaks or motion lines, sparkles floating around or touching the items, a smooth or painted look, blur, soft gradients, anti-aliased edges, text, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
 ```
 
-If the edit doesn't come out clean, make the sheet again with prompt 7 above (template `fix2_pixel_treasure.jpg`), adding this to its AVOID line: `glitch effect, chromatic aberration, cyan or pink color fringes, RGB split, VHS effect, streaks or motion lines, sparkles touching the items`.
+### Fix 6. Google Play feature graphic (template `fix3_feature_graphic.jpg`)
 
-### Fix 6. Google Play feature graphic (new picture, template `fix3_feature_graphic.jpg`)
+Google Play shows this wide banner at the top of the game's store page. The left third stays empty so the GEM JAR title can go there (added in code, so the letters come out right).
 
 ```
 A wide banner picture for a mobile game's store page, exactly 1024 x 500 pixels, for a cute gem merge puzzle game called Gem Jar. On the right two thirds: a big glossy glass jar filled with colorful candy-style gems (green, pink, gold, blue, purple, and one sparkling diamond on top), a few gems spilling out at the bottom, with sparkles and soft light around it. The left third is a calm, softly glowing purple area with nothing in it, where the game's title will be added later. Background: a deep amethyst-purple to violet gradient with soft sparkles.
@@ -486,8 +543,6 @@ STYLE: ultra-saturated candy style like a premium candy match-3 game: glossy, ju
 
 AVOID: any text, letters, titles or logos, watermarks, people, hands, faces, dull colors, anything in the left third.
 ```
-
-I'll put the GEM JAR title on it myself, so the letters come out right.
 
 ## Blast animation (merge burst, frame by frame)
 
