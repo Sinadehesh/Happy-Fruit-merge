@@ -6,3 +6,6 @@ android/.kotlin/
 android/local.properties
 *.jks
 *.keystore
+
+# Python's compiled files (from the tools)
+__pycache__/

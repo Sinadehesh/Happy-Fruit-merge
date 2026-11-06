@@ -1,6 +1,5 @@
-# Stand-in art for Gem Mine (assets/mine), drawn in code: the wood strip for shelves and posts and the peg
-# (until their real art is redone), and the template sheets that show where each piece of art goes.
-# The crates, the pickaxe icon, the stage buttons, the lantern and the map are real art now (tools/cut_mine_art.py).
+# The template sheets for the Gem Mine art (assets/mine/sheets), with stand-in drawings that show where each piece
+# goes. The game's Gem Mine art is all real art now, cut by tools/cut_mine_art.py.
 # Candy style: warm glossy wood, chocolate outline.
 #   python3 tools/make_mine_art.py
 import math, pathlib
@@ -238,10 +237,7 @@ def save(im, name):
     im.save(OUT / name)
     print('wrote', (OUT / name).relative_to(ROOT), im.size)
 
-# the crates, the pickaxe icon, the stage buttons, the lantern and the map art now come from the real art
-# (tools/cut_mine_art.py); the plank and the peg are still drawn here until their art is redone
-save(wood_strip(), 'beam.png')
-save(peg(), 'peg.png')
+# all the Gem Mine art is real art now (tools/cut_mine_art.py); the drawings above only fill the templates below
 
 # ---------- template sheets: what to make, where each piece goes ----------
 def font(size):

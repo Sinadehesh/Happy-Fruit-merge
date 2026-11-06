@@ -451,6 +451,9 @@
         .map-title img { height: 44px; max-width: 100%; object-fit: contain; }
         .map-stars { flex: none; display: flex; align-items: center; gap: 4px; padding: 4px 13px; border-radius: 17px; background: rgba(0, 0, 0, 0.35); font-weight: 800; font-size: 15px; }
         .map-stars img { width: 21px; height: 21px; object-fit: contain; }
+        #map-next { position: relative; z-index: 3; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 5px 13px 7px; background: rgba(28, 18, 54, 0.92); font-weight: 800; font-size: 13px; color: var(--gear); }
+        #map-next img { width: 18px; height: 18px; object-fit: contain; }
+        #map-next img.big { width: 34px; height: 34px; margin-left: 4px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
         #map-scroll { position: relative; flex: 1; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
         /* the mine shaft (assets/mine/map_bg.jpg repeats top to bottom), under the entrance picture */
         #map-path { position: relative; max-width: 480px; margin: 0 auto; overflow: hidden; background: #2b1810 url('assets/mine/map_bg.jpg') center top / 100% auto repeat-y; }
@@ -491,9 +494,12 @@
         .node-stars { position: absolute; left: 50%; bottom: -17px; transform: translateX(-50%); display: flex; }
         .node-stars img { width: 19px; height: 19px; object-fit: contain; filter: grayscale(1) brightness(0.55); }
         .node-stars img.on { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5)); }
-        .mine-soon { position: absolute; left: 50%; z-index: 3; width: 68%; transform: translateX(-50%); padding: 13px; box-sizing: border-box; border-radius: 16px; text-align: center; background: rgba(0, 0, 0, 0.4); border: 2px dashed rgba(255, 255, 255, 0.3); }
-        .mine-soon b { display: block; font-size: 18px; color: #ffd36b; }
-        .mine-soon span { font-size: 12px; font-weight: 600; color: var(--gear); }
+        /* the signpost at the bottom of the map (assets/mine/sign.png): its board is from 13% to 60% of the picture */
+        .mine-soon { position: absolute; left: 50%; z-index: 3; width: min(64%, 300px); transform: translateX(-50%); text-align: center; pointer-events: none; }
+        .mine-soon img { display: block; width: 100%; filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.45)); }
+        .mine-soon .soon-text { position: absolute; left: 9%; right: 9%; top: 15%; height: 42%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+        .mine-soon b { display: block; font-size: 19px; color: #fff; text-shadow: 0 2px 0 #6b3410, 0 0 4px rgba(90, 40, 10, 0.7); }
+        .mine-soon span { font-size: 11px; font-weight: 700; line-height: 1.25; color: #fff4dc; text-shadow: 0 1px 0 #6b3410; }
         #map-toast { position: absolute; left: 50%; bottom: 8%; z-index: 5; padding: 8px 18px; border-radius: 18px; background: rgba(20, 12, 50, 0.9); font-weight: 800; font-size: 14px; white-space: nowrap; opacity: 0; pointer-events: none; transform: translateX(-50%); }
         #map-toast.show { animation: toast 2.4s ease forwards; }
         /* the stage card */
@@ -722,6 +728,8 @@
             <div class="map-title"><img src="assets/fx/word_gemmine.png" alt="Gem Mine"></div>
             <div class="map-stars"><img src="assets/ui/icon_star.png" alt=""><span id="map-stars">0/60</span></div>
         </div>
+        <!-- the next gem set that opens with Gem Mine stars -->
+        <div id="map-next" style="display: none"></div>
         <div id="map-scroll"><div id="map-path"></div></div>
         <div id="map-toast"></div>
     </div>
@@ -810,7 +818,14 @@
                 { id: 'ocean', name: 'Ocean Jewels' },
                 { id: 'royal', name: 'Royal Treasury' },
                 { id: 'cosmic', name: 'Cosmic Gems' },
-                { id: 'volcano', name: 'Volcano Gems' }
+                { id: 'volcano', name: 'Volcano Gems' },
+                // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
+                // then more and more 3-star clears
+                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18 },
+                { id: 'odd', name: 'Odd Shapes', mineStars: 30 },
+                { id: 'cyber', name: 'Cyber Circuit', mineStars: 40 },
+                { id: 'neon', name: 'Neon Nights', mineStars: 48 },
+                { id: 'pets', name: 'Gem Pets', mineStars: 55 }
             ],
             // what to make to open each next set: [level, how many], counted from when the set before it opened.
             // Measured (22 hours of simulated play): about 49 Gold Nuggets (7), 13 Rubies (8) and 1 Opal (9)

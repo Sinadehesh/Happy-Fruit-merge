@@ -280,7 +280,7 @@ AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on t
 
 ## More gem sets: neon, pixel, odd shapes and strange ideas
 
-Five more looks, each a full set of 12 merge levels like the ones above. They are cut the same way (one sheet each, `python3 tools/cut_gem_set.py`), so the layout rules matter most: plain pure white background, 3 rows of 4, nothing touching, every item a different shape and a different main color.
+Five more looks, each a full set of 12 merge levels like the ones above. All five are in the game now, opening with stars in the Gem Mine (Pixel Treasure 18, Odd Shapes 30, Cyber Circuit 40, Neon Nights 48, Gem Pets 55). They are cut the same way (one sheet each, `python3 tools/cut_sets.py`), so the layout rules matter most: plain pure white background, 3 rows of 4, nothing touching, every item a different shape and a different main color.
 
 ### 6. Neon Nights
 
@@ -426,7 +426,7 @@ More ideas in the same format, if you want them: Crystal Fruit (fruit carved fro
 
 ## Fixes: what to make again
 
-What came out wrong is marked on `assets/templates/fix_overview.jpg`. Every fix is a new picture made from scratch (no editing needed). When only one gem of a set was wrong, the picture has 4 versions of just that gem: pick the one that fits the set best, and it goes in that gem's place while the other 11 stay as they are.
+All six are done and in the game (the pictures are kept in `assets/fixes`). What had come out wrong is marked on `assets/templates/fix_overview.jpg`. Every fix is a new picture made from scratch (no editing needed). When only one gem of a set was wrong, the picture has 4 versions of just that gem: pick the one that fits the set best, and it goes in that gem's place while the other 11 stay as they are.
 
 Before sending a picture, check: the background is plain pure white, nothing touches anything else, the number of items is right, there is no writing, and no two items look alike.
 

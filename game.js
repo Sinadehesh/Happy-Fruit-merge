@@ -109,6 +109,37 @@ const MODES = {
         sprites: ['01_pumice', '02_obsidian', '03_sulfur', '04_garnet', '05_blue_fire', '06_peridot', '07_fire_opal', '08_magma_glass',
             '09_sunstone', '10_molten_gold', '11_phoenix_egg', '12_dragons_eye'].map(n => `assets/volcano/${n}.png`)
     },
+    // Gem Jar's sets that open with stars in the Gem Mine (GAME.skins mineStars)
+    'pixel': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_pebble', '02_copper_coin', '03_slime', '04_potion', '05_heart', '06_gold_coin', '07_magic_orb', '08_emerald',
+            '09_ruby', '10_chest', '11_crown', '12_pixel_diamond'].map(n => `assets/pixel/${n}.png`)
+    },
+    'odd': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_pillow', '02_cube', '03_pyramid', '04_cloud', '05_mushroom', '06_drop', '07_spiral_shell', '08_clover',
+            '09_spinning_top', '10_bell', '11_infinity', '12_crystal_planet'].map(n => `assets/odd/${n}.png`)
+    },
+    'cyber': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_circuit_stone', '02_chip', '03_power_cell', '04_gear', '05_led_dome', '06_data_crystal', '07_energy_orb', '08_holo_cube',
+            '09_robot_heart', '10_chrome_star', '11_processor', '12_quantum_diamond'].map(n => `assets/cyber/${n}.png`)
+    },
+    'neon': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_pebble', '02_heart', '03_triangle', '04_hexagon', '05_drop', '06_moon', '07_star', '08_rhombus',
+            '09_cloud', '10_cats_eye', '11_crown', '12_rainbow_diamond'].map(n => `assets/neon/${n}.png`)
+    },
+    'pets': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_bunny', '02_chick', '03_duckling', '04_piglet', '05_frog', '06_hamster', '07_fox', '08_kitten',
+            '09_whale', '10_lion_cub', '11_unicorn', '12_baby_dragon'].map(n => `assets/pets/${n}.png`)
+    },
     'sweets': {
         background: '#fdf2f8',
         // like rocks, sweets fill most of their picture
@@ -133,7 +164,8 @@ const UNLOCK = (() => { try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)
 UNLOCK.opened = UNLOCK.opened | 0;                                 // how many sets after the first are open
 UNLOCK.made = Array.isArray(UNLOCK.made) ? UNLOCK.made : [];      // gems made toward the next one, per level
 const SKINS = (GAME.skins || []).filter(sk => MODES[sk.id]);
-const skinOpen = i => i <= UNLOCK.opened;
+// (a set with `mineStars` opens with that many stars in the Gem Mine instead, mine.js)
+const skinOpen = i => SKINS[i] && SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars : i <= UNLOCK.opened;
 const SKIN = (() => {
     if (!SKINS.length) return null;
     let id = null;
@@ -977,10 +1009,18 @@ function countForNextSet(tier) {
     }
 }
 
-// the gems to make, as pictures (in the look in use) with how many so far
+// the gems to make, as pictures (in the look in use) with how many so far; or, for a set that opens in the
+// Gem Mine, the pickaxe and the stars so far
 function needChips(i, counting) {
     const row = document.createElement('div');
-    row.className = 'need' + (counting ? '' : ' later');
+    row.className = 'need' + (counting || SKINS[i].mineStars ? '' : ' later');
+    if (SKINS[i].mineStars) {
+        const chip = document.createElement('span');
+        for (const src of ['assets/mine/icon_pickaxe.png', 'assets/ui/icon_star.png']) { const im = document.createElement('img'); im.src = src; im.alt = ''; chip.append(im); }
+        chip.append(`${Math.min(Mine.totalStars(), SKINS[i].mineStars)}/${SKINS[i].mineStars}`);
+        row.append(chip);
+        return row;
+    }
     for (const [t, n] of needsFor(i)) {
         const chip = document.createElement('span');
         const im = document.createElement('img');

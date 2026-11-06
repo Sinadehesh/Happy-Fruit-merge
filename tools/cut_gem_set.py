@@ -1,3 +1,4 @@
+# Superseded by tools/cut_sets.py (which cuts every set, with the clean cut in tools/gemcut.py: no white rim or specks).
 # Cuts a 12-gem set sheet (3 rows of 4 on a white background, made from the prompts in ASSET_PROMPTS.md)
 # into assets/<set>/01_<name>.png ... 12_<name>.png, 256x256 transparent PNGs, and keeps the sheet there as
 # source_sheet.webp. It finds the 12 gems itself (reading order), cuts each with tools/cut_light.py (any item

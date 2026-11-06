@@ -1,46 +1,46 @@
-# Cuts the Gem Mine art from the sheets in assets/mine/source (made from the prompts in ASSET_PROMPTS.md)
-# into the files the game uses in assets/mine:
-#   sheet1_crates.webp       -> crate.png, crate_strong.png, crate_cracked.png, splinter_1..6.png
-#   sheet2_jar_parts.webp    -> icon_pickaxe.png, lantern.png   (its plank and peg didn't fit: see ASSET_PROMPTS.md)
-#   sheet3_stage_buttons.webp-> node_open.png, node_current.png, node_locked.png, node_boss.png
-#   map_background.webp      -> map_bg.jpg  (made to repeat top to bottom without a visible seam)
-#   mine_entrance.webp       -> map_entrance.jpg
+# Cuts the Gem Mine art from the sheets in assets/mine/source and assets/fixes (made from the prompts in
+# ASSET_PROMPTS.md) into the files the game uses in assets/mine, with the clean cut in tools/gemcut.py
+# (no white rim, no white specks):
+#   sheet1_crates.webp        -> crate.png, crate_strong.png, crate_cracked.png, splinter_1..6.png
+#   sheet2_jar_parts.webp     -> icon_pickaxe.png, lantern.png
+#   sheet3_stage_buttons.webp -> node_open.png, node_current.png, node_locked.png, node_boss.png
+#   map_background.webp       -> map_bg.jpg  (made to repeat top to bottom without a visible seam)
+#   mine_entrance.webp        -> map_entrance.jpg
+#   fixes/fix1_mine_parts.webp-> beam.png (the plank's wood, repeating end to end), peg.png, sign.png
 #   python3 tools/cut_mine_art.py
-import pathlib
+import sys, pathlib
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 from scipy import ndimage
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import gemcut
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC, OUT = ROOT / 'assets' / 'mine' / 'source', ROOT / 'assets' / 'mine'
 
 
-def cut(rgb, count=1, keep_holes=True):
-    """the `count` biggest items on a white background, as tight RGBA crops in reading order"""
-    a = np.asarray(rgb.convert('RGB'))
-    ai = a.astype(int)
-    light = (ai.min(axis=2) > 215) & ((ai.max(axis=2) - ai.min(axis=2)) < 35)
-    lab, _ = ndimage.label(light)
-    edge = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
-    obj = ~np.isin(lab, list(edge))
-    if not keep_holes:   # enclosed white gaps are background too
-        white = (ai.min(axis=2) > 232) & ((ai.max(axis=2) - ai.min(axis=2)) < 25) & obj
-        hl, hn = ndimage.label(white)
-        sizes = ndimage.sum(white, hl, range(1, hn + 1))
-        obj &= ~np.isin(hl, [i + 1 for i in range(hn) if sizes[i] >= 40])
-    obj = ndimage.binary_opening(obj, iterations=1)
-    items, n = ndimage.label(ndimage.binary_dilation(obj, iterations=2))
-    sizes = ndimage.sum(obj, items, range(1, n + 1))
+def items(rgb, count):
+    """boxes of the `count` biggest items on a white background, in reading order"""
+    a = np.asarray(rgb.convert('RGB')).astype(int)
+    ink = (a.min(axis=2) < 238) | (a.max(axis=2) - a.min(axis=2) > 18)
+    lab, n = ndimage.label(ndimage.binary_dilation(ink, iterations=3))
+    sizes = ndimage.sum(ink, lab, range(1, n + 1))
     keep = sorted(range(1, n + 1), key=lambda i: -sizes[i - 1])[:count]
-    boxes = {i: ndimage.find_objects(items)[i - 1] for i in keep}
-    keep.sort(key=lambda i: (boxes[i][0].start // 120, boxes[i][1].start))   # rows, then left to right
-    out = []
-    for i in keep:
-        m = ndimage.binary_erosion(obj & (items == i), iterations=1)
-        alpha = np.array(Image.fromarray(m.astype(np.uint8) * 255).filter(ImageFilter.GaussianBlur(0.7)))
-        im = Image.fromarray(np.dstack([a, alpha]), 'RGBA')
-        out.append(im.crop(Image.fromarray(alpha).getbbox()))
-    return out
+    boxes = [ndimage.find_objects(lab)[i - 1] for i in keep]
+    boxes.sort(key=lambda b: (b[0].start // 120, b[1].start))   # rows, then left to right
+    H, W = a.shape[:2]
+    return [(max(0, b[1].start - 6), max(0, b[0].start - 6), min(W, b[1].stop + 6), min(H, b[0].stop + 6)) for b in boxes]
+
+
+def cut(rgb, count=1):
+    """the `count` biggest items, each cut cleanly and cropped tight (RGBA, at the sheet's own size)"""
+    return [gemcut.square(gemcut_rgba(rgb, box), size=0) for box in items(rgb, count)]
+
+
+def gemcut_rgba(rgb, box):
+    cell = np.asarray(rgb.convert('RGB')).astype(float)[box[1]:box[3], box[0]:box[2]]
+    col, alpha = gemcut.unmix(cell, gemcut.solid_shape(cell))
+    return np.dstack([col, alpha * 255]).astype(np.uint8)
 
 
 def quadrants(path):
@@ -56,6 +56,29 @@ def fit(im, canvas, body, body_size, centre=(0.5, 0.5)):
     sq = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
     sq.alpha_composite(im, (round(canvas * centre[0] - im.width / 2), round(canvas * centre[1] - im.height / 2)))
     return sq
+
+
+def seamless(img, K):
+    """make a picture repeat from top to bottom without a seam: its bottom K rows and top K rows are overlapped and
+    joined along the line where they look most alike (a minimum-error cut, found column by column), so nothing is
+    cut in half. Returns a picture K rows shorter."""
+    H, W, _ = img.shape
+    B, T = img[H - K:], img[:K]                # the rows that follow the end, and the first rows
+    cost = ((B - T) ** 2).sum(axis=2)
+    back = np.zeros((K, W), int)
+    for x in range(1, W):                      # the cut moves at most a row per column
+        prev = cost[:, x - 1]
+        options = np.stack([np.roll(prev, 1), prev, np.roll(prev, -1)])
+        options[0, 0] = options[2, -1] = np.inf
+        pick = options.argmin(axis=0)
+        cost[:, x] += options[pick, np.arange(K)]
+        back[:, x] = np.arange(K) + (pick - 1)
+    cut_row = np.zeros(W, int)
+    cut_row[-1] = int(cost[:, -1].argmin())
+    for x in range(W - 1, 0, -1):
+        cut_row[x - 1] = back[cut_row[x], x]
+    blend = np.clip((np.arange(K)[:, None] - cut_row[None, :]) / 6 + 0.5, 0, 1)[..., None]   # a soft edge along the cut
+    return np.concatenate([B * (1 - blend) + T * blend, img[K:H - K]], axis=0)
 
 
 def save(im, name, **kw):
@@ -93,32 +116,28 @@ for name, quad in zip(('open', 'current', 'locked', 'boss'), q):
     sq.alpha_composite(b, (round(96 - b.width / 2), round(96 - cy * k)))
     save(sq, f'node_{name}.png', optimize=True)
 
-# ---------- the map background: made to repeat from top to bottom ----------
-# The bottom strip of the picture and the top strip are overlapped and joined along the line where they
-# look most alike (a minimum-error cut, found column by column), so nothing is cut in half and no seam shows.
+# ---------- the map background, made to repeat from top to bottom ----------
 img = np.asarray(Image.open(SRC / 'map_background.webp').convert('RGB')).astype(float)
-H, W, _ = img.shape
-K = 240                                        # overlap rows
-B, T = img[H - K:], img[:K]                    # the rows that follow the tile's end, and the tile's first rows
-err = ((B - T) ** 2).sum(axis=2)
-cost = err.copy()
-back = np.zeros((K, W), int)
-for x in range(1, W):                          # dynamic programming: the cut moves at most a row per column
-    prev = cost[:, x - 1]
-    options = np.stack([np.roll(prev, 1), prev, np.roll(prev, -1)])
-    options[0, 0] = options[2, -1] = np.inf
-    pick = options.argmin(axis=0)
-    cost[:, x] += options[pick, np.arange(K)]
-    back[:, x] = np.arange(K) + (pick - 1)
-cut_row = np.zeros(W, int)
-cut_row[-1] = int(cost[:, -1].argmin())
-for x in range(W - 1, 0, -1):
-    cut_row[x - 1] = back[cut_row[x], x]
-rows = np.arange(K)[:, None]
-blend = np.clip((rows - cut_row[None, :]) / 6 + 0.5, 0, 1)[..., None]   # a soft 6-row edge along the cut
-top = B * (1 - blend) + T * blend              # above the cut: what follows the tile's end; below: the top rows
-tile = np.concatenate([top, img[K:H - K]], axis=0)
-save(Image.fromarray(np.clip(tile, 0, 255).astype(np.uint8)), 'map_bg.jpg', quality=86)
+save(Image.fromarray(np.clip(seamless(img, 240), 0, 255).astype(np.uint8)), 'map_bg.jpg', quality=86)
 
 # ---------- the mine's entrance, the top of the map ----------
 save(Image.open(SRC / 'mine_entrance.webp').convert('RGB'), 'map_entrance.jpg', quality=88)
+
+# ---------- the plank, the peg and the signpost (made again, assets/fixes) ----------
+fix = Image.open(ROOT / 'assets' / 'fixes' / 'fix1_mine_parts.webp').convert('RGB')
+plank_box, *rest = sorted(items(fix, 3), key=lambda b: -(b[2] - b[0]))   # the plank is the widest
+peg_box, sign_box = sorted(rest, key=lambda b: b[0])                        # the peg is on the left, the sign on the right
+a = np.asarray(fix).astype(float)
+x0, y0, x1, y1 = plank_box
+mid = a[y0:y1, (x0 + x1) // 2]
+dark = np.nonzero(mid.max(axis=1) < 110)[0] + y0           # the plank's outline, top and bottom, down its middle
+top_in = int(dark[dark < (y0 + y1) / 2].max()) + 3
+bot_in = int(dark[dark > (y0 + y1) / 2].min()) - 3
+strip = a[top_in:bot_in, x0 + 160:x1 - 160]                 # the wood inside the outline, away from the rounded ends
+strip = seamless(strip.transpose(1, 0, 2), int(strip.shape[1] * 0.25)).transpose(1, 0, 2)   # repeats end to end
+wood = Image.fromarray(np.clip(strip, 0, 255).astype(np.uint8))
+save(wood.resize((round(wood.width * 48 / wood.height), 48), Image.LANCZOS), 'beam.png', optimize=True)
+save(gemcut.square(gemcut_rgba(fix, peg_box), size=96), 'peg.png', optimize=True)
+sign = gemcut.square(gemcut_rgba(fix, sign_box), size=0)
+sign.thumbnail((320, 320), Image.LANCZOS)
+save(sign, 'sign.png', optimize=True)

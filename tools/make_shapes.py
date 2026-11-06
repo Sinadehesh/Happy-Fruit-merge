@@ -1,4 +1,4 @@
-# Usage: python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png assets/sweets/[01]*.png assets/crystal/[01]*.png assets/ocean/[01]*.png assets/royal/[01]*.png assets/cosmic/[01]*.png assets/volcano/[01]*.png
+# Usage: python3 tools/make_shapes.py shapes.js assets/farm/[01]*.png assets/barn/[01]*.png assets/cars*/[01]*.png assets/rocks/[01]*.png assets/sweets/[01]*.png assets/crystal/[01]*.png assets/ocean/[01]*.png assets/royal/[01]*.png assets/cosmic/[01]*.png assets/volcano/[01]*.png assets/pixel/[01]*.png assets/odd/[01]*.png assets/cyber/[01]*.png assets/neon/[01]*.png assets/pets/[01]*.png
 # Trace a convex outline of each sprite (largest opaque blob, so sparkles/glow are ignored)
 import sys, json, glob
 import numpy as np

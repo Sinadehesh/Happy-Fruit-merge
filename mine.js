@@ -153,7 +153,7 @@ const Mine = (() => {
         g.arcTo(x, y, x + w, y, r);
         g.closePath();
     }
-    // the beam's picture: the wood strip repeated along it, a chocolate outline, a shine and two nails
+    // the beam's picture: the plank's wood (assets/mine/beam.png) repeated along it, with a chocolate outline
     function beamTexture(b) {
         const pad = 3, len = b.len, th = BEAM;
         const c = document.createElement('canvas');
@@ -176,18 +176,6 @@ const Mine = (() => {
         g.lineWidth = 2.5;
         g.strokeStyle = '#4a210f';
         g.stroke();
-        g.strokeStyle = 'rgba(255, 244, 214, 0.65)';
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(pad + th / 2, pad + 4);
-        g.lineTo(pad + len - th / 2, pad + 4);
-        g.stroke();
-        for (const nx of [pad + th * 0.9, pad + len - th * 0.9]) {
-            g.fillStyle = '#5f5060';
-            g.beginPath();
-            g.arc(nx, pad + th / 2, 2.6, 0, Math.PI * 2);
-            g.fill();
-        }
         b.render.sprite.texture = c.toDataURL();
         b.render.sprite.xScale = b.render.sprite.yScale = 1;
     }
@@ -360,8 +348,10 @@ const Mine = (() => {
         box.style.display = win ? 'flex' : 'none';
         [...box.children].forEach(st => st.classList.remove('on'));
         if (win) {
-            const got = starsFor(dropsLeft), before = starsOf(N);
+            const got = starsFor(dropsLeft), before = starsOf(N), totalBefore = totalStars();
             if (got > before) { progress.stars[N - 1] = got; saveProgress(); }
+            // gem sets that open with Gem Mine stars (GAME.skins mineStars) and just did
+            const opened = (GAME.skins || []).filter(sk => sk.mineStars && totalBefore < sk.mineStars && totalStars() >= sk.mineStars && MODES[sk.id]);
             [...box.children].forEach((st, i) => {
                 if (i < got) setTimeout(() => { st.classList.add('on'); Sound.play('star', i); Haptics.play('merge', 4 + i, 0); }, 450 + i * 380);
             });
@@ -374,6 +364,8 @@ const Mine = (() => {
                 if (b.stars) { addStars(b.stars); r.push(['assets/ui/icon_star.png', `×${b.stars}`]); }
                 if (b.theme) r.push(['theme', 'Copper colours']);
             }
+            for (const sk of opened) r.push([MODES[sk.id].sprites[11], `New gems: ${sk.name}!`]);
+            if (opened.length) setTimeout(() => Sound.play('maxMerge', () => Haptics.play('maxMerge')), 1700);
             if (r.length) {
                 reward.style.display = 'flex';
                 for (const [src, text] of r) {
@@ -479,7 +471,7 @@ const Mine = (() => {
         const w = path.clientWidth || Math.min(innerWidth, 480);
         trail0 = Math.round(w * 0.6);
         top0 = Math.round(w * 0.72 + 55);
-        const height = nodeY(STAGES.length) + 190;
+        const height = nodeY(STAGES.length) + 340;   // room for the signpost at the bottom
         path.style.height = height + 'px';
         // the entrance: a mine in a grassy hill, its sign saying what it is
         const gate = document.createElement('div');
@@ -533,7 +525,7 @@ const Mine = (() => {
         const soon = document.createElement('div');
         soon.className = 'mine-soon';
         soon.style.top = (nodeY(STAGES.length) + 30) + 'px';
-        soon.innerHTML = '<b>Deeper soon</b><span>More of the mine opens in the next update</span>';
+        soon.innerHTML = '<img src="assets/mine/sign.png" alt=""><div class="soon-text"><b>Deeper soon</b><span>More of the mine opens in the next update</span></div>';
         path.append(soon);
         lantern(path, '12%', nodeY(STAGES.length) + 10, 3);
         mapBuilt = true;
@@ -557,6 +549,12 @@ const Mine = (() => {
             if (s > 0) for (let k = 0; k < 3; k++) st.append(img('assets/ui/icon_star.png', k < s ? 'on' : ''));
         });
         $('map-stars').textContent = `${totalStars()}/${STAGES.length * 3}`;
+        // the next gem set that opens with stars here: how many it needs, and its best gem
+        const next = (GAME.skins || []).find(sk => sk.mineStars && totalStars() < sk.mineStars && MODES[sk.id]);
+        const box = $('map-next');
+        box.innerHTML = '';
+        box.style.display = next ? '' : 'none';
+        if (next) box.append(img('assets/ui/icon_star.png'), `${totalStars()}/${next.mineStars} opens`, img(MODES[next.id].sprites[11], 'big'), next.name);
     }
     function mapToast(text) {
         const t = $('map-toast');
