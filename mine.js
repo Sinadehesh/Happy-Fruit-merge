@@ -16,7 +16,7 @@ const Mine = (() => {
     const KEY = `${GAME.id}.mine`;
     const MAP_NEXT = `${GAME.id}.mapNext`, MENU_NEXT = `${GAME.id}.menuNext`;
     const ART = { crate: 'assets/mine/crate.png', strong: 'assets/mine/crate_strong.png', cracked: 'assets/mine/crate_cracked.png',
-        beam: 'assets/mine/beam.png', peg: 'assets/mine/peg.png', icon: 'assets/mine/icon_pickaxe.png' };
+        beam: 'assets/mine/beam.png', peg: 'assets/mine/peg.png', icon: 'assets/mine/icon_pickaxe.png', lantern: 'assets/mine/lantern.png' };
     const STAR_XP = 1000;    // XP for each new star
     const S = 60;            // crate size
     const BEAM = 16;         // beam thickness
@@ -212,7 +212,7 @@ const Mine = (() => {
         return b;
     }
     function addCrate(x, y, hp, a) {
-        const k = S * 1.06 / 128;
+        const k = S * 1.04 / 150;   // the crate pictures: the crate is 150 px tall on a 172 px square
         const c = Matter.Bodies.rectangle(x, y, S, S, {
             isStatic: true, angle: a || 0, chamfer: { radius: 7 }, friction: 0.5,
             render: { sprite: { texture: hp > 1 ? ART.strong : ART.crate, xScale: k, yScale: k } }
@@ -466,42 +466,42 @@ const Mine = (() => {
     }
 
     // ---------- the map: down into the mine ----------
-    const ROW = 118, TOP = 210;
-    const nodeX = i => 50 + 27 * Math.sin(i * 1.1 + 0.4);   // % across, a gentle zigzag
-    const nodeY = i => TOP + i * ROW;
+    // the entrance picture is square and as wide as the map: the trail leaves the tunnel at 60% of its
+    // height, and the first stage sits on the earth below the grass (which ends at 67%)
+    const ROW = 118;
+    let top0 = 210, trail0 = 90;
+    const nodeX = i => 50 + 17 * Math.sin(i * 1.1 + 0.4);   // % across, a gentle zigzag along the shaft's middle
+    const nodeY = i => top0 + i * ROW;
     let mapBuilt = false;
     function buildMap() {
         const path = $('map-path');
         path.innerHTML = '';
+        const w = path.clientWidth || Math.min(innerWidth, 480);
+        trail0 = Math.round(w * 0.6);
+        top0 = Math.round(w * 0.72 + 55);
         const height = nodeY(STAGES.length) + 190;
         path.style.height = height + 'px';
-        // decor: gems in the rock walls, wooden frames every 5 stages, depth signs
-        const rnd = seededRandom(4242);
-        for (let i = 0; i < STAGES.length * 1.6; i++) {
-            const left = rnd() < 0.5;
-            const g = img(SPRITES[1 + Math.floor(rnd() * 9)], 'wall-gem');
-            g.style.cssText = `${left ? 'left' : 'right'}:${2 + rnd() * 9}%;top:${TOP - 40 + rnd() * (height - TOP)}px;width:${22 + rnd() * 26}px;transform:rotate(${rnd() * 60 - 30}deg)`;
-            path.append(g);
-        }
+        // the entrance: a mine in a grassy hill, its sign saying what it is
+        const gate = document.createElement('div');
+        gate.className = 'mine-gate';
+        gate.innerHTML = '<img src="assets/mine/map_entrance.jpg" alt=""><span>GEM<br>MINE</span>';
+        path.append(gate);
+        // a depth sign every 5 stages (10 m a stage)
         for (let i = 5; i <= STAGES.length; i += 5) {
-            const y = nodeY(i - 1) + ROW / 2;
-            const frame = document.createElement('div');
-            frame.className = 'mine-frame';
-            frame.style.top = y + 'px';
-            const depth = document.createElement('span');
-            depth.className = 'depth';
-            depth.textContent = `${i * 10} m`;
-            frame.append(depth);
-            path.append(frame);
+            const sign = document.createElement('div');
+            sign.className = 'depth-sign';
+            sign.style.top = (nodeY(i - 1) + ROW / 2) + 'px';
+            sign.textContent = `${i * 10} m`;
+            path.append(sign);
         }
         // the trail between the stages
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'map-trail');
         svg.setAttribute('viewBox', `0 0 100 ${height}`);
         svg.setAttribute('preserveAspectRatio', 'none');
-        let d = `M ${nodeX(0)} ${TOP - 120}`;
+        let d = `M 50 ${trail0}`;
         for (let i = 0; i < STAGES.length; i++) {
-            const x0 = i ? nodeX(i - 1) : nodeX(0), y0 = i ? nodeY(i - 1) : TOP - 120;
+            const x0 = i ? nodeX(i - 1) : 50, y0 = i ? nodeY(i - 1) : trail0;
             d += ` C ${x0} ${y0 + ROW * 0.5}, ${nodeX(i)} ${nodeY(i) - ROW * 0.5}, ${nodeX(i)} ${nodeY(i)}`;
         }
         d += ` C ${nodeX(STAGES.length - 1)} ${nodeY(STAGES.length - 1) + ROW * 0.5}, 50 ${nodeY(STAGES.length) - ROW * 0.4}, 50 ${nodeY(STAGES.length) + 20}`;
@@ -513,12 +513,7 @@ const Mine = (() => {
             svg.append(p);
         }
         path.append(svg);
-        // the entrance at the top
-        const gate = document.createElement('div');
-        gate.className = 'mine-gate';
-        gate.innerHTML = '<span>Gem Mine</span>';
-        path.append(gate);
-        // the stages
+        // the stages (each boss between two swinging lanterns)
         STAGES.forEach((st, i) => {
             const n = i + 1;
             const b = document.createElement('button');
@@ -526,20 +521,29 @@ const Mine = (() => {
             b.dataset.n = n;
             b.style.left = nodeX(i) + '%';
             b.style.top = nodeY(i) + 'px';
-            b.innerHTML = `${st.boss ? '<svg class="boss-crown"><use href="#crown"/></svg>' : ''}<b>${n}</b><span class="node-stars"></span>`;
+            b.innerHTML = `<b>${n}</b><span class="node-stars"></span>`;
             b.onclick = () => {
                 Sound.play('tap');
                 if (!isOpen(n)) { mapToast(`Clear stage ${n - 1} first`); return; }
                 openCard(n);
             };
             path.append(b);
+            if (st.boss) for (const side of [-1, 1]) lantern(path, `calc(${nodeX(i)}% + ${side * 70}px)`, nodeY(i) - 58, i + side);
         });
         const soon = document.createElement('div');
         soon.className = 'mine-soon';
         soon.style.top = (nodeY(STAGES.length) + 30) + 'px';
         soon.innerHTML = '<b>Deeper soon</b><span>More of the mine opens in the next update</span>';
         path.append(soon);
+        lantern(path, '12%', nodeY(STAGES.length) + 10, 3);
         mapBuilt = true;
+    }
+    function lantern(path, left, top, k) {
+        const l = img(ART.lantern, 'map-lantern');
+        l.style.left = left;
+        l.style.top = top + 'px';
+        l.style.animationDelay = `-${(k * 0.83) % 3}s`;
+        path.append(l);
     }
     function updateMap() {
         const cur = current(), all = cleared() >= STAGES.length;
@@ -563,12 +567,12 @@ const Mine = (() => {
     }
     function openMap() {
         if (!on) return;
+        const map = $('mine-map');
+        map.style.display = 'flex';
         if (!mapBuilt) buildMap();
         updateMap();
         progress.seen = current();
         saveProgress();
-        const map = $('mine-map');
-        map.style.display = 'flex';
         const node = document.querySelector(`.stage-node[data-n="${current()}"]`);
         const scroll = $('map-scroll');
         if (node) scroll.scrollTop = Math.max(0, node.offsetTop - scroll.clientHeight * 0.45);

@@ -139,7 +139,8 @@ def build_www(www):
     copy('assets/voice/CREDITS.txt')
     copy('assets/music/*')
     copy('assets/ui/*.png')
-    copy('assets/mine/*.png')   # Gem Mine crates, beams, peg, icon (not the template sheets)
+    copy('assets/mine/*.png')   # Gem Mine: crates, splinters, stage buttons, lantern, beam, peg, icon
+    copy('assets/mine/*.jpg')   # the map's background and entrance (not the source or template sheets)
 
 
 def make_icons(res):

@@ -128,15 +128,18 @@ const FX = (() => {
         merge(x, y, r, 0);
     }
 
-    // Gem Mine: wood chips flying off a crate at (x, y); broke = it broke apart, otherwise it only cracked
+    // Gem Mine: wood splinters flying off a crate at (x, y) (assets/mine/splinter_*.png, or plain chips until they
+    // load); broke = it broke apart, otherwise it only cracked
     const WOOD = ['#f3b65f', '#d9893a', '#a85a22', '#ecaa52'];
+    const SPLINTERS = GAME.mine ? [1, 2, 3, 4, 5, 6].map(k => { const i = new Image(); i.src = `assets/mine/splinter_${k}.png`; return i; }) : [];
     function splinters(x, y, size, broke) {
-        const n = broke ? 18 : 7;
+        const n = broke ? 14 : 6;
         for (let i = 0; i < n; i++) {
             const a = rand(0, Math.PI * 2), sp = rand(120, broke ? 360 : 210);
             effects.push({ kind: 'chip', x: x + rand(-size / 3, size / 3), y: y + rand(-size / 3, size / 3),
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 170, rot: rand(0, 6.3), vr: rand(-12, 12),
-                w: rand(6, broke ? 16 : 10), h: rand(3, 6), color: WOOD[i % WOOD.length], t: 0, dur: rand(0.6, 1.05) });
+                w: rand(6, broke ? 16 : 10), h: rand(3, 6), color: WOOD[i % WOOD.length], t: 0, dur: rand(0.6, 1.05),
+                im: SPLINTERS[i % (SPLINTERS.length || 1)], size: broke ? rand(18, 30) : rand(12, 19) });
         }
         if (broke) {
             effects.push({ kind: 'ring', x, y, size: size * 2.2, t: 0, dur: 0.45 });
@@ -151,8 +154,10 @@ const FX = (() => {
     function drawChip(e, dt, k) {
         e.vy += 900 * dt; e.vx *= 1 - 1.5 * dt;
         e.x += e.vx * dt; e.y += e.vy * dt; e.rot += e.vr * dt;
+        const alpha = k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1;
+        if (ready(e.im)) { draw(e.im, e.x, e.y, e.size * Math.min(1, e.t / 0.08), e.rot, alpha); return; }
         ctx.save();
-        ctx.globalAlpha = k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1;
+        ctx.globalAlpha = alpha;
         ctx.translate(e.x, e.y); ctx.rotate(e.rot);
         ctx.fillStyle = e.color;
         ctx.strokeStyle = '#4a210f';

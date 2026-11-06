@@ -1,6 +1,7 @@
-# Placeholder art for Gem Mine (assets/mine), drawn in code until the real art from ASSET_PROMPTS.md is made:
-# crates (plain, strong, cracked), the wood strip for shelves and posts, the peg, the pickaxe icon, and
-# template sheets that show where each piece goes. Candy style: warm glossy wood, chocolate outline.
+# Stand-in art for Gem Mine (assets/mine), drawn in code: the wood strip for shelves and posts and the peg
+# (until their real art is redone), and the template sheets that show where each piece of art goes.
+# The crates, the pickaxe icon, the stage buttons, the lantern and the map are real art now (tools/cut_mine_art.py).
+# Candy style: warm glossy wood, chocolate outline.
 #   python3 tools/make_mine_art.py
 import math, pathlib
 import numpy as np
@@ -237,12 +238,10 @@ def save(im, name):
     im.save(OUT / name)
     print('wrote', (OUT / name).relative_to(ROOT), im.size)
 
-save(crate('plain'), 'crate.png')
-save(crate('strong'), 'crate_strong.png')
-save(crate('cracked'), 'crate_cracked.png')
+# the crates, the pickaxe icon, the stage buttons, the lantern and the map art now come from the real art
+# (tools/cut_mine_art.py); the plank and the peg are still drawn here until their art is redone
 save(wood_strip(), 'beam.png')
 save(peg(), 'peg.png')
-save(pickaxe(), 'icon_pickaxe.png')
 
 # ---------- template sheets: what to make, where each piece goes ----------
 def font(size):

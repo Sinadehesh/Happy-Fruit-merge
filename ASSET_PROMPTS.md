@@ -288,7 +288,9 @@ If the frames come out uneven (generators often struggle with frame sequences), 
 
 ## Gem Mine (stages): crates, jar parts and the map
 
-The Gem Mine plays now with art drawn in code (`assets/mine`, made by `tools/make_mine_art.py`). These prompts are for the real art. Each sheet has a template picture in `assets/mine/sheets/` that shows what goes in each spot, with the stand-in art in it: give the template to the image generator together with the prompt if it accepts a picture. Send me the finished sheets and I'll cut them out and put them in the game.
+Each sheet has a template picture in `assets/mine/sheets/` that shows what goes in each spot: give the template to the image generator together with the prompt if it accepts a picture. The finished sheets are kept in `assets/mine/source/` and cut into the game's files by `python3 tools/cut_mine_art.py`.
+
+Done and in the game: the crates and splinters (1), the pickaxe icon and the lantern (2), the stage buttons (3), the map background (4, made to repeat without a seam in code) and the mine entrance (5). Still to redo: the plank and the peg from sheet 2 (prompts 2a and 2b below); the game draws stand-ins for those two until then.
 
 All of them use the same style, so they sit well next to the gems and the wooden UI panels:
 
@@ -296,7 +298,7 @@ All of them use the same style, so they sit well next to the gems and the wooden
 STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Everything looks glossy and juicy, like hard candy, caramel and toffee: thick glossy coating, big bright white specular highlights, colors at maximum saturation. Wood looks like warm honey-caramel toffee wood, never grey or dull. Thick smooth dark chocolate-brown outlines around every object. Shapes are chunky, puffy and rounded. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
 ```
 
-### 1. Crates (template: `sheet1_crates.jpg`)
+### 1. Crates (template: `sheet1_crates.jpg`) - done
 
 ```
 A sprite sheet of wooden crates for a cute mobile merge puzzle game, in a neat grid of 2 rows and 2 columns on a plain pure white background. Each item is separate, centered in its own cell, front view, straight on (not tilted, no perspective), with clear empty space around it and nothing touching.
@@ -312,7 +314,7 @@ ITEMS, left to right, top to bottom:
 AVOID: text, labels, numbers, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, perspective or 3D angles, realistic photo style, dull or grey wood, thin outlines, items touching each other, items cut off at the edges.
 ```
 
-### 2. Jar parts and icons (template: `sheet2_jar_parts.jpg`)
+### 2. Jar parts and icons (template: `sheet2_jar_parts.jpg`) - pickaxe and lantern done; plank and peg: redo with 2a and 2b
 
 ```
 A sprite sheet of game parts for a cute mobile merge puzzle game, in a neat grid of 2 rows and 2 columns on a plain pure white background. Each item is separate, centered in its own cell, front view, with clear empty space around it and nothing touching.
@@ -328,7 +330,7 @@ ITEMS, left to right, top to bottom:
 AVOID: text, labels, numbers, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, perspective, realistic photo style, dull or grey colors, thin outlines, items touching each other, items cut off at the edges.
 ```
 
-### 3. Stage buttons for the map (template: `sheet3_stage_buttons.jpg`)
+### 3. Stage buttons for the map (template: `sheet3_stage_buttons.jpg`) - done
 
 ```
 A sprite sheet of 4 round stage buttons for the level map of a cute mobile puzzle game, in a neat grid of 2 rows and 2 columns on a plain pure white background. Each button is separate, centered in its own cell, seen straight from the front, with clear empty space around it and nothing touching. The middle of each button is a smooth, plain, glossy area with NO number on it (the game writes the stage number there).
@@ -344,7 +346,7 @@ ITEMS, left to right, top to bottom:
 AVOID: text, numbers, labels, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, perspective, realistic photo style, thin outlines, buttons touching each other, buttons cut off at the edges.
 ```
 
-### 4. The map background (one tall picture, no template)
+### 4. The map background (one tall picture, no template) - done (a square one works too; a taller one would repeat less often)
 
 ```
 A tall vertical background for the level map of a cute mobile puzzle game: looking into a deep, magical gem mine shaft from the front. Portrait format, about twice as tall as it is wide (for example 1024 x 2048).
@@ -358,7 +360,7 @@ Rocky cave walls on the left and right edges, in warm brown and deep plum-purple
 AVOID: text, numbers, logos, watermarks, characters, people, faces, objects in the middle area, harsh black, realistic photo style, visible seams at the top or bottom edge.
 ```
 
-### 5. The mine entrance (top of the map, no template)
+### 5. The mine entrance (top of the map, no template) - done
 
 ```
 A wide picture for the top of a level map in a cute mobile puzzle game: a cute wooden mine entrance built into a small round grassy hill, under a bright blue sky with two soft clouds. A dark arched tunnel opening framed by chunky caramel-wood beams, a small blank wooden sign board above the opening (no writing on it), a little rail track running into the tunnel, and a few sparkling gems on the grass. Landscape format, about 2 times as wide as it is tall. The bottom edge is brown earth that fades into dark brown, so the map background can continue below it.
@@ -366,4 +368,24 @@ A wide picture for the top of a level map in a cute mobile puzzle game: a cute w
 [paste the STYLE paragraph here]
 
 AVOID: text or letters on the sign, numbers, logos, watermarks, characters, people, faces, realistic photo style, dull or grey colors.
+```
+
+### 2a. The plank, again (it came out as a short 3D block; the game needs a long flat strip it can repeat)
+
+```
+A single long wooden plank for a cute mobile puzzle game, on a plain pure white background, seen exactly from the front like a flat 2D side view: one long thin rectangle with slightly rounded corners, about 8 times as long as it is tall, filling the width of the picture. Completely flat: no top face, no side face, no depth, no perspective, no 3D angle. Honey-caramel wood with the grain running left to right, a glossy shine along the top edge, and a thick dark chocolate-brown outline. It will be repeated end to end, so the wood looks the same along its whole length, with no nails, knots or marks near the ends.
+
+[paste the STYLE paragraph here]
+
+AVOID: 3D blocks, bricks or beams, perspective, a visible top or side face, short or thick shapes, text, logos, watermarks, shadows on the background, gradients or textures in the background, dull or grey wood.
+```
+
+### 2b. The peg, again (it came out lumpy; it must be a perfect circle)
+
+```
+A single round peg for a cute mobile puzzle game, on a plain pure white background: a perfectly round, glossy amethyst-purple candy button seen straight from the front. A flat perfect circle with a soft lighter purple centre, a big white shine at the top left, and a thick dark chocolate-brown outline all the way around. Centred, filling most of the picture.
+
+[paste the STYLE paragraph here]
+
+AVOID: lumpy, irregular or egg shapes, ovals, crystals with points or facets, holes, perspective, text, logos, watermarks, shadows on the background, gradients or textures in the background.
 ```
