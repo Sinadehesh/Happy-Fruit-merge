@@ -126,7 +126,7 @@ AVOID: misspelled words, extra letters, extra words, pure white fills, soft glow
 
 ## Gem Jar: unlockable gem sets
 
-Five new looks for Gem Jar that players can unlock. Each sheet is a full set of 12 merge levels in the same candy style as the rocks, without faces. Generate each prompt on its own (one sheet each). The game keeps the same sizes and merge rules for every set, so each item replaces the rock at the same level. If two items come out looking alike, regenerate, or move the "IMPORTANT" paragraph to the very start of the prompt.
+Five new looks for Gem Jar that players can unlock (all five are in the game now). Each sheet is a full set of 12 merge levels in the same candy style as the rocks, without faces. Generate each prompt on its own (one sheet each). The game keeps the same sizes and merge rules for every set, so each item replaces the rock at the same level. If two items come out looking alike, regenerate, or move the "IMPORTANT" paragraph to the very start of the prompt.
 
 ### 1. Crystal Cave
 
@@ -160,6 +160,8 @@ AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on t
 
 ### 2. Ocean Jewels
 
+Done: in the game as `assets/ocean`.
+
 ```
 A sprite sheet of 12 candy-style gems for a mobile merge game: the "Ocean Jewels" collection, treasures from the bottom of a tropical sea.
 
@@ -187,6 +189,8 @@ AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on t
 ```
 
 ### 3. Royal Treasury
+
+Done: in the game as `assets/royal`.
 
 ```
 A sprite sheet of 12 candy-style gems for a mobile merge game: the "Royal Treasury" collection, the polished and cut jewels of a royal treasure vault.
@@ -216,6 +220,8 @@ AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on t
 
 ### 4. Cosmic Gems
 
+Done: in the game as `assets/cosmic`. (Items 4 and 5 came out alike, both pale blue drops; worth redoing item 5 as a fatter, whiter crescent moon.)
+
 ```
 A sprite sheet of 12 candy-style gems for a mobile merge game: the "Cosmic Gems" collection, gems fallen from outer space.
 
@@ -244,6 +250,8 @@ AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on t
 
 ### 5. Volcano Gems
 
+Done: in the game as `assets/volcano`. (Items 7 and 11 came out alike, both red eggs; worth redoing item 11 as a gold and orange egg with feathers.)
+
 ```
 A sprite sheet of 12 candy-style gems for a mobile merge game: the "Volcano Gems" collection, fiery gems born inside a volcano.
 
@@ -269,6 +277,152 @@ ITEMS, from common to priceless, left to right, top to bottom, each clearly more
 
 AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
 ```
+
+## More gem sets: neon, pixel, odd shapes and strange ideas
+
+Five more looks, each a full set of 12 merge levels like the ones above. They are cut the same way (one sheet each, `python3 tools/cut_gem_set.py`), so the layout rules matter most: plain pure white background, 3 rows of 4, nothing touching, every item a different shape and a different main color.
+
+### 6. Neon Nights
+
+```
+A sprite sheet of 12 neon gems for a mobile merge game: the "Neon Nights" collection, gems made of glowing neon light.
+
+IMPORTANT: Every item must have a completely different shape AND a different main neon color, so no two items look alike. Every item is a SOLID filled shape, never just an outline: a body of dark glossy glass in a deep shade of its own color, with its edges and inner facet lines drawn as thick glowing neon tubes.
+
+STYLE: bright neon-sign style for a premium mobile game, electric and glowing, colors at maximum saturation. Each body is dark tinted glass (deep navy, deep magenta, deep green and so on) so the neon lines pop. The neon tubes are thick, smooth and rounded, with a white-hot center and a vivid color around it. Glossy white reflections on the glass. The glow stays tight around each item (a few pixels), never a big soft halo. Shapes are fat, chunky and rounded, with no long thin spikes and no holes. No faces. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and brighter than the one before:
+1. Cyan neon pebble, a smooth rounded oval
+2. Hot-pink neon heart
+3. Lime-green neon triangle with rounded corners
+4. Orange neon hexagon
+5. Electric-blue neon raindrop
+6. Violet neon crescent moon, fat and rounded
+7. Sunny-yellow neon five-pointed star with fat rounded points
+8. Red neon diamond shape (a rhombus) with rounded corners
+9. Mint neon cloud, fluffy and round
+10. Magenta neon cat's-eye gem, an almond shape with a glowing line across the middle
+11. White-gold neon crown gem, a chunky crown with rounded points sitting on a round gem
+12. Rainbow neon diamond, a round brilliant-cut gem outlined in every neon color at once, the only item with a small soft glow (the final, priceless item)
+
+AVOID: dark or black background, text, letters, numbers, signs, logos, watermarks, faces, grid lines, big soft glows, shadows on the background, outline-only shapes, thin lines on their own, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 7. Pixel Treasure
+
+```
+A sprite sheet of 12 pixel-art treasures for a mobile merge game: the "Pixel Treasure" collection, in classic 16-bit video game style.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color. Each item is drawn with big, clearly visible square pixels, as if it was made on a 32 by 32 pixel grid and then scaled up: crisp hard pixel edges, no blur, no smooth gradients, no anti-aliasing.
+
+STYLE: bright, cheerful 16-bit retro game pixel art. A small bold palette per item (3 to 5 shades of its own color), a 1-pixel dark outline in a darker shade of the item's color, a few pure white pixels for shine, a little dithering only where needed. Chunky, rounded silhouettes, no thin parts and no holes. No faces.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable than the one before:
+1. A grey pixel pebble
+2. A copper coin, round, with a pixel shine
+3. A green slime drop, round and wobbly (no face)
+4. A blue mana potion in a round bottle with a cork
+5. A red pixel heart, the classic video game heart
+6. A shiny gold coin
+7. A purple magic orb on a small gold stand
+8. An emerald, the classic eight-sided pixel gem
+9. A ruby with a pixel star sparkle
+10. A closed treasure chest, gold and brown
+11. A golden crown with three gems
+12. The Pixel Diamond, a big white and cyan pixel diamond with rainbow pixel sparkles, the final, priceless item
+
+AVOID: smooth or painted look, blur, soft gradients, anti-aliased edges, text, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 8. Cyber Circuit (gems with wires and lights inside)
+
+```
+A sprite sheet of 12 futuristic gems for a mobile merge game: the "Cyber Circuit" collection, gems built like glowing electronics.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color, so no two items look alike. Every item is a solid, chunky object; circuit lines, wires and lights are drawn on or inside it, never sticking out.
+
+STYLE: glossy candy-tech style for a premium mobile game: shiny candy-colored plastic, chrome and glass, with glowing circuit lines, tiny lights and chip patterns in neon colors. Big white glossy highlights, colors at maximum saturation, thick smooth dark-tinted outlines (a darker shade of each item's own color). Shapes are fat, chunky and rounded, with no thin wires sticking out, no spikes and no holes. No faces, no text. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more high-tech than the one before:
+1. A smooth grey stone with one glowing cyan circuit line around it
+2. A chunky green chip, a rounded square with gold contacts on its edges
+3. A fat blue power cell, a capsule with a glowing charge bar
+4. A chunky orange gear with fat rounded teeth and a solid glowing button in the middle
+5. A pink glass LED dome glowing from inside
+6. A violet crystal with glowing circuit lines running through it
+7. A yellow energy orb inside a chunky chrome ring
+8. A teal holographic cube with rounded edges
+9. A robot heart: a chunky chrome heart with a glowing red core
+10. A chrome star with fat rounded points and glowing rainbow circuit lines
+11. A golden processor gem, a rounded gold square with a glowing violet core
+12. The Quantum Diamond, a round faceted diamond made of glowing electric-blue light with circuit patterns, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, letters, numbers, logos, watermarks, faces, robots with faces, thin wires or cables, antennas, spikes, holes, grid lines, shadows on the background, gradients or textures in the background, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 9. Odd Shapes
+
+```
+A sprite sheet of 12 gems in surprising shapes for a mobile merge game: the "Odd Shapes" collection, as if everyday things and playful shapes were carved from candy gemstone.
+
+IMPORTANT: Every item must have a completely different shape AND a different main color, so no two items look alike. Every item is a solid, chunky gem with no holes.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy, jelly and gummy sweets: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, thick glossy candy-coating and big bright white highlights. Colors at maximum saturation. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Shapes are fat, chunky, puffy and rounded, with no long thin parts and no holes. No faces. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more valuable and more magical than the one before:
+1. A little pillow-shaped pebble, soft and square, lavender
+2. A lemon-yellow crystal cube with rounded edges
+3. A coral-orange pyramid with rounded corners
+4. A sky-blue fluffy cloud
+5. A pink mushroom gem with a fat cap and a short stem
+6. A lime-green light bulb gem glowing from inside
+7. A plump turquoise spiral seashell gem
+8. A red puffy five-leaf clover gem
+9. A violet spinning-top gem
+10. A golden chunky bell gem
+11. A rainbow gem shaped like a fat rounded infinity sign, filled in (no holes)
+12. A crystal planet with a tiny crystal moon stuck to its side, sparkling white and pink, the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, realistic photo style, dull colors, thin parts, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+### 10. Gem Pets (the one set with faces)
+
+```
+A sprite sheet of 12 tiny creatures made of gemstone for a mobile merge game: the "Gem Pets" collection, cute chubby animals carved from candy gems, each curled up into a round shape.
+
+IMPORTANT: Every item must be a completely different animal AND a different main color, so no two items look alike. Every pet is round and compact, curled up or sitting like a ball, with short ears and short legs tucked in.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game: glossy, juicy, semi-translucent gem bodies with light glowing through the edges, big bright white highlights, colors at maximum saturation, thick smooth dark-tinted outlines. Each pet has a tiny simple happy face: two small dark dot eyes, a little smile and soft pink blush cheeks. Kawaii, adorable, never scary. No long tails, no thin legs, no holes.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from common to priceless, left to right, top to bottom, each clearly more precious than the one before:
+1. A grey pebble bunny, curled into a ball
+2. A sky-blue sapphire chick
+3. A lemon citrine duckling
+4. A pink rose quartz piglet
+5. A green emerald frog, sitting round and plump
+6. A purple amethyst hamster with puffy cheeks
+7. An orange fire-opal fox, curled up with its tail around it
+8. A rainbow opal kitten, curled up asleep
+9. An aqua aquamarine baby whale, round as a ball
+10. A golden lion cub with a fluffy round mane
+11. A pastel crystal unicorn foal, curled up, with a short horn
+12. A baby dragon of pure diamond peeking out of a sparkling egg, the only item with a small soft glow (the final, priceless item)
+
+AVOID: scary or realistic animals, long tails, thin legs, holes, text, labels, numbers, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, two pets of the same animal or the same main color, items touching each other, items cut off at the edges.
+```
+
+More ideas in the same format, if you want them: Crystal Fruit (fruit carved from gems), Frozen Sweets (gems made of ice cream and sorbet), Dragon Hoard (gold, goblets and dragon scales), Spooky Glow (cute pumpkins, ghosts and potions for Halloween).
 
 ## Blast animation (merge burst, frame by frame)
 

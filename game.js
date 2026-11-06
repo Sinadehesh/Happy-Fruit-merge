@@ -85,6 +85,30 @@ const MODES = {
             'assets/crystal/10_watermelon_tourmaline.png', 'assets/crystal/11_ametrine.png', 'assets/crystal/12_crystal_heart.png'
         ]
     },
+    'ocean': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_sea_glass', '02_pearl', '03_red_coral', '04_abalone', '05_amber', '06_larimar', '07_jellyfish', '08_black_pearl',
+            '09_ammolite', '10_paraiba', '11_conch_pearl', '12_ocean_diamond'].map(n => `assets/ocean/${n}.png`)
+    },
+    'royal': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_jade', '02_carnelian', '03_citrine', '04_aquamarine', '05_amethyst_heart', '06_pink_sapphire', '07_emerald', '08_tanzanite',
+            '09_ruby', '10_black_opal', '11_star_sapphire', '12_royal_diamond'].map(n => `assets/royal/${n}.png`)
+    },
+    'cosmic': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_moon_rock', '02_meteorite', '03_stardust', '04_comet_ice', '05_moonstone', '06_nebula', '07_saturn', '08_aurora',
+            '09_sun_stone', '10_galaxy_egg', '11_black_hole', '12_star_heart'].map(n => `assets/cosmic/${n}.png`)
+    },
+    'volcano': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_pumice', '02_obsidian', '03_sulfur', '04_garnet', '05_blue_fire', '06_peridot', '07_fire_opal', '08_magma_glass',
+            '09_sunstone', '10_molten_gold', '11_phoenix_egg', '12_dragons_eye'].map(n => `assets/volcano/${n}.png`)
+    },
     'sweets': {
         background: '#fdf2f8',
         // like rocks, sweets fill most of their picture

@@ -51,7 +51,11 @@ swap('    <script src="config.js"></script>', '''    <script>
             // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },
-                { id: 'crystal', name: 'Crystal Cave' }
+                { id: 'crystal', name: 'Crystal Cave' },
+                { id: 'ocean', name: 'Ocean Jewels' },
+                { id: 'royal', name: 'Royal Treasury' },
+                { id: 'cosmic', name: 'Cosmic Gems' },
+                { id: 'volcano', name: 'Volcano Gems' }
             ],
             // what to make to open each next set: [level, how many], counted from when the set before it opened.
             // Measured (22 hours of simulated play): about 49 Gold Nuggets (7), 13 Rubies (8) and 1 Opal (9)
