@@ -424,6 +424,71 @@ AVOID: scary or realistic animals, long tails, thin legs, holes, text, labels, n
 
 More ideas in the same format, if you want them: Crystal Fruit (fruit carved from gems), Frozen Sweets (gems made of ice cream and sorbet), Dragon Hoard (gold, goblets and dragon scales), Spooky Glow (cute pumpkins, ghosts and potions for Halloween).
 
+## Fixes: what to make again
+
+What came out wrong is marked on `assets/templates/fix_overview.jpg`. For the four sets, edit the sheet you already have (upload it with the prompt) so the rest stays exactly the same. The Gem Mine parts and the feature graphic are new pictures, each with a template in `assets/templates/`.
+
+### Fix 1. Gem Mine parts: plank, peg and signpost (new picture, template `fix1_mine_parts.jpg`)
+
+```
+A sprite sheet of 3 wooden game parts for a cute mobile puzzle game, on a plain pure white background, everything seen exactly from the front like flat 2D art, with no perspective.
+
+TOP ROW, across the whole width: ONE long straight wooden plank, about 8 times as long as it is tall. A flat rectangle with slightly rounded corners, honey-caramel wood with the grain running left to right, a glossy shine along its top edge, and a thick dark chocolate-brown outline. Completely flat: no top face, no side face, no depth. It will be repeated end to end, so it looks the same along its whole length, with no nails, knots or marks near its ends.
+
+BOTTOM ROW, two items side by side, each centered in its half with empty space around it:
+1. A round peg: a perfectly round, glossy amethyst-purple candy button seen straight from the front. A flat perfect circle with a lighter purple center, a big white shine at the top left, and a thick dark chocolate-brown outline all the way around.
+2. A cute wooden signpost: one wide blank sign board with nothing written on it, on a short chunky post, in the same honey-caramel wood with the same thick dark chocolate-brown outline.
+
+STYLE: ultra-saturated candy style like a premium candy match-3 game: glossy, juicy caramel and toffee-like wood, big bright white highlights, colors at maximum saturation, thick smooth dark chocolate-brown outlines, chunky rounded shapes. Clean polished mobile-game icon art.
+
+AVOID: 3D blocks, bricks or beams, perspective, a visible top or side face, a lumpy or egg-shaped peg, text or letters on the sign, numbers, logos, watermarks, shadows on the background, gradients or textures in the background, items touching each other, items cut off at the edges.
+```
+
+### Fix 2. Cosmic Gems, item 5 (edit: upload the Cosmic Gems sheet)
+
+```
+Edit this picture: change only item 5 (the first item in the second row) and keep everything else exactly the same.
+Replace it with a moonstone crescent: a fat, chunky crescent moon, a thick C shape with round plump tips, milky white with a soft glowing blue and pink shimmer, in exactly the same style, size and outline thickness as the other items. It must look clearly different from item 4 above it (the pale blue drop): white, and shaped like a moon.
+```
+
+### Fix 3. Volcano Gems, item 11 (edit: upload the Volcano Gems sheet)
+
+```
+Edit this picture: change only item 11 (the third item in the bottom row) and keep everything else exactly the same.
+Replace it with a phoenix egg: a glossy golden-yellow and orange egg wrapped in red-tipped, flame-shaped feathers, in exactly the same style and size as the other items. It must be mostly gold, so it looks clearly different from item 7 (the red egg in the middle row).
+```
+
+### Fix 4. Neon Nights, items 9 to 12 (edit: upload the Neon Nights sheet)
+
+```
+Edit this picture: change only the four items in the bottom row and keep the top two rows exactly the same.
+In the top two rows, each item's own outline is its shape (an oval, a heart, a triangle and so on). Make the bottom row the same way, with no round discs or circles behind them: the item itself is the shape, a dark glossy glass body with a glowing neon tube along its edge, in the same size, spacing and style as the other eight.
+9. A mint-green neon cloud, fluffy and round
+10. A magenta neon cat's-eye gem: an almond shape with a glowing line across the middle
+11. A gold neon crown gem: a chunky crown with three rounded points, sitting on a round gem
+12. A rainbow neon diamond: a diamond shape outlined in every neon color, with a small soft glow (the final, priceless item)
+```
+
+### Fix 5. Pixel Treasure, all 12 (edit first: upload the Pixel Treasure sheet)
+
+```
+Edit this picture: keep every item exactly as it is, but remove the glitch effect. No cyan or pink color fringes along the edges, no horizontal streaks or lines sticking out of the items, and no sparkle marks touching them. Clean, crisp pixel art with plain pure white all around every item.
+```
+
+If the edit doesn't come out clean, make the sheet again with prompt 7 above (template `fix2_pixel_treasure.jpg`), adding this to its AVOID line: `glitch effect, chromatic aberration, cyan or pink color fringes, RGB split, VHS effect, streaks or motion lines, sparkles touching the items`.
+
+### Fix 6. Google Play feature graphic (new picture, template `fix3_feature_graphic.jpg`)
+
+```
+A wide banner picture for a mobile game's store page, exactly 1024 x 500 pixels, for a cute gem merge puzzle game called Gem Jar. On the right two thirds: a big glossy glass jar filled with colorful candy-style gems (green, pink, gold, blue, purple, and one sparkling diamond on top), a few gems spilling out at the bottom, with sparkles and soft light around it. The left third is a calm, softly glowing purple area with nothing in it, where the game's title will be added later. Background: a deep amethyst-purple to violet gradient with soft sparkles.
+
+STYLE: ultra-saturated candy style like a premium candy match-3 game: glossy, juicy, big white highlights, colors at maximum saturation, thick smooth dark-tinted outlines. Clean polished mobile-game art.
+
+AVOID: any text, letters, titles or logos, watermarks, people, hands, faces, dull colors, anything in the left third.
+```
+
+I'll put the GEM JAR title on it myself, so the letters come out right.
+
 ## Blast animation (merge burst, frame by frame)
 
 An 8-frame animation of one candy burst, played in order when two items merge.
