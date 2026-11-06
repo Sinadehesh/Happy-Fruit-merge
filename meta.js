@@ -19,7 +19,7 @@
     const fmt = n => Math.round(n).toLocaleString();
     const short = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n);
     const inApp = !!window.AndroidApp;
-    const ICON = { zap: 'assets/ui/icon_bolt.png', star: 'assets/ui/icon_star.png', daily: 'assets/ui/icon_coin.png', quests: 'assets/ui/btn_check.png', gem: 'assets/ui/icon_gem.png' };
+    const ICON = { zap: 'assets/ui/icon_bolt.png', star: 'assets/ui/icon_star.png', daily: 'assets/ui/icon_coin.png', quests: 'assets/ui/btn_check.png', gem: 'assets/ui/icon_gem.png', mine: 'assets/mine/icon_pickaxe.png' };
     const img = (src, cls) => { const i = document.createElement('img'); i.src = src; i.alt = ''; if (cls) i.className = cls; return i; };
     const watch = () => document.querySelector('#tile-rush .icon-watch').cloneNode(true);
 
@@ -42,8 +42,8 @@
         [150, 'Star Gazer'], [160, 'Moonstone Mystic'], [170, 'Crown Keeper'], [180, 'Diamond Duke'], [190, 'Gem Grandmaster'], [200, 'Gem Legend']];
     const titleFor = n => TITLES.filter(([l]) => l <= n).pop()[1];
     // what opens at which level
-    const FEATURES = { daily: 2, quests: 3, rush: 4, star: 6 };
-    const FEATURE_NAME = { daily: 'Daily Challenge', quests: 'Quests', rush: 'Gem Rush', star: 'Star booster' };
+    const FEATURES = { daily: 2, mine: 2, quests: 3, rush: 4, star: 6 };
+    const FEATURE_NAME = { daily: 'Daily Challenge', mine: 'Gem Mine', quests: 'Quests', rush: 'Gem Rush', star: 'Star booster' };
     const featureOpen = f => P.level >= FEATURES[f];
     // jar colours: most open with levels, three with challenges (colours match index.html)
     const THEMES = [
@@ -62,10 +62,13 @@
         { id: 'diamond', name: 'Diamond', level: 200, c: ['#8fcdf2', '#4f74b8'] },
         { id: 'ember', name: 'Ember', rush3: true, c: ['#ffa34a', '#e04848'] },     // 3 stars in a Gem Rush
         { id: 'frost', name: 'Frost', streak: 7, c: ['#a5e9ff', '#4a8fd9'] },       // the Daily Challenge 7 days in a row
-        { id: 'lagoon', name: 'Lagoon', quests: 25, c: ['#22d6c4', '#1f6fbf'] }     // 25 quests done
+        { id: 'lagoon', name: 'Lagoon', quests: 25, c: ['#22d6c4', '#1f6fbf'] },    // 25 quests done
+        { id: 'copper', name: 'Copper', mine: 20, c: ['#e08a4c', '#8f4a24'] }       // the Gem Mine's stage 20 cleared
     ];
-    const themeOpen = t => t.level ? P.level >= t.level : t.rush3 ? P.rushStars >= 3 : t.streak ? P.bestStreak >= t.streak : t.quests ? P.quests >= t.quests : true;
-    const themeNeed = t => t.level ? `Opens at Level ${t.level}` : t.rush3 ? 'Get 3 stars in Gem Rush' : t.streak ? `Finish the Daily Challenge ${t.streak} days in a row` : `Finish ${t.quests} quests`;
+    const themeOpen = t => t.level ? P.level >= t.level : t.rush3 ? P.rushStars >= 3 : t.streak ? P.bestStreak >= t.streak
+        : t.quests ? P.quests >= t.quests : t.mine ? Mine.cleared() >= t.mine : true;
+    const themeNeed = t => t.level ? `Opens at Level ${t.level}` : t.rush3 ? 'Get 3 stars in Gem Rush' : t.streak ? `Finish the Daily Challenge ${t.streak} days in a row`
+        : t.mine ? `Clear stage ${t.mine} of the Gem Mine` : `Finish ${t.quests} quests`;
     function applyTheme(id) {
         if (id && id !== 'default') document.documentElement.dataset.theme = id;
         else delete document.documentElement.dataset.theme;
@@ -417,6 +420,8 @@
         const daily = doneToday();
         tile('tile-daily', 'daily', daily ? 'Done today ✓' : goalText(GOAL), !daily);
         tile('tile-rush', 'rush', rushBest ? `Best ${fmt(rushBest)}` : '90 seconds', false);
+        $('tile-mine').style.display = GAME.mine ? '' : 'none';
+        if (GAME.mine) tile('tile-mine', 'mine', Mine.tileText(), Mine.hasNews());
         ensureQuests();
         tile('tile-quests', 'quests', `New in ${timeLeft(periodEnds(Q.period) - Date.now())}`, claimable());
         tile('tile-gems', null, 'Gems & colours', openedCount() > P.seen);
@@ -478,6 +483,7 @@
         $('menu-settings').onclick = () => { Sound.play('tap'); settings.classList.add('show'); };
         $('tile-daily').onclick = () => { Sound.play('tap'); if (lockedTap('daily')) return; saveGame(); location.href = location.pathname + '?daily'; };
         $('tile-rush').onclick = () => { Sound.play('tap'); if (lockedTap('rush')) return; saveGame(); location.href = location.pathname + '?rush'; };
+        $('tile-mine').onclick = () => { Sound.unlock(); Sound.play('tap'); if (lockedTap('mine')) return; Mine.openMap(); };
         $('tile-quests').onclick = () => { Sound.play('tap'); if (lockedTap('quests')) return; renderQuests(); $('quests').classList.add('show'); };
         $('tile-gems').onclick = () => { Sound.play('tap'); openCollection(true); };
         $('btn-close-quests').onclick = () => { $('quests').classList.remove('show'); updateMenu(); if (!menuOpen) Runner.run(runner, engine); };
@@ -486,8 +492,8 @@
         setInterval(() => { if (menuOpen) updateMenu(); if ($('quests').classList.contains('show')) $('quests-timer').textContent = `New quests in ${timeLeft(periodEnds(Q.period) - Date.now())}`; }, 30000);
     }
     goHome = () => {
-        if (DAILY || RUSH) {
-            try { sessionStorage.setItem(MENU_NEXT, '1'); } catch (e) {}
+        if (DAILY || RUSH || MINE) {
+            try { sessionStorage.setItem(MENU_NEXT, '1'); if (MINE) sessionStorage.setItem(`${GAME.id}.mapNext`, '1'); } catch (e) {}   // a stage: back to the map
             location.href = location.pathname;
         } else {
             settings.classList.remove('show');
@@ -523,6 +529,7 @@
                 if (t.level) label.append(img(ICON.star), String(t.level));
                 else if (t.rush3) label.append(watch(), '3★');
                 else if (t.streak) label.append(img(ICON.daily), String(t.streak));
+                else if (t.mine) label.append(img(ICON.mine), String(t.mine));
                 else label.append(img(ICON.quests), String(t.quests));
             }
             b.append(sw, label);
@@ -553,7 +560,7 @@
         return g ? { x: g.position.x, y: Math.max(60, g.bounds.min.y - 34) } : { x: 225, y: 420 };
     }
     function maybeTutorial() {
-        if (P.tutorial || DAILY || RUSH) return;
+        if (P.tutorial || DAILY || RUSH || MINE) return;
         if (Composite.allBodies(engine.world).some(b => b.tier !== undefined) || score > 0) { P.tutorial = true; saveProfile(); return; }   // a returning player
         tut = 1;
         currentTier = 0;
@@ -598,11 +605,11 @@
     }
 
     // ---------- listening to the game ----------
-    onGame('merge', (tier, points, comboNow) => {
+    onGame('merge', (tier, points, comboNow, seeded) => {
         bestTier = Math.max(bestTier, tier);
         addXP(points);
         questUpdate((q, s) => {
-            if (q.k === 'make' && q.t === tier) s.have++;
+            if (q.k === 'make' && q.t === tier) { if (!seeded) s.have++; }   // (not gems made from ones a stage gave)
             else if (q.k === 'total') s.have += points;
             else if (q.k === 'score1') s.have = Math.max(s.have, score);
             else if (q.k === 'combo') s.have = Math.max(s.have, comboNow);
@@ -642,21 +649,22 @@
     $('btn-gems').addEventListener('click', () => { renderThemes(); P.seen = openedCount(); saveProfile(); });
     initTutorial();
     if (RUSH) initRush();
-    else if (!DAILY) {
+    else if (!DAILY && !MINE) {
         $('lvl-chip').style.display = '';
         $('lvl-chip').onclick = () => { Sound.play('tap'); goHome(); };
         updateChip();
     }
     let showMenu = false;
     try {
-        showMenu = GAME.menu && !DAILY && !RUSH && (!sessionStorage.getItem(SESSION) || !!sessionStorage.getItem(MENU_NEXT));
+        showMenu = GAME.menu && !DAILY && !RUSH && !MINE && (!sessionStorage.getItem(SESSION) || !!sessionStorage.getItem(MENU_NEXT));
         sessionStorage.setItem(SESSION, '1');
         sessionStorage.removeItem(MENU_NEXT);
     } catch (e) {}
     if (showMenu) openMenu();
-    else if (!DAILY && !RUSH) setTimeout(maybeTutorial, 300);
+    else if (!DAILY && !RUSH && !MINE) setTimeout(maybeTutorial, 300);
 
-    // for tests and the console
+    // for tests, the console and the Gem Mine (mine.js)
     window.Meta = { P, xpFor, levelOf, addXP, openMenu, renderQuests, get quests() { ensureQuests(); return Q; }, rushStarsFor, THEMES, applyTheme,
+        refreshMenu: () => updateMenu(), featureOpen,
         get tutorialStep() { return tut; }, get rushLeft() { return rushLeft; }, set rushLeft(v) { rushLeft = v; }, get menuOpen() { return menuOpen; } };
 })();

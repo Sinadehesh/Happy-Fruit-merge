@@ -16,6 +16,7 @@
 const AD_EVERY_DROPS = 25;
 const AD_EVERY_MS = 2 * 60 * 1000;
 const AD_CLOSE_DELAY_S = 5;
+const AD_MIN_GAP_MS = 60 * 1000;   // between-games ads at most once a minute (the app's own rule, kept on the web too)
 
 const App = window.AndroidApp || null;
 
@@ -57,6 +58,8 @@ const Ads = (() => {
 
     function showInterstitial(onClose) {
         if (GAME.ads === false || (App && App.isAdFree())) { if (onClose) onClose(); return; }
+        // the app keeps its own gap between full-screen ads; on the web, the same once-a-minute rule
+        if (!App && Date.now() - lastAdAt < AD_MIN_GAP_MS) { if (onClose) onClose(); return; }
         if (showing) return;
         showing = true;
         hooks.onPause();

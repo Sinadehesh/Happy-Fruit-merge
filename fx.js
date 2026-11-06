@@ -7,7 +7,8 @@ const FX = (() => {
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
-        'word_combo', 'word_congratulations', 'word_levelup', 'word_timesup', ...GAME.praise.map(w => `word_${w}`)];
+        'word_combo', 'word_congratulations', 'word_levelup', 'word_timesup', ...GAME.praise.map(w => `word_${w}`),
+        ...(GAME.mine ? ['word_stageclear', 'word_outofdrops'] : [])];
     const img = {};
     NAMES.forEach(n => { img[n] = new Image(); img[n].src = `assets/fx/${n}.png`; });
     const digit = {};
@@ -127,6 +128,42 @@ const FX = (() => {
         merge(x, y, r, 0);
     }
 
+    // Gem Mine: wood chips flying off a crate at (x, y); broke = it broke apart, otherwise it only cracked
+    const WOOD = ['#f3b65f', '#d9893a', '#a85a22', '#ecaa52'];
+    function splinters(x, y, size, broke) {
+        const n = broke ? 18 : 7;
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), sp = rand(120, broke ? 360 : 210);
+            effects.push({ kind: 'chip', x: x + rand(-size / 3, size / 3), y: y + rand(-size / 3, size / 3),
+                vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 170, rot: rand(0, 6.3), vr: rand(-12, 12),
+                w: rand(6, broke ? 16 : 10), h: rand(3, 6), color: WOOD[i % WOOD.length], t: 0, dur: rand(0.6, 1.05) });
+        }
+        if (broke) {
+            effects.push({ kind: 'ring', x, y, size: size * 2.2, t: 0, dur: 0.45 });
+            effects.push({ kind: 'burst', x, y, size: size * 1.7, t: 0, dur: 0.35, name: 'burst_yellow', rot: rand(0, 6.3) });
+            for (let i = 0; i < 5; i++) {
+                const a = rand(0, Math.PI * 2), sp = rand(100, 220);
+                effects.push({ kind: 'piece', name: i % 2 ? 'sparkle' : 'star', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+                    rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(14, 22), t: 0, dur: rand(0.6, 0.9) });
+            }
+        }
+    }
+    function drawChip(e, dt, k) {
+        e.vy += 900 * dt; e.vx *= 1 - 1.5 * dt;
+        e.x += e.vx * dt; e.y += e.vy * dt; e.rot += e.vr * dt;
+        ctx.save();
+        ctx.globalAlpha = k > 0.6 ? Math.max(0, 1 - (k - 0.6) / 0.4) : 1;
+        ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+        ctx.fillStyle = e.color;
+        ctx.strokeStyle = '#4a210f';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.rect(-e.w / 2, -e.h / 2, e.w, e.h);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
     function drawBolt(e) {
         const k = e.t / e.dur;
         const alpha = k < 0.55 ? (Math.sin(e.t * 95) > -0.3 ? 1 : 0.45) : 1 - (k - 0.55) / 0.45;
@@ -201,6 +238,8 @@ const FX = (() => {
                 drawCombo(e, dt);
             } else if (e.kind === 'bolt') {
                 drawBolt(e);
+            } else if (e.kind === 'chip') {
+                drawChip(e, dt, k);
             } else if (e.kind === 'praise') {
                 // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
                 const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));
@@ -214,5 +253,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, merge, praise, zap, banner };
+    return { init, merge, praise, zap, banner, splinters };
 })();

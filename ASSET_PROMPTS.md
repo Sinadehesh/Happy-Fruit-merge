@@ -285,3 +285,85 @@ AVOID: pure white fills, soft glows, text, frame numbers, grid lines, shadows on
 ```
 
 If the frames come out uneven (generators often struggle with frame sequences), the separate pieces from "Combo sparkles and pops" above are enough: the game can animate them itself (grow, spin, fly out and fade).
+
+## Gem Mine (stages): crates, jar parts and the map
+
+The Gem Mine plays now with art drawn in code (`assets/mine`, made by `tools/make_mine_art.py`). These prompts are for the real art. Each sheet has a template picture in `assets/mine/sheets/` that shows what goes in each spot, with the stand-in art in it: give the template to the image generator together with the prompt if it accepts a picture. Send me the finished sheets and I'll cut them out and put them in the game.
+
+All of them use the same style, so they sit well next to the gems and the wooden UI panels:
+
+```
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Everything looks glossy and juicy, like hard candy, caramel and toffee: thick glossy coating, big bright white specular highlights, colors at maximum saturation. Wood looks like warm honey-caramel toffee wood, never grey or dull. Thick smooth dark chocolate-brown outlines around every object. Shapes are chunky, puffy and rounded. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+```
+
+### 1. Crates (template: `sheet1_crates.jpg`)
+
+```
+A sprite sheet of wooden crates for a cute mobile merge puzzle game, in a neat grid of 2 rows and 2 columns on a plain pure white background. Each item is separate, centered in its own cell, front view, straight on (not tilted, no perspective), with clear empty space around it and nothing touching.
+
+[paste the STYLE paragraph here]
+
+ITEMS, left to right, top to bottom:
+1. A square wooden crate: a thick rounded frame of honey-caramel wood, three horizontal planks inside, one diagonal brace from bottom-left to top-right, a round nail head in each corner, a glossy shine along the top edge. Perfectly square overall.
+2. A strong crate: the same square crate, reinforced with chunky shiny steel-blue metal corner brackets and one metal band across the middle with rivets. Perfectly square overall.
+3. A cracked crate: the crate from item 1 after a hard knock, with two or three jagged dark cracks running in from the edges and one chipped-off corner showing darker wood inside. Still square, still in one piece.
+4. A small scattered group of 6 separate wooden splinters and chips in the same caramel wood, each with the same dark outline, not touching each other.
+
+AVOID: text, labels, numbers, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, perspective or 3D angles, realistic photo style, dull or grey wood, thin outlines, items touching each other, items cut off at the edges.
+```
+
+### 2. Jar parts and icons (template: `sheet2_jar_parts.jpg`)
+
+```
+A sprite sheet of game parts for a cute mobile merge puzzle game, in a neat grid of 2 rows and 2 columns on a plain pure white background. Each item is separate, centered in its own cell, front view, with clear empty space around it and nothing touching.
+
+[paste the STYLE paragraph here]
+
+ITEMS, left to right, top to bottom:
+1. A long straight horizontal wooden plank seen from the front, about 6 times as long as it is tall, honey-caramel wood with the grain running left to right, a glossy shine along the top, both ends cut straight. It will be repeated end to end, so it has no nails, knots or marks near the ends.
+2. A round peg: a glossy amethyst-purple crystal knob like a big candy button, seen straight from the front, perfectly round.
+3. A cute pickaxe icon: a chunky caramel-wood handle tilted diagonally and a curved shiny steel head, with a small pink gem set in the head.
+4. A cute glowing mine lantern hanging from a short hook, warm golden light inside, a red-pink metal frame.
+
+AVOID: text, labels, numbers, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, perspective, realistic photo style, dull or grey colors, thin outlines, items touching each other, items cut off at the edges.
+```
+
+### 3. Stage buttons for the map (template: `sheet3_stage_buttons.jpg`)
+
+```
+A sprite sheet of 4 round stage buttons for the level map of a cute mobile puzzle game, in a neat grid of 2 rows and 2 columns on a plain pure white background. Each button is separate, centered in its own cell, seen straight from the front, with clear empty space around it and nothing touching. The middle of each button is a smooth, plain, glossy area with NO number on it (the game writes the stage number there).
+
+[paste the STYLE paragraph here]
+
+ITEMS, left to right, top to bottom:
+1. Open stage: a round glossy golden-caramel candy button with a thick chocolate-brown rim and a shine on the top left.
+2. Current stage: the same button in glowing mint-green, a little brighter, with a soft white sparkle on the rim.
+3. Locked stage: the same button in soft grey-lavender, matte, with a small cute golden padlock at the bottom edge.
+4. Boss stage: a bigger round ruby-red candy button with a golden rim and a small golden crown sitting on top.
+
+AVOID: text, numbers, labels, logos, watermarks, grid lines, shadows on the background, gradients or textures in the background, perspective, realistic photo style, thin outlines, buttons touching each other, buttons cut off at the edges.
+```
+
+### 4. The map background (one tall picture, no template)
+
+```
+A tall vertical background for the level map of a cute mobile puzzle game: looking into a deep, magical gem mine shaft from the front. Portrait format, about twice as tall as it is wide (for example 1024 x 2048).
+
+The picture must repeat seamlessly from top to bottom: the very top edge continues exactly where the bottom edge ends, so many copies can be stacked with no visible seam.
+
+Rocky cave walls on the left and right edges, in warm brown and deep plum-purple, with glittering candy-colored gems and crystal clusters stuck in the rock, a few warm glowing lanterns on the walls, and wooden support beams. The middle 60% of the width is a calm, darker, plain area (a soft path of dark earth), with no objects in it, because the stage buttons go there.
+
+[paste the STYLE paragraph here]
+
+AVOID: text, numbers, logos, watermarks, characters, people, faces, objects in the middle area, harsh black, realistic photo style, visible seams at the top or bottom edge.
+```
+
+### 5. The mine entrance (top of the map, no template)
+
+```
+A wide picture for the top of a level map in a cute mobile puzzle game: a cute wooden mine entrance built into a small round grassy hill, under a bright blue sky with two soft clouds. A dark arched tunnel opening framed by chunky caramel-wood beams, a small blank wooden sign board above the opening (no writing on it), a little rail track running into the tunnel, and a few sparkling gems on the grass. Landscape format, about 2 times as wide as it is tall. The bottom edge is brown earth that fades into dark brown, so the map background can continue below it.
+
+[paste the STYLE paragraph here]
+
+AVOID: text or letters on the sign, numbers, logos, watermarks, characters, people, faces, realistic photo style, dull or grey colors.
+```

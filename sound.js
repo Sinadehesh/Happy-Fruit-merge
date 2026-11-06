@@ -15,7 +15,8 @@ const Sound = (() => {
     // ---------- recordings ----------
 
     const SAMPLES = ['drop', 'land', 'pop_1', 'pop_2', 'pop_3', 'pop_4', 'pop_5', 'pop_6', 'bubble_1', 'bubble_2', 'bubble_3',
-        'bubble_big', 'chime', 'praise', 'fanfare', 'gameover', 'tap']
+        'bubble_big', 'chime', 'praise', 'fanfare', 'gameover', 'tap',
+        ...(GAME.mine ? ['crate_break_1', 'crate_break_2', 'crate_bits', 'crate_hit'] : [])]   // Gem Mine crates
         .map(n => [n, `assets/sfx/${n}.wav`]);
     // The narrator (assets/voice): the combo words in ladder order, matching the words on screen,
     // plus the lines for the biggest item, a new best and game over.
@@ -150,6 +151,20 @@ const Sound = (() => {
         claim() { [0, 4, 7, 12, 16].forEach((n, i) => sample('chime', { gain: 0.26, rate: semitones(n + 7), when: i * 0.07 })); },
         star(i) { sample('chime', { gain: 0.38, rate: semitones([12, 16, 19][i] || 12) }); sample('praise', { gain: 0.22, rate: semitones(i * 2) }); },
         tick(urgent) { sample('tap', { gain: urgent ? 0.4 : 0.22, rate: urgent ? 1.55 : 1.25 }); },
+        // Gem Mine (mine.js): a crate cracking (a knock), or breaking (a crisp crack and falling splinters)
+        crate(broke) {
+            if (broke) {
+                sample(pick('crate_break_1', 'crate_break_2'), { gain: 0.6, rate: jitter(1, 0.08) });
+                sample('crate_bits', { gain: 0.32, rate: jitter(1.05, 0.1), when: 0.06 });
+                sample(pick('bubble_1', 'bubble_2', 'bubble_3'), { gain: 0.2, rate: jitter(1.3), when: 0.02 });
+            } else sample('crate_hit', { gain: 0.5, rate: jitter(1.1, 0.06) });
+        },
+        stageClear() {
+            sample('fanfare', { gain: 0.45 });
+            [0, 4, 7, 12, 16].forEach((n, i) => sample('chime', { gain: 0.28, rate: semitones(n + 12), when: 0.3 + i * 0.08 }));
+            say({ name: 'voice_congratulations', level: 4, rank: 7, when: 0.4, often: true });
+        },
+        outOfDrops() { sample('gameover', { gain: 0.3, rate: 1.12 }); },
         fill(k) { sample('chime', { gain: 0.12, rate: semitones(PENTA[Math.min(k, PENTA.length - 1)] + 12) }); }
     };
 

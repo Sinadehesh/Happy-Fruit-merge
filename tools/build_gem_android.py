@@ -112,7 +112,7 @@ def build_www(www):
     assert 'https://' not in html, 'the app page must not load anything from the internet'
     (www / 'index.html').write_text(html)
 
-    for js in ('config.js', 'shapes.js', 'ads.js', 'fx.js', 'sound.js', 'haptics.js', 'game.js', 'meta.js'):
+    for js in ('config.js', 'shapes.js', 'ads.js', 'fx.js', 'sound.js', 'haptics.js', 'mine.js', 'game.js', 'meta.js'):
         shutil.copy(ROOT / js, www / js)
     cache = SDK / 'web-cache'
     for name, url in VENDOR.items():
@@ -139,6 +139,7 @@ def build_www(www):
     copy('assets/voice/CREDITS.txt')
     copy('assets/music/*')
     copy('assets/ui/*.png')
+    copy('assets/mine/*.png')   # Gem Mine crates, beams, peg, icon (not the template sheets)
 
 
 def make_icons(res):

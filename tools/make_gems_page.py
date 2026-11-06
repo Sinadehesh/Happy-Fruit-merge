@@ -47,6 +47,7 @@ swap('    <script src="config.js"></script>', '''    <script>
             rush: true,
             meta: true,
             menu: true,
+            mine: true,      // the Gem Mine: stages with crates and jar shapes (mine.js)
             // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },

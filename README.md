@@ -90,6 +90,21 @@ Switched on by `meta: true`, `menu: true` and `rush: true` in the gem page's `GA
 - **Tutorial** on the first game: hold to pick up, slide and let go, drop on its twin to merge, combos, the line. It can be skipped.
 - **Engagement, kept fair:** endowed progress and early wins, a goal gradient (the bar and "XP to Level n"), features opening one at a time, a variable lucky bonus, unfinished quests and the next gem set in view, the peak-end rule (each game ends on XP gained and the best gem made), streaks and time windows. Timers are real, nothing is rigged, rewards are what they say, and the ads are the ones the player chooses plus the full-screen ad between games (at most once a minute).
 
+### Gem Mine: stages (`mine.js`)
+
+Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A trial of 20 stages, with crates and jar shapes.
+
+- **A stage** (`?mine=N`) is a goal, a number of drops and a starting jar. Goals: make gems (shown as pictures), break crates, or score; all of a stage's goals must be met. The top bar shows the stage, the goals with counts, the drops left and the stars still possible; the tray shows the next gem and the one after it.
+- **Crates** are fixed in place. A merge touching a crate, or happening close to it (bigger merges reach further), breaks it; a strong crate (metal corners) cracks on the first merge and breaks on the second. The Zap breaks a crate too. Gems land on crates and beams like on the floor.
+- **Jar shapes:** a shelf, two shelves, pegs, a divider, a slope, a funnel, a bowl (beams and pegs in `JARS`). Some stages start with gems already in the jar (stage 7: break the crates and two geodes roll together). Gems made from those don't count toward gem sets or quests, so stages can't be farmed for them.
+- **Fair:** every try of a stage drops the same gems in the same order, and nothing changes with how a player is doing.
+- **Stars:** 1 for clearing a stage, 2 and 3 for clearing it with drops to spare. Each new star gives 1,000 XP. Stage 10 (strong crates) gives 2 Zaps the first time; stage 20, the boss, gives 3 Zaps, a Star and the **Copper** jar colour.
+- **Drops and star lines are measured, not guessed:** `tools/calibrate_mine.js` lets a bot play every stage 80 times fast-forward (a drop every 1.5 to 2.5 seconds, onto the best matching gem or the lowest spot near a crate, no boosters) and sets the drops so the bot wins a target share of its tries: about 97% on stage 1, a saw shape after (harder up to each boss, easier after it), about 60% on stage 10 and 50% on the boss, plus 3 spare drops on stages 1 to 5 and 2 after for people still learning. `VERIFY=1` replays with the real drops: 93 to 100% wins on most stages, 63% on stage 16, 72% on 19, 48% on the boss.
+- **The map** (the Gem Mine tile on the home menu) goes down into the mine: the entrance at the top, stages along a trail, a wooden frame and depth sign every 5 stages (10 m a stage), a crowned button for each boss, stars under each cleared stage, the current one glowing. Tapping a stage shows its card: goals, drops, jar shape, tip, first-clear rewards, Play.
+- **End of a try:** STAGE CLEAR! with stars, XP and rewards, then Next or the Map; or OUT OF DROPS (or the jar is full) with how close the goals were, then Retry or the Map.
+- **In the app:** out of drops, a rewarded ad for 5 more drops, once a try; before a boss, a rewarded ad for a free Zap; the full-screen ad between stages from stage 4 on (at most once a minute, never during a stage). The jar filling up offers Keep Going as in the main game.
+- **Art:** crates, beams, the peg and the pickaxe icon are drawn in code for now (`tools/make_mine_art.py`); the prompts for the real art, with template sheets in `assets/mine/sheets/`, are in `ASSET_PROMPTS.md`. The crate sounds are CC0 (see `assets/sfx/CREDITS.txt`).
+
 ## Gem Jar for Android
 
 - **Google Play:** upload `gems/GemJar.aab` (App Bundle, https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.aab).
@@ -106,7 +121,7 @@ Switched on by `meta: true`, `menu: true` and `rush: true` in the gem page's `GA
 - **No Ads** ($5.99, a one-time Google Play purchase, product ID `remove_ads`): switches the banner and full-screen ads off for good and comes back on a new phone or after reinstalling. Keep Going stays on offer, since the player chooses to watch it. The price is set in Play Console (Monetize, Products, In-app products); the button shows Google Play's price in the player's currency.
 - **Consent:** Google's consent message (UMP) is shown where the law asks for it (EU, UK, some US states). Settings then has a Privacy button to change the choice.
 - The game is fair: difficulty never depends on ads or on the player.
-- On the website none of this applies: the web page keeps its placeholder ad breaks.
+- On the website none of this applies: the web page keeps its placeholder ad breaks (between games at most once a minute, like the app).
 
 ### Building
 

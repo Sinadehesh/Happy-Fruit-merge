@@ -121,12 +121,14 @@ const SPRITES = MODES[SKIN ? SKIN.id : MODE].sprites;
 const DAILY = !!GAME.daily && params.has('daily');
 // Gem Rush (GAME.rush, opened with ?rush): a 90-second race for points (the clock is in meta.js); not saved
 const RUSH = !!GAME.rush && params.has('rush') && !DAILY;
+// Gem Mine (GAME.mine, opened with ?mine=N): stage N, with its goal, drops, crates and jar shape (mine.js). Not saved.
+const MINE = Mine.N;
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
-// (Not in the Daily Challenge, which is the same game for everyone.)
+// (Not in the Daily Challenge, which is the same game for everyone, nor in Gem Rush or the Gem Mine.)
 // Not a plain flip of the normal sizes, which would make the dropped items nearly box-wide:
 // level 1 starts at a normal drop size and each level shrinks by the same ratio down to the last.
-const REVERSE = params.get('size') === 'reverse' && !DAILY && !RUSH;
+const REVERSE = params.get('size') === 'reverse' && !DAILY && !RUSH && !MINE;
 const REVERSE_LARGEST = 80;
 const REVERSE_SMALLEST = 18;
 function reverseTiers(count) {
@@ -164,12 +166,14 @@ function seededRandom(seed) {
     next.setState = st => { a = st >>> 0; };
     return next;
 }
-const dropRandom = DAILY ? seededRandom(DAY_SEED) : Math.random;
+// (and in a Gem Mine stage, the same sequence on every try of that stage)
+const dropRandom = DAILY ? seededRandom(DAY_SEED) : MINE ? seededRandom(Mine.seed) : Math.random;
 
 // Game state
 let isGameOver = false;
 let currentTier = randomDropTier();
 let nextTier = randomDropTier();
+let afterTier = MINE ? randomDropTier() : 0;   // the Gem Mine shows the gem after the next one too
 let dropX = GAME_WIDTH / 2;
 
 // A game that used to be a mode of another one (GAME.oldId) keeps its best score and game in progress,
@@ -186,7 +190,7 @@ if (GAME.oldId) try {
 } catch (e) {}
 
 // Score: Suika-style triangular points for every merge, best kept across games
-const BEST_KEY = RUSH ? `${GAME.id}.best.rush` : DAILY ? `${GAME.id}.best.daily`
+const BEST_KEY = RUSH ? `${GAME.id}.best.rush` : DAILY ? `${GAME.id}.best.daily` : MINE ? `${GAME.id}.best.mine`
     : (GAME.mode || MODE === 'fruit' ? `${GAME.id}.best` : `${GAME.id}.best.${MODE}`) + (REVERSE ? '.reverse' : '');
 let score = 0;
 let bestScore = 0;
@@ -236,7 +240,7 @@ function tickScore() {
         scoreEl.classList.add('bump');
         clearTimeout(tickScore.unbump);
         tickScore.unbump = setTimeout(() => scoreEl.classList.remove('bump'), 90);
-        if (shownScore > startBest) {
+        if (shownScore > startBest && !MINE) {   // (a stage has stars, not a best score)
             if (!tickScore.crowned) {   // first time past the old best: bounce the crown
                 tickScore.crowned = true;
                 if (startBest > 0) { Sound.play('newBest'); Haptics.play('newBest'); }
@@ -260,8 +264,10 @@ function showPop(x, y, points) {
     setTimeout(() => pop.remove(), 950);
 }
 
+const next2Img = document.getElementById('next2-img');
 function updateUI() {
     nextImg.src = SPRITES[nextTier];
+    if (MINE) next2Img.src = SPRITES[afterTier];
 
     // The fruit you're about to drop hangs at the top, following the pointer
     const scale = board.clientWidth / GAME_WIDTH;
@@ -301,6 +307,8 @@ const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 25, GAME_WIDTH, 50
 const leftWall = Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 const rightWall = Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 Composite.add(engine.world, [ground, leftWall, rightWall]);
+// a Gem Mine stage adds its beams, pegs, crates and starting gems
+if (MINE) Mine.setupWorld();
 
 let dangerTimer = 0;
 
@@ -332,9 +340,9 @@ Events.on(engine, 'beforeUpdate', () => {
             if (body.dropAge > 60 && body.speed < 0.3) body.isDropping = false;
         }
 
-        // Touching or crossing the line is fine; you lose only when a landed item is
+        // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
         // entirely above it (its lowest point is above the line)
-        if (body.tier !== undefined && !body.isGrowing && !body.isDropping) {
+        if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping) {
             if (body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
@@ -350,8 +358,11 @@ Events.on(engine, 'beforeUpdate', () => {
         dangerTimer = 0;
     }
 });
+// the Gem Mine counts physics steps: a stage ends a moment after its goal is met, or once the last drop has settled
+Events.on(engine, 'afterUpdate', () => { if (MINE) Mine.tick(); });
 
-// The end of a game: the jar is full ('full'), or in Gem Rush the clock ran out ('time', from meta.js)
+// The end of a game: the jar is full ('full'), in Gem Rush the clock ran out ('time', from meta.js), or in a
+// Gem Mine stage the goal was met ('win') or the drops ran out ('drops', from mine.js)
 const FULL_TITLE = document.getElementById('go-title').textContent;
 function gameOver(reason) {
     if (isGameOver) return;
@@ -366,8 +377,11 @@ function gameOver(reason) {
     // in the app: once a game, the player may watch an ad to keep going (clearing the top of the jar)
     document.getElementById('revive').style.display = reason === 'full' && !revived && Ads.canRevive() ? 'block' : 'none';
     showNextSetProgress();
-    Sound.play('gameOver');
-    Haptics.play('gameOver');
+    if (reason === 'full' || reason === 'time') {
+        Sound.play('gameOver');
+        Haptics.play('gameOver');
+    }
+    if (MINE) Mine.end(reason);   // stars, goals and the stage's buttons (and its own sounds)
     emitGame('gameOver', reason, score);
 }
 
@@ -395,6 +409,7 @@ playArea.addEventListener('pointerdown', (e) => {
     if (holding !== null || isGameOver || Ads.isShowing() || e.target.closest('.topbar, .booster, .no-drop')) return;
     if (zapArmed) { zapAt(e); return; }     // Zap booster: this tap picks the gem to strike
     if (starArmed) { starAt(e); return; }   // Star booster: this tap picks the gem to lift
+    if (MINE && !Mine.canDrop()) return;    // a stage's drops are used up
     holding = e.pointerId;
     try { playArea.setPointerCapture(e.pointerId); } catch (err) {}   // keep following outside the board
     dropX = clampX(pointerToGameX(e), currentTier);
@@ -424,6 +439,7 @@ playArea.addEventListener('pointercancel', (e) => {
 });
 
 function dropFruit() {
+    if (MINE && !Mine.canDrop()) return;
     emitGame('drop', currentTier, dropX);
     Sound.play('drop');
     Haptics.play('drop');
@@ -432,19 +448,21 @@ function dropFruit() {
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
 
     currentTier = nextTier;
-    nextTier = randomDropTier();
+    if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
+    else nextTier = randomDropTier();
     dropX = clampX(dropX, currentTier);
     updateUI();
+    if (MINE) Mine.afterDrop();
 
-    Ads.onDrop();
+    if (!MINE) Ads.onDrop();   // (never an ad in the middle of a stage)
 }
 
 // --- MERGING ---
 
-// A dropped item lands when it touches the floor or an item that has already landed.
-// Only landed items may merge, so spamming drops can't merge items in mid-air at the top.
+// A dropped item lands when it touches the floor, an item that has already landed, or (in the Gem Mine)
+// a crate or a part of the jar. Only landed items may merge, so spamming drops can't merge items in mid-air at the top.
 function isLanded(body) {
-    return body === ground || (body.tier !== undefined && !body.isDropping);
+    return body === ground || body.crate || body.jarPart || (body.tier !== undefined && !body.isDropping);
 }
 function landed(body) {
     body.isDropping = false;
@@ -474,12 +492,15 @@ function handleCollisions(event) {
         combo++;
         dropsWithoutMerge = 0;
         const points = addScore(mergedTier);
+        // made from a gem a Gem Mine stage started with: counts for the stage, not for gem sets or quests
+        const seeded = !!(bodyA.seeded || bodyB.seeded);
         dailyOnMerge(mergedTier);
-        countForNextSet(mergedTier);
-        emitGame('merge', mergedTier, points, combo);
+        if (!seeded) countForNextSet(mergedTier);
+        emitGame('merge', mergedTier, points, combo, seeded);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
+        if (MINE) Mine.onMerge(midX, midY, mergedTier, bodyA, bodyB);   // goals, and the crates it touches
         showPop(midX, midY, points);
         FX.merge(midX, midY, TIERS[mergedTier], combo);
         Sound.play('pop', mergedTier);
@@ -492,7 +513,8 @@ function handleCollisions(event) {
         else if (level !== undefined) Sound.play('praise', level, () => { FX.praise(level); Haptics.play('praise', level); });
 
         Composite.remove(engine.world, [bodyA, bodyB]);
-        spawnItem(midX, midY, mergedTier, true);
+        const merged = spawnItem(midX, midY, mergedTier, true);
+        if (seeded) merged.seeded = true;
     }
 }
 // collisionActive too: two drops that met in mid-air may merge once they're resting on the pile
@@ -539,6 +561,7 @@ function syncSprite(body) {
 // --- RESTART & ADS ---
 
 document.getElementById('btn-restart').addEventListener('click', () => {
+    if (MINE) { Mine.again(); return; }   // the next stage, or the same one again
     Ads.showInterstitial(() => { clearSave(); location.reload(); });
 });
 
@@ -551,13 +574,14 @@ document.getElementById('btn-revive').addEventListener('click', () => {
 function revive() {
     revived = true;
     const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar
-    Composite.allBodies(engine.world).filter(b => b.tier !== undefined && b.bounds.min.y < clearAbove).forEach(b => {
+    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && b.bounds.min.y < clearAbove).forEach(b => {
+        if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
         FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
         Composite.remove(engine.world, b);
     });
     isGameOver = false;
     dangerTimer = 0;
-    saving = true;
+    saving = !RUSH && !MINE;
     document.getElementById('gameover').classList.remove('show');
     Sound.play('praise', 2);
     Haptics.play('praise', 2);
@@ -569,7 +593,7 @@ function revive() {
 // The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
 const SAVE_KEY = DAILY ? `${GAME.id}.save.daily` : `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
-let saving = !RUSH;     // a Gem Rush is not saved: leaving it ends it
+let saving = !RUSH && !MINE;     // a Gem Rush or a Gem Mine stage is not saved: leaving it ends it
 let revived = false;   // used the "keep going" ad this game
 
 function saveGame() {
@@ -588,7 +612,7 @@ function clearSave() {
 }
 
 function loadGame() {
-    if (RUSH) return;
+    if (RUSH || MINE) return;
     let data = null;
     try { data = JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) {}
     if (!data || data.v !== 1 || !Array.isArray(data.items)) return;
@@ -645,7 +669,7 @@ if (carStyles) {
 }
 const sizeBtn = document.getElementById('btn-size');
 sizeBtn.classList.toggle('active', REVERSE);
-if (DAILY) sizeBtn.style.display = 'none';
+if (DAILY || MINE) sizeBtn.style.display = 'none';
 sizeBtn.href = location.pathname + (GAME.mode ? (REVERSE ? '' : '?size=reverse') : `?mode=${MODE}${REVERSE ? '' : '&size=reverse'}`);
 
 // Settings panel (gear)
@@ -797,7 +821,7 @@ function setZapArmed(on) {
     zapArmed = on;
     if (on && starArmed) setStarArmed(false);
     zapUI();
-    if (on) showToast('Tap a gem to zap it');
+    if (on) showToast(MINE ? 'Tap a gem or a crate to zap it' : 'Tap a gem to zap it');
 }
 
 zapBtn.addEventListener('click', () => {
@@ -809,29 +833,35 @@ zapBtn.addEventListener('click', () => {
     else showToast(GAME.daily ? 'Finish the Daily Challenge for more Zaps' : 'No Zaps left');
 });
 
-// the gem under the finger (or the nearest one within a finger's width) for a booster
-function gemAt(e) {
+// the gem under the finger (or the nearest one within a finger's width) for a booster;
+// withCrates: a Gem Mine crate can be picked too
+function gemAt(e, withCrates) {
     const rect = board.getBoundingClientRect();
     const p = { x: (e.clientX - rect.left) * (GAME_WIDTH / rect.width), y: (e.clientY - rect.top) * (GAME_HEIGHT / rect.height) };
-    const items = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    const items = Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || (withCrates && b.crate)) && !b.isMerging);
     let target = Matter.Query.point(items, p)[0];
     if (!target) {
         let nearest = 24;
         for (const b of items) {
-            const gap = Math.hypot(b.position.x - p.x, b.position.y - p.y) - TIERS[b.tier];
+            const gap = Math.hypot(b.position.x - p.x, b.position.y - p.y) - (b.crate ? 30 : TIERS[b.tier]);
             if (gap < nearest) { nearest = gap; target = b; }
         }
     }
     return target || null;
 }
 
-// a tap on the board while the Zap is armed
+// a tap on the board while the Zap is armed (in the Gem Mine, a crate can be zapped: it breaks)
 function zapAt(e) {
-    const target = gemAt(e);
-    if (!target) { showToast('Tap a gem to zap it'); return; }
-    FX.zap(target.position.x, target.position.y, TIERS[target.tier]);
-    Composite.remove(engine.world, target);
-    Sound.play('pop', Math.max(6, target.tier));
+    const target = gemAt(e, !!MINE);
+    if (!target) { showToast(MINE ? 'Tap a gem or a crate to zap it' : 'Tap a gem to zap it'); return; }
+    if (target.crate) {
+        FX.zap(target.position.x, target.position.y, 30);
+        Mine.breakCrate(target);
+    } else {
+        FX.zap(target.position.x, target.position.y, TIERS[target.tier]);
+        Composite.remove(engine.world, target);
+    }
+    Sound.play('pop', Math.max(6, target.tier | 0));
     Sound.play('combo', 6);
     Haptics.play('merge', 9, 0);
     zaps--;
