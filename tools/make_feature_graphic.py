@@ -24,11 +24,14 @@ logo = Image.open(ROOT / 'assets/fx/logo_gemjar.png').convert('RGBA')
 lw = 430
 logo = logo.resize((lw, round(logo.height * lw / logo.width)), Image.LANCZOS)
 lx, ly = 40, (H - logo.height) // 2 - 10
-shadow = Image.new('RGBA', logo.size, (20, 8, 40, 0))
-shadow.putalpha(logo.getchannel('A').point(lambda v: v * 0.55))
+pad = 40                                        # room for the blur: the logo touches its picture's edges
+shadow = Image.new('RGBA', (logo.width + 2 * pad, logo.height + 2 * pad), (20, 8, 40, 0))
+alpha = Image.new('L', shadow.size, 0)
+alpha.paste(logo.getchannel('A').point(lambda v: v * 0.55), (pad, pad))
+shadow.putalpha(alpha)
 shadow = shadow.filter(ImageFilter.GaussianBlur(9))
 out = canvas.convert('RGBA')
-out.alpha_composite(shadow, (lx + 4, ly + 10))
+out.alpha_composite(shadow, (lx + 4 - pad, ly + 10 - pad))
 out.alpha_composite(logo, (lx, ly))
 dest = ROOT / 'android/store/feature_graphic.png'
 dest.parent.mkdir(parents=True, exist_ok=True)
