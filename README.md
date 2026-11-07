@@ -113,7 +113,8 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 - **Test build:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk) is the same 1.1 with Google's test ads (marked "Test Ad"), for trying the ads on your own phone without touching real ones; it is never uploaded to Google Play.
 - Package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
 - **Feature graphic** for the Play listing (1024 x 500): `android/store/feature_graphic.png`, made by `python3 tools/make_feature_graphic.py` from the jar picture in `assets/fixes` and the GEM JAR logo. The app icon for the listing is `android/store/icon_512.png`.
-- **Privacy policy** (for the Play listing and AdMob): `gems/privacy.html` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/privacy.html).
+- **Privacy policy** (for the Play listing and AdMob): https://www.sinadehesh.com/gemjar/privacy/ (the sinadehesh.com website, `site/gemjar/privacy/` in the Flora repository), with the same text at `gems/privacy.html`.
+- **app-ads.txt** (AdMob's check that the ads are yours): https://www.sinadehesh.com/app-ads.txt (`site/app-ads.txt` in the Flora repository). AdMob reads it from the plain domain, sinadehesh.com (the portfolio site on Cloudflare), so that address has to serve it or redirect to it; the Play listing's website is https://www.sinadehesh.com.
 
 ### How the app makes money
 
