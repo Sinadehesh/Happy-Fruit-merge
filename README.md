@@ -109,8 +109,8 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 
 - **Google Play:** upload `gems/GemJar.aab` (App Bundle, https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.aab).
 - **Install directly:** `gems/GemJar.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.apk).
-- The files there are version 1.0 (code 1), with no ads. Version 1.1 (code 2), with ads and the No Ads purchase, is built once the AdMob IDs are in `android/gemjar/admob.properties`.
-- **Test build of the latest game:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk), now version 1.1 (code 2) with the Gem Mine, all 11 gem sets and the clean cut, signed with the same key so it installs over 1.0. It shows Google's test ads (marked "Test Ad") until the AdMob IDs are in; it is never uploaded to Google Play.
+- The files there are version 1.1 (code 2): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
+- **Test build:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk) is the same 1.1 with Google's test ads (marked "Test Ad"), for trying the ads on your own phone without touching real ones; it is never uploaded to Google Play.
 - Package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
 - **Feature graphic** for the Play listing (1024 x 500): `android/store/feature_graphic.png`, made by `python3 tools/make_feature_graphic.py` from the jar picture in `assets/fixes` and the GEM JAR logo. The app icon for the listing is `android/store/icon_512.png`.
 - **Privacy policy** (for the Play listing and AdMob): `gems/privacy.html` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/privacy.html).
