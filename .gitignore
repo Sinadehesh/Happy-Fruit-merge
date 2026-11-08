@@ -1,6 +1,8 @@
 # Android build output and signing keys: never commit
 android/build/
 android/gemjar/build/
+android/bomber/build/
+android/build-bomber/
 android/.gradle/
 android/.kotlin/
 android/local.properties

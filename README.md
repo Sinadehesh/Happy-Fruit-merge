@@ -149,3 +149,45 @@ Each level comes in waves (2 to 5, the last one is the biggest, red arrows warn 
 The first game shows a short tutorial. Big hits come with screen shake, a short freeze and flashes, the last zombie of a level goes down in slow motion, zombies fly when they're blown up, and sounds are synthesized (no files); Android phones also vibrate. The screen height follows the phone's shape, so the game fills the screen. Your level, coins, upgrades and discovered bombs are saved in the browser.
 
 Art lives in `assets/bomber/`: bombs, all 12 zombies (`zombies/` for the first 4, `zombies2/` for the 8 later ones), soldier bullets, UI icons and buttons, the plane and two backgrounds (the 🌆 button switches between them and the original drawn one). Soldiers (8 looks, each with its own projectile and muzzle flash from `assets/bomber/shots`) and the base (4 stages) follow the shop upgrades. Anything that can't load is drawn in code instead. Sheets are cut with `tools/cut_flood.py` (whole sheets; also removes enclosed gaps like between legs or inside windows; `native` keeps relative sizes) and `tools/cut_boxes.py` (named boxes). Bomb hitboxes are their sprite outlines (`bomber/shapes.js`, from `tools/make_shapes.py`); `tools/soft_glow.py` re-cuts glowing items like the Black Hole bomb with a soft halo. Asset prompts are in `bomber/ASSET_PROMPTS.md`.
+
+## Zombie Bomber for Android
+
+- Package `com.sinadehesh.zombiebomber`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires.
+- **Build:** `python3 tools/build_bomber_android.py <version name> <version code>` packs the bomber page and only the files it uses (plus Matter.js and the Luckiest Guy font, so it plays offline), makes the launcher icons from the TNT bomb (and the 512 px store icon, `android/build-bomber/store_icon_512.png`; a copy for the Play listing is in `android/store/bomber/icon_512.png`), then builds and signs with Gradle. Output in `android/build-bomber/`: `ZombieBomber-<version>.aab` to upload to Google Play and `ZombieBomber-<version>.apk` to install directly. The Android SDK set-up is shared with the Gem Jar build.
+- **AdMob IDs:** `android/bomber/admob.properties` (the app and its 6 ad units, below). While any is empty, Google's test ads are used and only a `ZombieBomber-<version>-TEST-ADS.apk` is made, never a Play bundle.
+- **Signing:** `BOMBER_KEYSTORE` and `BOMBER_KEYSTORE_PASS` (key alias `BOMBER_KEY_ALIAS`, default `zombiebomber`), or Gem Jar's `GEMJAR_KEYSTORE` and `GEMJAR_KEYSTORE_PASS` to use the same upload key for both apps, which Google Play allows. Every update must be signed with the same key and have a higher version code.
+- Android source: `android/bomber` (manifest, theme, `MainActivity.java`: the game window, ads, consent and billing). The game talks to it through `window.AndroidApp`; `bomber/ads.js` decides when each ad may show.
+- **Privacy policy** (for the Play listing and AdMob): `bomber/privacy.html`, https://sinadehesh.github.io/Happy-Fruit-merge/bomber/privacy.html.
+- **app-ads.txt:** the one Gem Jar uses (https://www.sinadehesh.com/app-ads.txt) covers this app too, since both are in the same AdMob account. Set the Play listing's website to https://www.sinadehesh.com so AdMob can find it.
+
+### How the app makes money
+
+The rule: as many ads as players are happy to watch, and as few as possible they have to.
+
+- **Rewarded ads, always the player's choice,** at the moments they're worth the most. Each has a button marked ▶ AD:
+  - **Repair the base:** when the base falls, repair it to 60% health with a blast that throws back the zombies at the gate, and keep fighting. Once a level, with a 9-second countdown.
+  - **x2 coins:** on the level-cleared screen, double every coin from that level. "No thanks" appears a second later.
+  - **Free coins:** in the upgrade shop, once a visit (20 + 6 per level, rounded to 5).
+  - **Head start:** in the shop, start the next level with a big bomb already in the bay (4 sizes above your smallest drop, 5 before a boss).
+- **Full-screen ad between levels,** when PLAY is pressed in the shop: never during a level, none before level 4, at most one every 2.5 minutes, and none within 2.5 minutes of a rewarded ad, so players who choose rewarded ads see fewer of the ones they don't choose. Retrying after a loss never shows one. The app keeps its own 2-minute minimum as a safety net.
+- **Banner across the top of the screen,** away from the bomb bay where the fingers are (an accidental tap on a banner is against AdMob's rules). Its room is kept from the start so the game doesn't jump when an ad arrives; the large adaptive banner on tall phones, the regular one on short phones.
+- **No Ads** ($4.99, a one-time Google Play purchase, product ID `remove_ads`): switches the banner and the full-screen ads off for good and gives the game the banner's room. It comes back on a new phone or after reinstalling. The rewarded offers stay, since the player chooses them. The NO ADS button (title screen and shop) shows Google Play's price in the player's currency.
+- Ads that fail to load are tried again after 30 s, then 1, 2, 4 and at most 5 minutes. Loaded ads older than 55 minutes are replaced (AdMob's expire after an hour).
+- **Consent:** Google's consent message (UMP) where the law asks for it (EU, UK, some US states); the title screen then has a PRIVACY button to change the choice.
+- On the website there are no ads and no ad offers. Add `#adtest` to the address (`bomber/#adtest`) to try every offer with stand-in ads and a pretend No Ads purchase.
+
+### Setting up AdMob and Google Play
+
+1. **AdMob:** Apps > Add app > Android, "Zombie Bomber" (link it to the Play listing once it's published). Then create these 6 ad units and put their IDs, and the app ID, in `android/bomber/admob.properties`:
+
+| Ad unit (suggested name) | Format | Where it shows | Key |
+|---|---|---|---|
+| ZB Top banner | Banner | Across the top of the screen | `banner_id` |
+| ZB Between levels | Interstitial | When PLAY is pressed in the shop (from level 4, at most every 2.5 min) | `interstitial_id` |
+| ZB Repair base | Rewarded | The base falls: repair it and keep fighting | `rewarded_revive_id` |
+| ZB Double coins | Rewarded | Level cleared: x2 coins | `rewarded_double_id` |
+| ZB Free coins | Rewarded | Upgrade shop: free coins | `rewarded_coins_id` |
+| ZB Head start | Rewarded | Upgrade shop: start the next level with a big bomb | `rewarded_boost_id` |
+
+   For the rewarded units, the reward amount and item in AdMob don't matter (any, e.g. 1 "Reward"): the game decides what each gives. Each offer has its own unit so AdMob shows how each one does.
+2. **Google Play Console:** create the app (package `com.sinadehesh.zombiebomber`), upload the first `.aab`, then Monetize > Products > In-app products > Create product: ID `remove_ads`, name "No Ads", price $4.99 (Play fills in other currencies). Add the privacy policy link, and fill in Data safety from the privacy policy (AdMob collects the device's advertising ID, rough location from the IP address, app interactions and diagnostics; nothing is collected by the game itself).

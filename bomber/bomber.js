@@ -929,10 +929,99 @@ function startLevel(n) {
     currentTier = randomDropTier(); nextTier = randomDropTier();
     dropCd = 0; dropperPop = 0.6; jammed = false; overT = 0; mergeCombo = 0; mergeComboT = 0;
     state = 'play'; stateT = 0;
+    reviveUsed = false;
     const fresh = Object.values(ZOMBIES).find(t => t.unlock === level && level > 1 && !t.boss);
-    const sub = fresh ? `NEW ZOMBIE: ${fresh.name.toUpperCase()}!` : level % 5 === 0 ? 'THE ZOMBIE KING IS COMING!' : level === 1 ? 'STOP THE HORDE!' : TIPS[level % TIPS.length];
+    let sub = fresh ? `NEW ZOMBIE: ${fresh.name.toUpperCase()}!` : level % 5 === 0 ? 'THE ZOMBIE KING IS COMING!' : level === 1 ? 'STOP THE HORDE!' : TIPS[level % TIPS.length];
+    if (boostTier >= 0) {   // the head start from the shop: a big bomb waiting in the bay
+        spawnBayBomb(L.bay.w / 2, BOMB_R[boostTier] + 10, boostTier, false);
+        sub = `HEAD START: ${BOMBS[boostTier].name.toUpperCase()}!`;
+        boostTier = -1;
+    }
     showBanner(`LEVEL ${level}`, sub, '#ffd32a', 2.4);
     tut = save.tut ? null : { step: 0, t: 0, drops: 0 };
+}
+
+// ---------- AD OFFERS (rewarded ads, always the player's choice; see ads.js) ----------
+let reviveUsed = false, reviveT = 0;   // repair the base when it falls: once a level
+let clearedOffer = null;               // double the level's coins: null until decided, then true/false
+let coinsOfferUsed = false;            // free coins in the shop: once a visit
+let boostTier = -1;                    // head start: the bomb waiting for the next level
+const REVIVE_SECONDS = 9;
+const freeCoinsAmount = lv => Math.round((20 + lv * 6) / 5) * 5;
+const boostTierFor = lv => Math.min(BOMBS.length - 1, stats().dropMin + (lv % 5 === 0 ? 5 : 4));
+const levelCoins = () => clearBonus + coinsThisLevel + leftoverCoins;
+
+// The base has fallen: offer to repair it, else the level is lost
+function baseFalls() {
+    if (!reviveUsed && Ads.rewardedReady('revive')) {
+        state = 'revive'; stateT = 0; reviveT = REVIVE_SECONDS;
+        banner = null; popup = null;
+        putBackGrabbed();
+        Sound.alarm(); Haptics.buzz(120, true);
+        return;
+    }
+    baseDestroyed();
+}
+
+function watchRevive() {
+    Ads.showRewarded('revive', watched => {
+        if (!watched) { baseDestroyed(); return; }
+        reviveUsed = true;
+        state = 'play'; stateT = 0;
+        baseHP = Math.ceil(baseMax * 0.6); baseFlash = 0;
+        // a blast from the repaired base throws back the zombies at the gate
+        for (const z of zombies) {
+            if (z.dead) continue;
+            const d = Math.max(0, z.x - L.stopX);
+            if (d > 180) continue;
+            if (!hurtZombie(z, z.maxHp * 0.6, { kind: 'blast', x: 30, power: 1.3 })) { z.x += 80 * (1 - d / 180); z.stun = 1.2; }
+        }
+        explosionFx(L.stopX - 10, L.impactY, 120, 7, { noDecal: true });
+        addShake(14); flashA = 0.45; flashColor = '170,230,255';
+        Sound.boom(7); Sound.buy(); Haptics.buzz(60, true);
+        showBanner('BASE REPAIRED!', 'KEEP FIGHTING!', '#7bed9f', 1.8);
+    });
+}
+
+function watchDouble() {
+    Ads.showRewarded('double', watched => {
+        clearedOffer = false;   // taken or skipped: the shop opens once the coins have landed
+        stateT = Math.max(stateT, 3.4);
+        if (!watched) return;
+        const extra = levelCoins();
+        leftoverCoins += extra;   // the panel's total shows the doubled amount
+        flyCoins(W / 2, L.battleTop + 150, extra, 0);
+        floatText(W / 2, L.battleTop + 132, `x2!  +${extra}`, '#ffd32a', 30, 1.6, true);
+        Sound.buy(); Haptics.buzz(40);
+        stateT = Math.max(stateT, 3.4);
+    });
+}
+
+function watchFreeCoins() {
+    Ads.showRewarded('coins', watched => {
+        if (!watched) return;
+        coinsOfferUsed = true;
+        const n = freeCoinsAmount(save.level), b = shopCoinsBtn();
+        flyCoins(b.x + b.w / 2, b.y + b.h / 2, n, 0);
+        floatText(b.x + b.w / 2, b.y + 50, `+${n} COINS`, '#ffd32a', 22);
+        Sound.buy(); Haptics.buzz(30);
+    });
+}
+
+function watchBoost() {
+    Ads.showRewarded('boost', watched => {
+        if (!watched) return;
+        boostTier = boostTierFor(save.level);
+        const b = shopBoostCard();
+        floatText(b.x + b.w / 2, b.y - 6, 'HEAD START READY!', '#7bed9f', 20);
+        Sound.newBomb(); Haptics.buzz(30);
+    });
+}
+
+// a bomb in your hand when the level stops goes back into the bay
+function putBackGrabbed() {
+    if (grabbed) { spawnBayBomb(clamp(grabbed.x - L.bay.x, BOMB_R[grabbed.tier] + 2, L.bay.w - BOMB_R[grabbed.tier] - 2), BOMB_R[grabbed.tier] + 10, grabbed.tier, false); grabbed = null; }
+    gesture = null;
 }
 
 function randomDropTier() { return Math.min(BOMBS.length - 1, stats().dropMin + Math.floor(Math.random() * 3)); }
@@ -990,6 +1079,7 @@ function spawnZombie(kind, x, y) {
 function levelCleared() {
     state = 'cleared'; stateT = 0; popTimer = 0;
     drawCleared.rang = [];
+    clearedOffer = null;
     const frac = baseHP / baseMax;
     stars = frac >= 0.75 ? 3 : frac >= 0.4 ? 2 : 1;
     clearBonus = 20 + level * 5;
@@ -1009,29 +1099,39 @@ function levelCleared() {
     hudCoinBump = 1;
 }
 
-let popTimer = 0;
+let popTimer = 0, clearedOfferAt = 0;
+// a leftover bomb pops into coins
+function popLeftover() {
+    while (leftovers.length) {
+        const b = leftovers.shift();
+        if (!engine.world.bodies.includes(b)) continue;
+        const x = L.bay.x + b.position.x, y = L.bay.y + b.position.y, v = (b.tier + 1) * 2;
+        Composite.remove(engine.world, b);
+        leftoverCoins += v;
+        Sound.pop();
+        for (let i = 0; i < 12; i++) { const a = rand(0, Math.PI * 2), sp = rand(60, 200); topParts.push({ kind: 'sparkle', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0, drag: 4, life: rand(0.3, 0.6), t: 0, size: rand(2, 4), color: BOMBS[b.tier].light }); }
+        topParts.push({ kind: 'ring', x, y, vx: 0, vy: 0, g: 0, drag: 0, life: 0.35, t: 0, size: BOMB_R[b.tier] * 1.4, color: '255, 220, 120' });
+        flyCoins(x, y, v, 2);
+        return;
+    }
+}
 function updateCleared(rdt) {
     // after the banner is up, the leftover bombs pop into coins one by one
     if (stateT > 1.1 && leftovers.length) {
         popTimer -= rdt;
-        while (popTimer <= 0 && leftovers.length) {
-            const b = leftovers.shift();
-            if (!engine.world.bodies.includes(b)) continue;
-            popTimer = 0.16;
-            const x = L.bay.x + b.position.x, y = L.bay.y + b.position.y, v = (b.tier + 1) * 2;
-            Composite.remove(engine.world, b);
-            leftoverCoins += v;
-            Sound.pop();
-            for (let i = 0; i < 12; i++) { const a = rand(0, Math.PI * 2), sp = rand(60, 200); topParts.push({ kind: 'sparkle', x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0, drag: 4, life: rand(0.3, 0.6), t: 0, size: rand(2, 4), color: BOMBS[b.tier].light }); }
-            topParts.push({ kind: 'ring', x, y, vx: 0, vy: 0, g: 0, drag: 0, life: 0.35, t: 0, size: BOMB_R[b.tier] * 1.4, color: '255, 220, 120' });
-            flyCoins(x, y, v, 2);
-        }
+        while (popTimer <= 0 && leftovers.length) { popLeftover(); popTimer += 0.16; }
     }
-    if (stateT > 3.4 && !leftovers.length && !coins.length) openShop();
+    // once they have: offer to double the level's coins, if an ad is ready
+    if (clearedOffer === null && stateT > 1.6 && !leftovers.length) {
+        clearedOffer = levelCoins() > 0 && Ads.rewardedReady('double');
+        clearedOfferAt = stateT;
+    }
+    if (clearedOffer === false && stateT > 3.4 && !leftovers.length && !coins.length) openShop();
 }
 
 function openShop() {
     clearBay();
+    coinsOfferUsed = false;   // a new visit: a new free-coins offer
     leftovers = []; coins.forEach(c => { if (!c.done) { save.coins += c.v; c.done = true; } }); coins = [];
     writeSave();
     zombies = []; bullets = []; thrown = []; vortexes = []; fires = []; timers = []; explosions = []; lights = [];
@@ -1333,7 +1433,7 @@ function hitBase(z) {
     Sound.baseHit(); Haptics.buzz(30);
     floatText(L.stopX - 30 + rand(-10, 10), L.baseBottom - 74, `-${z.type.dmg}`, '#ff4757', 22);
     for (let i = 0; i < 6; i++) fieldParts.push({ kind: 'debris', x: L.stopX - 14, y: z.y - 24, vx: rand(-160, -40), vy: rand(-260, -80), g: 1000, drag: 0.4, life: rand(0.6, 1), t: 0, size: rand(2, 4), rot: rand(0, 6), vr: rand(-10, 10), floor: z.y + rand(-4, 8), color: pick(['#a08b6b', '#7a6a50', '#c8a96e']) });
-    if (baseHP <= 0) baseDestroyed();
+    if (baseHP <= 0) baseFalls();
 }
 
 function soldierShoot(s, target) {
@@ -1750,6 +1850,12 @@ function updateAim() {
 let physicsAcc = 0;
 function update(dt, rdt) {
     stateT += rdt;
+    if (state === 'revive') {   // the field holds still while the player decides; the offer runs out
+        reviveT -= rdt;
+        updateEffects(0, rdt);
+        if (reviveT <= 0) baseDestroyed();
+        return;
+    }
     updateAmbient(dt);
     if (state === 'play' || state === 'cleared' || state === 'over') {
         physicsAcc = Math.min(physicsAcc + dt, 0.1);
@@ -2459,6 +2565,7 @@ function drawShop() {
     text('UPGRADES', x + w / 2, y + 24, 26, '#ffd32a');
     drawCoin(x + 24, y + 24, 12);
     text(fmt(save.coins), x + 41, y + 26, 19, '#ffd32a', 'left');
+    drawFreeCoinsBtn();
     for (const c of SHOP_CARDS()) {
         const lv = save.up[c.key], up = UPGRADES[c.key], maxed = lv >= up.max;
         const price = maxed ? 0 : upgradePrice(c.key, lv), afford = !maxed && save.coins >= price;
@@ -2523,6 +2630,8 @@ function drawShopField() {
     ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(pulse, pulse);
     button(-b.w / 2, -b.h / 2, b.w, b.h, '#5ee87a', '#1f9e46', `▶ PLAY LEVEL ${lv}`, 24);
     ctx.restore();
+    drawBoostCard();
+    drawNoAdsBtn();
 }
 
 function drawTitle() {
@@ -2535,6 +2644,8 @@ function drawTitle() {
     text('BOMBER', 0, 32, 76, '#ff7a2f', 'center', '#1a1026', 14);
     ctx.restore();
     drawBomb(W / 2 + 150, cy - 46 + bob, 24, Math.min(10, Math.max(4, save.bestTier)), Math.sin(time * 2) * 0.3);
+    drawNoAdsBtn();
+    drawPrivacyBtn();
 }
 function drawTitleBay() {
     const { x, y, w, h } = L.bay;
@@ -2606,11 +2717,118 @@ function drawCleared() {
         ctx.globalAlpha = Math.min(1, (k - 1.2) * 3);
         ctx.fillStyle = 'rgba(12, 8, 24, 0.7)'; rrect(W / 2 - 130, cy + 96, 260, 30, 15); ctx.fill();
         drawCoin(W / 2 - 100, cy + 111, 10);
-        text(`+${clearBonus + coinsThisLevel + leftoverCoins} COINS`, W / 2 + 8, cy + 112, 18, '#ffd32a');
+        text(`+${levelCoins()} COINS`, W / 2 + 8, cy + 112, 18, '#ffd32a');
         ctx.globalAlpha = 1;
+    }
+    // the offer: watch an ad to double the coins
+    if (clearedOffer === true) {
+        const b = CLEARED_BTNS(), d = b.double, since = stateT - clearedOfferAt;
+        const pop = easeOutBack(Math.min(1, since / 0.3)) * (1 + Math.sin(time * 5) * 0.03);
+        ctx.save(); ctx.translate(d.x + d.w / 2, d.y + d.h / 2); ctx.scale(pop, pop); ctx.translate(-d.x - d.w / 2, -d.y - d.h / 2);
+        button(d.x, d.y, d.w, d.h, '#ffcf3f', '#ff9500', null);
+        drawCoin(d.x + 30, d.y + d.h / 2 + 1, 13);
+        text(`x2  +${fmt(levelCoins())}`, d.x + 52, d.y + d.h / 2 + 2, 22, '#fff', 'left');
+        adBadge(d.x + d.w - 60, d.y + d.h / 2 + 1, 22);
+        ctx.restore();
+        if (since > 1) button(b.skip.x, b.skip.y, b.skip.w, b.skip.h, '#7d6fb0', '#4a3f7a', 'NO THANKS', 15, Math.min(1, (since - 1) * 3) * 0.85);
     }
 }
 drawCleared.rang = [];
+const clearedCy = () => L.battleTop + Math.min(118, (L.groundY - L.battleTop) * 0.45);
+const CLEARED_BTNS = () => {
+    const cy = clearedCy();
+    return { double: { x: W / 2 - 130, y: cy + 140, w: 260, h: 58 }, skip: { x: W / 2 - 80, y: cy + 208, w: 160, h: 38 } };
+};
+
+// ---------- DRAW: AD OFFERS ----------
+// "▶ AD" on a button means it plays a rewarded ad
+function adBadge(x, y, h = 20) {
+    const w = h * 1.9;
+    ctx.fillStyle = 'rgba(255,255,255,0.95)'; rrect(x, y - h / 2, w, h, h / 2); ctx.fill();
+    ctx.fillStyle = '#1a1026';
+    ctx.beginPath(); ctx.moveTo(x + h * 0.36, y - h * 0.26); ctx.lineTo(x + h * 0.74, y); ctx.lineTo(x + h * 0.36, y + h * 0.26); ctx.closePath(); ctx.fill();
+    text('AD', x + h * 1.3, y + 1, h * 0.55, '#1a1026', 'center', null);
+    return w;
+}
+
+const REVIVE_BTNS = () => {
+    const cy = H / 2 + 10;
+    return { watch: { x: W / 2 - 145, y: cy + 34, w: 290, h: 62 }, giveUp: { x: W / 2 - 75, y: cy + 112, w: 150, h: 38 } };
+};
+// The base has fallen: repair it with a rewarded ad, before the countdown runs out
+function drawRevive() {
+    const cy = H / 2 + 10, k = easeOutBack(Math.min(1, stateT / 0.35));
+    ctx.fillStyle = `rgba(14, 4, 20, ${Math.min(0.66, stateT * 2.5)})`; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.translate(W / 2, cy); ctx.scale(k, k); ctx.translate(-W / 2, -cy);
+    ctx.fillStyle = 'rgba(30, 16, 48, 0.97)'; rrect(W / 2 - 185, cy - 196, 370, 366, 24); ctx.fill();
+    ctx.strokeStyle = '#ff9f1a'; ctx.lineWidth = 3; rrect(W / 2 - 185, cy - 196, 370, 366, 24); ctx.stroke();
+    text('THE BASE IS FALLING!', W / 2, cy - 158, 32, '#ff4757');
+    // the base inside a countdown ring
+    const bx = W / 2, by = cy - 72, left = clamp(reviveT / REVIVE_SECONDS, 0, 1), img = baseImgs[stats().baseStage];
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 7; circle(bx, by, 52); ctx.stroke();
+    ctx.strokeStyle = left > 0.35 ? '#ffd32a' : '#ff4757'; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(bx, by, 52, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke(); ctx.lineCap = 'butt';
+    if (imgReady(img)) { const s = Math.min(68 / img.naturalWidth, 68 / img.naturalHeight); ctx.drawImage(img, bx - img.naturalWidth * s / 2, by - img.naturalHeight * s / 2, img.naturalWidth * s, img.naturalHeight * s); }
+    text(`${Math.ceil(reviveT)}`, bx + 58, by - 44, 22, left > 0.35 ? '#ffd32a' : '#ff4757');
+    text('REPAIR IT AND KEEP FIGHTING!', W / 2, cy + 4, 16, '#fff');
+    const b = REVIVE_BTNS(), wb = b.watch, pulse = 1 + Math.sin(time * 6) * 0.03;
+    ctx.save(); ctx.translate(wb.x + wb.w / 2, wb.y + wb.h / 2); ctx.scale(pulse, pulse); ctx.translate(-wb.x - wb.w / 2, -wb.y - wb.h / 2);
+    button(wb.x, wb.y, wb.w, wb.h, '#5ee87a', '#1f9e46', null);
+    text('REPAIR THE BASE', wb.x + 22, wb.y + wb.h / 2 + 2, 22, '#fff', 'left');
+    adBadge(wb.x + wb.w - 62, wb.y + wb.h / 2 + 1, 22);
+    ctx.restore();
+    if (stateT > 0.8) button(b.giveUp.x, b.giveUp.y, b.giveUp.w, b.giveUp.h, '#7d6fb0', '#4a3f7a', 'GIVE UP', 16, 0.85);
+    ctx.restore();
+}
+
+const noAdsBtn = () => state === 'title' ? { x: 10, y: 11, w: 112, h: 34 } : { x: W - 128, y: L.battleTop + 10, w: 118, h: 34 };
+const privacyBtn = () => ({ x: 130, y: 11, w: 96, h: 34 });
+// "No Ads" with its Google Play price, or a tick once it's bought
+function drawNoAdsBtn() {
+    if (!Ads.enabled()) return;
+    const b = noAdsBtn();
+    if (Ads.adFree()) { button(b.x, b.y, b.w, b.h, '#6b6680', '#45405a', 'AD-FREE ✓', 13, 0.8); return; }
+    const price = Ads.noAdsPrice();
+    button(b.x, b.y, b.w, b.h, '#ff6fb5', '#c2185b', null);
+    text('NO ADS', b.x + b.w / 2, b.y + (price ? 13 : b.h / 2 + 1), 15, '#fff');
+    if (price) text(price, b.x + b.w / 2, b.y + 26, 11, '#ffe3f1', 'center', '#1a1026', 2.5);
+}
+function drawPrivacyBtn() {
+    if (!Ads.privacyRequired()) return;
+    const b = privacyBtn();
+    button(b.x, b.y, b.w, b.h, '#5b5675', '#3a3650', 'PRIVACY', 13, 0.9);
+}
+
+const shopCoinsBtn = () => ({ x: L.bay.x + L.bay.w - 130, y: L.bay.y + 8, w: 122, h: 30 });
+// free coins in the shop, once a visit
+function drawFreeCoinsBtn() {
+    if (state !== 'shop' || coinsOfferUsed || !Ads.rewardedReady('coins')) return;
+    const b = shopCoinsBtn(), pulse = 1 + Math.sin(time * 4) * 0.03;
+    ctx.save(); ctx.translate(b.x + b.w / 2, b.y + b.h / 2); ctx.scale(pulse, pulse); ctx.translate(-b.x - b.w / 2, -b.y - b.h / 2);
+    button(b.x, b.y, b.w, b.h, '#ffcf3f', '#ff9500', null);
+    drawCoin(b.x + 16, b.y + b.h / 2, 9);
+    text(`+${fmt(freeCoinsAmount(save.level))}`, b.x + 28, b.y + b.h / 2 + 1, 15, '#fff', 'left');
+    adBadge(b.x + b.w - 40, b.y + b.h / 2, 18);
+    ctx.restore();
+}
+
+const shopBoostCard = () => {
+    const panelBottom = L.battleTop + (L.groundY - L.battleTop) * 0.42 + 52, playTop = shopPlayBtn().y;
+    return { x: W / 2 - 155, y: (panelBottom + playTop) / 2 - 28, w: 310, h: 56 };
+};
+// the head start: start the next level with a big bomb already in the bay
+function drawBoostCard() {
+    if (state !== 'shop' || save.level < 2) return;
+    const ready = boostTier >= 0;
+    if (!ready && !Ads.rewardedReady('boost')) return;
+    const b = shopBoostCard(), tier = ready ? boostTier : boostTierFor(save.level);
+    ctx.fillStyle = 'rgba(12, 8, 24, 0.8)'; rrect(b.x, b.y, b.w, b.h, 16); ctx.fill();
+    ctx.strokeStyle = ready ? '#7bed9f' : `rgba(255, 211, 42, ${0.6 + 0.3 * Math.sin(time * 4)})`; ctx.lineWidth = 2; rrect(b.x, b.y, b.w, b.h, 16); ctx.stroke();
+    drawBomb(b.x + 32, b.y + b.h / 2 + 2, 19, tier, Math.sin(time * 2) * 0.1);
+    text(ready ? `READY FOR LEVEL ${save.level}` : 'START THE LEVEL WITH A', b.x + 62, b.y + 18, 12, ready ? '#7bed9f' : '#ffd32a', 'left', '#120d22', 3);
+    text(BOMBS[tier].name.toUpperCase(), b.x + 62, b.y + 38, 17, '#fff', 'left');
+    if (!ready) adBadge(b.x + b.w - 52, b.y + b.h / 2, 22);
+}
 
 function drawOverlays() {
     if (hurtA > 0 || (state === 'play' && baseHP / baseMax < 0.3)) {
@@ -2644,6 +2862,7 @@ function draw() {
     drawTutorial();
     drawOverlays();
     if (state === 'over') drawGameOver();
+    if (state === 'revive') drawRevive();
 }
 
 // ---------- INPUT ----------
@@ -2657,12 +2876,35 @@ canvas.addEventListener('pointerdown', e => {
     const p = toLogical(e);
     pointer = p;
     Sound.init();
-    if (gesture) return;   // one finger at a time
+    if (gesture || Ads.isShowing()) return;   // one finger at a time, and nothing while an ad is up
     if (p.y < HUD_H && p.x > W - 52) { Sound.toggle(); Sound.click(); return; }
     if (p.y < HUD_H && p.x > W - 96 && p.x <= W - 52) { nextBackground(); Sound.click(); return; }
     switch (state) {
-        case 'title': Sound.click(); startLevel(save.level); return;
-        case 'cleared': if (stateT > 1.2) { leftovers.forEach(b => { if (engine.world.bodies.includes(b)) save.coins += (b.tier + 1) * 2; }); openShop(); } return;
+        case 'title': {
+            if (Ads.enabled() && inRect(p, noAdsBtn())) { Sound.click(); if (!Ads.adFree()) Ads.buyNoAds(); return; }
+            if (Ads.privacyRequired() && inRect(p, privacyBtn())) { Sound.click(); Ads.showPrivacy(); return; }
+            Sound.click(); startLevel(save.level); return;
+        }
+        case 'revive': {
+            const b = REVIVE_BTNS();
+            if (inRect(p, b.watch)) { Sound.click(); watchRevive(); }
+            else if (stateT > 0.8 && inRect(p, b.giveUp)) { Sound.click(); baseDestroyed(); }
+            return;
+        }
+        case 'cleared': {
+            if (clearedOffer === true) {   // double the coins, or not
+                const b = CLEARED_BTNS();
+                if (inRect(p, b.double)) { Sound.click(); watchDouble(); }
+                else if (stateT - clearedOfferAt > 1 && inRect(p, b.skip)) { Sound.click(); clearedOffer = false; stateT = Math.max(stateT, 3.4); }
+                return;
+            }
+            if (clearedOffer === null) {   // hurry along: pop the leftover bombs now
+                if (stateT > 0.8) { while (leftovers.length) popLeftover(); stateT = Math.max(stateT, 1.6); }
+                return;
+            }
+            if (stateT > 1.2) openShop();
+            return;
+        }
         case 'over': {
             if (stateT < 1.3) return;
             const b = OVER_BTNS();
@@ -2671,7 +2913,10 @@ canvas.addEventListener('pointerdown', e => {
             return;
         }
         case 'shop': case 'won': {
-            if (inRect(p, shopPlayBtn())) { Sound.click(); startLevel(save.level); return; }
+            if (inRect(p, shopPlayBtn())) { Sound.click(); Ads.betweenLevels(save.level, () => startLevel(save.level)); return; }
+            if (Ads.enabled() && inRect(p, noAdsBtn())) { Sound.click(); if (!Ads.adFree()) Ads.buyNoAds(); return; }
+            if (state === 'shop' && !coinsOfferUsed && inRect(p, shopCoinsBtn()) && Ads.rewardedReady('coins')) { Sound.click(); watchFreeCoins(); return; }
+            if (state === 'shop' && boostTier < 0 && save.level >= 2 && inRect(p, shopBoostCard()) && Ads.rewardedReady('boost')) { Sound.click(); watchBoost(); return; }
             const card = SHOP_CARDS().find(c => inRect(p, c));
             if (card) buyUpgrade(card);
             return;
@@ -2709,8 +2954,14 @@ canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') ho
 
 // ---------- SIZE ----------
 function resize() {
-    const oldBayH = L.bay ? L.bay.h : null;
+    const oldBayH = L.bay ? L.bay.h : null, oldLaneTop = L.laneTop;
     computeLayout();
+    // the screen changed height (the app's banner came or went): keep everyone on the road
+    if (oldLaneTop !== undefined && oldLaneTop !== L.laneTop) {
+        const d = L.laneTop - oldLaneTop;
+        for (const z of zombies) z.y += d;
+        for (const b of thrown) { b.ty += d; b.sy += d; }
+    }
     viewScale = Math.min(window.innerWidth / W, window.innerHeight / H);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);   // sharp enough, and keeps phones fast
     RS = viewScale * dpr;
@@ -2733,6 +2984,7 @@ let last = performance.now();
 function frame(now) {
     const rdt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
+    if (Ads.isShowing()) { requestAnimationFrame(frame); return; }   // everything waits while an ad is on screen
     time += rdt;
     let dt = rdt;
     if (hitstop > 0) { hitstop -= rdt; dt = 0; }

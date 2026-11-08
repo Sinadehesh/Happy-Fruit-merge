@@ -1,4 +1,5 @@
-// Gem Jar for Android. Build with: python3 tools/build_gem_android.py (packs the game, then runs Gradle)
+// The Android apps: Gem Jar (build with python3 tools/build_gem_android.py) and Zombie Bomber
+// (python3 tools/build_bomber_android.py). Each script packs its game, then runs Gradle.
 pluginManagement {
     repositories {
         google()
@@ -19,3 +20,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "GemJar"
 include(":gemjar")
+include(":bomber")
