@@ -16,16 +16,25 @@
             touch-action: none;
             user-select: none;
             -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
         }
         body {
             display: flex;
             justify-content: center;
             align-items: center;
+            background: radial-gradient(ellipse at 50% 40%, #2a1840 0%, #0f0c1d 70%);
         }
         canvas {
             display: block;
-            border-radius: 10px;
-            box-shadow: 0 0 40px rgba(255, 120, 40, 0.25);
+            touch-action: none;
+        }
+        /* on wide screens the game is a column in the middle */
+        @media (min-aspect-ratio: 3/4) {
+            canvas {
+                border-radius: 12px;
+                box-shadow: 0 0 60px rgba(255, 120, 40, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.06);
+            }
         }
     </style>
     <!-- Matter.js for the bomb bay physics -->
