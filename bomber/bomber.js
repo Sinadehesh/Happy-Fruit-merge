@@ -2702,7 +2702,8 @@ function endGesture(e, cancelled) {
     if (g.kind === 'grab') releaseGrab(cancelled);
     else if (!cancelled && state === 'play') { dropperX = clampDropX(p.x); tryDrop(); }
 }
-canvas.addEventListener('pointerup', e => endGesture(e, false));
+// phones only let sound start when the finger lifts, so unlock it there too
+canvas.addEventListener('pointerup', e => { Sound.init(); endGesture(e, false); });
 canvas.addEventListener('pointercancel', e => endGesture(e, true));
 canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hoverBay = false; });
 
