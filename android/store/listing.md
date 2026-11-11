@@ -16,7 +16,7 @@ Gem Jar: Merge Puzzle
 Drop gems, merge two of a kind and make the Diamond. 11 gem sets to collect.
 ```
 
-## Full description (1936/4000)
+## Full description (2034/4000)
 
 ```text
 Drop a gem into the jar. When two of the same touch, they merge into a bigger one. Keep merging, from a little pebble all the way up to the Diamond, before the jar fills to the top.
@@ -38,10 +38,11 @@ THE GEM MINE
 • Boss stages with extra rewards, and rare gem sets that open with the stars you find.
 
 SOMETHING NEW EVERY DAY
+• A Daily Gift that gets bigger every day in a row, and a free spin of the Lucky Wheel.
 • A daily challenge and new quests every few hours.
 • Gem Rush: how high can you score in 90 seconds?
 • 200 levels to climb, with rewards, titles and new jar colours along the way.
-• Boosters: Zap a gem away, or use a Star to lift any gem one level up.
+• Boosters: Zap a gem away, lift one a level with a Star, or Undo your last drop.
 
 MADE TO RELAX
 • Plays offline, with no account and no sign-in.

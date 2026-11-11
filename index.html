@@ -385,6 +385,100 @@
         #tut-skip { display: block; margin: 8px auto 0; border: none; background: none; color: #a8805f; font: 700 12px 'Poppins', sans-serif; text-decoration: underline; cursor: pointer; pointer-events: auto; }
         .danger-line.highlight { border-top-color: #ff4d6d; box-shadow: 0 0 13px #ff4d6d; animation: urgent 0.6s ease-in-out infinite alternate; }
 
+        /* Undo, a third booster: alone it sits where the Star does; with the Star, beside it, and NEXT moves over */
+        #btn-undo { left: 2px; }
+        .tray.three { padding-left: 62px; box-sizing: border-box; }
+        .tray.three .booster { width: 58px; height: 58px; }
+        .tray.three #btn-undo { left: 62px; }
+        @media (max-width: 380px) {
+            .tray.three { padding-left: 54px; gap: 8px; }
+            .tray.three .booster { width: 52px; height: 52px; }
+            .tray.three #btn-undo { left: 55px; }
+        }
+
+        /* 2x XP (meta.js): a badge on the level chip while it runs, the offer on the menu and after a game */
+        #lvl-chip { position: relative; }
+        #lvl-boost { display: none; position: absolute; right: -4px; top: -7px; padding: 0 6px; border-radius: 9px; background: #ff4d6d; color: #fff; font: normal 800 10px/16px 'Poppins', sans-serif; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); white-space: nowrap; }
+        #lvl-chip.boost #lvl-boost { display: block; }
+        #menu-boost {
+            margin-left: auto; margin-right: 8px; height: 34px; padding: 0 12px; border: none; border-radius: 17px; white-space: nowrap; cursor: pointer;
+            background: linear-gradient(#ffd45e, #f7a31c); color: #6b3d1e; font: 800 13px 'Poppins', sans-serif; box-shadow: 0 3px 0 #b86a0c;
+            animation: play-breathe 2.6s ease-in-out infinite;
+        }
+        #menu-boost.on { background: rgba(255, 255, 255, 0.16); color: #ffe66d; box-shadow: none; animation: none; cursor: default; }
+        .go-note { margin-top: 4px; font-size: 12px; font-weight: 600; color: #8a5a35; }
+        #go-bonus {
+            display: flex; align-items: center; gap: 6px; margin: 12px auto 0; padding: 3px 14px 3px 5px; border: none; border-radius: 18px; cursor: pointer;
+            background: #ff4d6d; color: #fff; font: 800 13px 'Poppins', sans-serif; box-shadow: 0 3px 0 #b82a47; animation: play-breathe 2.2s ease-in-out infinite;
+        }
+        #go-bonus img { width: 28px; height: 28px; object-fit: contain; }
+
+        /* the Lucky Wheel and the Daily Gift on the menu (bonus.js), on either side of Play */
+        .menu-playrow { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; }
+        .menu-playrow #menu-play { flex: none; }
+        .menu-side { position: relative; flex: 1 1 0; min-width: 0; max-width: 84px; display: flex; flex-direction: column; align-items: center; border: none; background: none; padding: 0; color: white; font-family: 'Poppins', sans-serif; cursor: pointer; visibility: hidden; }
+        .menu-side.open { visibility: visible; }
+        .menu-side:active { transform: scale(0.94); }
+        .menu-side img { width: min(100%, 58px); height: auto; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3)); }
+        .menu-side small { margin-top: -3px; padding: 1px 6px; border-radius: 9px; background: rgba(0, 0, 0, 0.3); font-size: 11px; font-weight: 800; white-space: nowrap; }
+        .menu-side .dot { position: absolute; top: 0; right: 12%; width: 13px; height: 13px; border-radius: 50%; background: #ff4d6d; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); display: none; }
+        @media (max-width: 380px) {
+            .menu-side small { font-size: 10px; padding: 1px 4px; }
+            .menu-rank { min-width: 118px; }
+            .menu-rank .xp-bar { width: 118px; }
+            #menu-xp-text { white-space: nowrap; }
+            #menu-boost { height: 30px; padding: 0 9px; font-size: 12px; margin-right: 6px; }
+        }
+        @media (max-width: 340px) {
+            .menu-profile .lvl-star.big { width: 44px; height: 44px; }
+            .menu-rank { min-width: 100px; max-width: 100px; }
+            .menu-rank .xp-bar { width: 100px; }
+            #menu-rank-name { font-size: 13px; white-space: nowrap; }
+            #menu-xp-text { font-size: 10px; overflow: hidden; text-overflow: ellipsis; }
+            #menu-boost { padding: 0 7px; font-size: 11px; margin-right: 4px; }
+        }
+        .menu-side.has-news .dot { display: block; animation: crown-bounce 1.6s ease infinite; }
+        .menu-side.has-news img { animation: side-wiggle 2.4s ease-in-out infinite; }
+        .menu-side.has-news small { background: #ff4d6d; }
+        @keyframes side-wiggle { 0%, 68%, 100% { transform: rotate(0); } 74% { transform: rotate(-12deg) scale(1.08); } 82% { transform: rotate(10deg) scale(1.08); } 90% { transform: rotate(-6deg); } }
+
+        /* the Lucky Wheel: eight equal slices; the disc turns under the pin */
+        #wheel, #gift { z-index: 215; }
+        #wheel-box { position: relative; width: min(66vw, 256px); aspect-ratio: 1; margin: 14px auto 6px; }
+        #wheel-disc { position: absolute; inset: 0; border-radius: 50%; box-sizing: border-box; overflow: hidden; pointer-events: none; border: 9px solid #f7b021; box-shadow: 0 0 0 4px #7a3410, inset 0 0 0 3px #7a3410, 0 9px 0 rgba(0, 0, 0, 0.18); will-change: transform; }
+        #wheel-disc::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from -0.7deg, #7a3410 0 1.4deg, transparent 1.4deg 45deg); pointer-events: none; }
+        .wheel-prize { position: absolute; inset: 0; z-index: 1; }
+        .wheel-prize span { position: absolute; top: 5%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; color: #fff; font: 800 13px/1.05 'Poppins', sans-serif; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); white-space: nowrap; }
+        .wheel-prize img { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3)); }
+        .wheel-prize .xp { padding-top: 6px; font-size: 16px; }
+        .wheel-prize .xp small { display: block; font-size: 11px; }
+        #wheel-hub { position: absolute; left: 50%; top: 50%; width: 21%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff3b0, #f7a928); box-shadow: 0 0 0 4px #7a3410, 0 4px 0 4px rgba(0, 0, 0, 0.2); z-index: 2; }
+        #wheel-pin { position: absolute; left: 50%; top: -16px; width: 36px; height: 43px; transform: translateX(-50%); transform-origin: 50% 20%; z-index: 3; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.3)); }
+        #wheel-pin.tick { animation: pin-tick 0.09s ease-out; }
+        @keyframes pin-tick { 50% { transform: translateX(-50%) rotate(-14deg); } }
+        #wheel-result { min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 20px; color: #d6337a; }
+        #wheel-result img { width: 36px; height: 36px; object-fit: contain; }
+        #wheel-result.win { animation: result-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1); }
+        @keyframes result-pop { from { transform: scale(0.3); opacity: 0; } }
+        #wheel-note, #gift-note { margin-top: 6px; min-height: 18px; font-size: 12px; font-weight: 700; color: #8a5a35; }
+        #wheel .panel .row, #gift .panel .row { margin-top: 8px; }
+        #gift-keep { margin-top: 6px; }
+        .pill:disabled { filter: grayscale(0.7) brightness(0.9); cursor: default; }
+
+        /* the Daily Gift: seven days, the one to collect lit up */
+        #gift-sub { margin: -6px 0 10px; font-size: 13px; font-weight: 700; color: #8a5a35; }
+        #gift-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .gift-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 76px; padding: 4px 2px; border-radius: 12px; background: rgba(107, 61, 30, 0.1); font-weight: 800; font-size: 13px; color: #6b3d1e; }
+        .gift-day b { font-size: 10px; letter-spacing: 0.5px; color: #8a5a35; }
+        .gift-day .items { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px 6px; }
+        .gift-day .items span { display: flex; align-items: center; gap: 1px; white-space: nowrap; }
+        .gift-day img { width: 24px; height: 24px; object-fit: contain; }
+        .gift-day.big { grid-column: span 2; background: linear-gradient(#ffe9a8, #ffd166); box-shadow: inset 0 0 0 2px #f0a81c; }
+        .gift-day.got { opacity: 0.5; }
+        .gift-day.got::after { content: '\2713'; position: absolute; right: 5px; top: 1px; color: #4e9a1e; font-size: 15px; }
+        .gift-day.today { background: #fff6dc; box-shadow: inset 0 0 0 3px #7cc242; animation: play-breathe 1.6s ease-in-out infinite; }
+        .gift-day.big.today { background: linear-gradient(#fff3c4, #ffd166); }
+
         /* panels taller than the screen scroll instead of being cut off */
         .overlay { overflow-y: auto; align-items: flex-start; padding: 21px 0; box-sizing: border-box; }
         .overlay > .panel { margin: auto; }
@@ -578,6 +672,7 @@
             <button id="lvl-chip" style="display: none" aria-label="Home">
                 <span class="lvl-star"><img src="assets/ui/icon_star.png" alt=""><b id="lvl-num">1</b></span>
                 <span class="xp-bar"><i id="lvl-fill"></i></span>
+                <i id="lvl-boost"></i><!-- 2x XP running (meta.js) -->
             </button>
             <!-- Gem Rush (meta.js): the clock -->
             <div id="rush-timer" style="display: none"><b>GEM RUSH</b><span id="rush-time">1:30</span><span class="xp-bar"><i id="rush-fill"></i></span></div>
@@ -604,6 +699,8 @@
         <div class="tray">
             <!-- Boosters (GAME.boosters, game.js): Star lifts a gem you tap one level, Zap clears one -->
             <button id="btn-star" class="booster" aria-label="Make a gem better" style="display: none"><img src="assets/ui/icon_star.png" alt=""><span id="star-count" class="count">0</span></button>
+            <!-- Undo (game.js): takes back the last drop -->
+            <button id="btn-undo" class="booster" aria-label="Take back the last drop" style="display: none"><img src="assets/ui/icon_undo.png" alt=""><span id="undo-count" class="count">0</span></button>
             <span class="tray-label">NEXT</span>
             <img id="next-img" alt="">
             <img id="next2-img" alt="" style="display: none"><!-- Gem Mine: the gem after it -->
@@ -663,6 +760,8 @@
                     <div id="menu-xp-text"></div>
                 </div>
             </div>
+            <!-- Android app (meta.js): a rewarded ad doubles all XP for 10 minutes; shows the time left while it runs -->
+            <button id="menu-boost" style="display: none">▶ 2× XP</button>
             <button id="menu-settings" aria-label="Settings"><svg viewBox="0 0 24 24"><path fill="currentColor" style="color: var(--gear);" d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg></button>
         </div>
         <div class="menu-hero">
@@ -670,7 +769,12 @@
             <div id="menu-best"><svg><use href="#crown"/></svg><span id="menu-best-val">0</span></div>
         </div>
         <div class="menu-actions">
-            <button class="pill green" id="menu-play">Play</button>
+            <!-- Play, with the Lucky Wheel and the Daily Gift (bonus.js) on either side -->
+            <div class="menu-playrow">
+                <button class="menu-side" id="side-wheel"><img src="assets/ui/icon_wheel.png" alt="Lucky Wheel"><small id="side-wheel-sub">Spin</small><i class="dot"></i></button>
+                <button class="pill green" id="menu-play">Play</button>
+                <button class="menu-side" id="side-gift"><img src="assets/ui/icon_gift.png" alt="Daily Gift"><small id="side-gift-sub">Gift</small><i class="dot"></i></button>
+            </div>
             <div class="menu-grid">
                 <button class="menu-tile wide" id="tile-mine"><img src="assets/mine/icon_pickaxe.png" alt=""><span class="tile-text"><b>Gem Mine</b><small id="tile-mine-sub"></small></span><i class="dot"></i></button>
                 <button class="menu-tile" id="tile-daily"><img src="assets/ui/icon_coin.png" alt=""><b>Daily</b><small id="tile-daily-sub"></small><i class="dot"></i></button>
@@ -701,6 +805,34 @@
             <div id="lu-rewards"></div>
             <div id="lu-lucky"></div>
             <div class="row"><button class="pill yellow" id="lu-double" style="display: none">▶ Double</button><button class="pill green" id="lu-collect">Collect</button></div>
+        </div>
+    </div>
+
+    <!-- Lucky Wheel (bonus.js): one free spin a day, more for an ad in the app; every slice has the same chance -->
+    <div id="wheel" class="overlay">
+        <div class="panel">
+            <button class="btn-close" id="btn-close-wheel" aria-label="Close"></button>
+            <h2>Lucky Wheel</h2>
+            <div id="wheel-box">
+                <div id="wheel-disc"></div>
+                <div id="wheel-hub"></div>
+                <svg id="wheel-pin" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 45 L5 14 Q5 3 20 3 Q35 3 35 14 Z" fill="#ff4d6d" stroke="#7a3410" stroke-width="5" stroke-linejoin="round"/><ellipse cx="15" cy="12" rx="5" ry="3" fill="#fff" opacity="0.7"/></svg>
+            </div>
+            <div id="wheel-result"></div>
+            <div class="row"><button class="pill green" id="btn-spin">Spin</button></div>
+            <div id="wheel-note"></div>
+        </div>
+    </div>
+
+    <!-- Daily Gift (bonus.js): a bigger gift each day in a row, seven days, then round again -->
+    <div id="gift" class="overlay">
+        <div class="panel">
+            <button class="btn-close" id="btn-close-gift" aria-label="Close"></button>
+            <h2>Daily Gift</h2>
+            <div id="gift-sub"></div>
+            <div id="gift-days"></div>
+            <div class="row"><button class="pill yellow" id="gift-double" style="display: none">▶ Double</button><button class="pill green" id="gift-collect">Collect</button></div>
+            <div id="gift-note"></div>
         </div>
     </div>
 
@@ -780,6 +912,13 @@
                 <div class="row"><button class="pill yellow" id="btn-revive">▶ Keep Going</button></div>
                 <div id="revive-text">Watch a short ad to clear the top of the jar</div>
             </div>
+            <!-- Android app only (meta.js): an ad for double XP for 10 minutes, when no other ad is offered here -->
+            <div id="go-boost" style="display: none">
+                <div class="row"><button class="pill yellow" id="btn-go-boost">▶ 2× XP</button></div>
+                <div class="go-note">Watch a short ad: double XP for 10 minutes</div>
+            </div>
+            <!-- bonus.js: the Daily Gift or a free spin of the Lucky Wheel is waiting -->
+            <button id="go-bonus" style="display: none"></button>
             <div class="row"><button class="pill" id="btn-go-home" style="display: none">Home</button><button class="pill green" id="btn-restart">Play Again</button></div>
         </div>
     </div>
@@ -804,5 +943,6 @@
     <script src="mine.js"></script>
     <script src="game.js"></script>
     <script src="meta.js"></script>
+    <script src="bonus.js"></script>
 </body>
 </html>

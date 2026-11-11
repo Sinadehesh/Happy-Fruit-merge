@@ -425,13 +425,16 @@ function gameOver(reason) {
     isGameOver = true;
     clearSave();   // the next visit starts a fresh game
     zapArmed = starArmed = false;
+    lastDrop = null;
     document.getElementById('go-title').textContent = reason === 'time' ? "Time's up!" : FULL_TITLE;
     document.getElementById('go-score').textContent = score;
     document.getElementById('go-best-val').textContent = bestScore;
     document.getElementById('go-new').style.display = isNewBest ? 'block' : 'none';
     document.getElementById('gameover').classList.add('show');
-    // in the app: once a game, the player may watch an ad to keep going (clearing the top of the jar)
-    document.getElementById('revive').style.display = reason === 'full' && !revived && Ads.canRevive() ? 'block' : 'none';
+    // in the app: the player may watch an ad to keep going (clearing the top of the jar), MAX_REVIVES times a game
+    const canRevive = reason === 'full' && revives < MAX_REVIVES && Ads.canRevive();
+    document.getElementById('revive').style.display = canRevive ? 'block' : 'none';
+    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + 'atch a short ad to clear the top of the jar';
     showNextSetProgress();
     if (reason === 'full' || reason === 'time') {
         Sound.play('gameOver');
@@ -499,6 +502,7 @@ function dropFruit() {
     emitGame('drop', currentTier, dropX);
     Sound.play('drop');
     Haptics.play('drop');
+    if (UNDO_HERE) lastDrop = snapshot();   // the Undo booster can take this drop back
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
@@ -622,13 +626,14 @@ document.getElementById('btn-restart').addEventListener('click', () => {
 });
 
 // Keep going (Android app): the player chose to watch a rewarded ad, so the top of the jar is cleared
-// with a burst and the same game goes on, score and all. Once a game.
+// with a burst and the same game goes on, score and all. Twice a game at most (MAX_REVIVES).
 document.getElementById('btn-revive').addEventListener('click', () => {
     Ads.showRewarded(watched => { if (watched) revive(); });
 });
 
 function revive() {
-    revived = true;
+    revives++;
+    lastDrop = null;   // (nothing to undo: the drop that filled the jar is gone)
     const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar
     Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && b.bounds.min.y < clearAbove).forEach(b => {
         if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
@@ -650,14 +655,15 @@ function revive() {
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
 const SAVE_KEY = DAILY ? `${GAME.id}.save.daily` : `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
 let saving = !RUSH && !MINE;     // a Gem Rush or a Gem Mine stage is not saved: leaving it ends it
-let revived = false;   // used the "keep going" ad this game
+let revives = 0;       // how many times the "keep going" ad was used this game
+const MAX_REVIVES = 2;
 
 function saveGame() {
     if (!saving || isGameOver) return;
     const items = Composite.allBodies(engine.world)
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
-    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived, items };
+    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items };
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
@@ -687,7 +693,7 @@ function loadGame() {
     if (okTier(data.next)) nextTier = data.next;
     combo = data.combo | 0;
     dropsWithoutMerge = data.dropsWithoutMerge | 0;
-    revived = !!data.revived;
+    revives = data.revived === true ? 1 : Math.max(0, data.revived | 0);   // (older saves: true or false)
     if (DAILY) {
         if (Number.isInteger(data.rng)) dropRandom.setState(data.rng);
         if (Array.isArray(data.made)) data.made.forEach((n, t) => { if (t < made.length) made[t] = n | 0; });
@@ -931,7 +937,7 @@ function initZap() {
     if (!GAME.boosters) return;
     zapBtn.style.display = '';
     zapUI();
-    setInterval(() => { zapUI(); starUI(); }, 2000);   // the "AD" badge follows whether a rewarded ad is ready
+    setInterval(() => { zapUI(); starUI(); undoUI(); }, 2000);   // the "AD" badge follows whether a rewarded ad is ready
 }
 
 // --- STAR BOOSTER ---
@@ -957,7 +963,7 @@ function setStarArmed(on) {
     starUI();
     if (on) showToast('Tap a gem to make it better');
 }
-function setStarOpen(on) { starBtn.style.display = on && GAME.boosters ? '' : 'none'; starUI(); }
+function setStarOpen(on) { starBtn.style.display = on && GAME.boosters ? '' : 'none'; starUI(); trayLayout(); }
 
 starBtn.addEventListener('click', () => {
     if (isGameOver || Ads.isShowing()) return;
@@ -986,6 +992,94 @@ function starAt(e) {
     saveGame();
     emitGame('booster', 'star');
 }
+
+// --- UNDO BOOSTER ---
+// Takes back the last drop: the jar, the score and the gem in hand go back to the moment before it. (What the
+// drop already earned in XP, quests and gem sets stays.) It opens at a level (meta.js calls setUndoOpen); you
+// start with one, more come from the Lucky Wheel and the Daily Gift, or an ad in the Android app. Not in Gem
+// Rush (the clock is the game) or in a Gem Mine stage (which has its own "+5 drops").
+const UNDO_KEY = `${GAME.id}.undos`;
+const undoBtn = document.getElementById('btn-undo');
+const UNDO_HERE = !!GAME.boosters && !RUSH && !MINE;
+let undos = 1;
+try { const v = localStorage.getItem(UNDO_KEY); if (v !== null) undos = Math.max(0, parseInt(v, 10) || 0); } catch (e) {}
+let lastDrop = null;   // the game just before the last drop (snapshot), or null when there is nothing to undo
+
+function storeUndos() { try { localStorage.setItem(UNDO_KEY, undos); } catch (e) {} }
+function addUndos(n) { undos = Math.min(99, undos + n); storeUndos(); undoUI(); }
+function undoUI() {
+    undoBtn.classList.toggle('empty', undos === 0 || !lastDrop);
+    document.getElementById('undo-count').textContent = undos > 0 ? undos : (Ads.rewardedReady() ? 'AD' : '0');
+}
+function setUndoOpen(on) {
+    undoBtn.style.display = on && UNDO_HERE ? '' : 'none';
+    undoUI();
+    trayLayout();
+}
+// with both the Star and the Undo there, the Undo sits beside the Star and NEXT moves over to make room
+function trayLayout() {
+    const shown = el => el.style.display !== 'none';
+    document.querySelector('.tray').classList.toggle('three', shown(undoBtn) && shown(starBtn));
+}
+
+function snapshot() {
+    return {
+        items: Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging).map(b => ({
+            tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
+            vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
+        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier,
+        daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
+    };
+}
+
+function undoLastDrop() {
+    const s = lastDrop;
+    if (!s || isGameOver) return;
+    lastDrop = null;
+    Composite.allBodies(engine.world).filter(b => b.tier !== undefined).forEach(b => Composite.remove(engine.world, b));
+    for (const it of s.items) {
+        const body = spawnItem(it.x, it.y, it.tier, false);
+        Body.setAngle(body, it.angle);
+        Body.setVelocity(body, { x: it.vx, y: it.vy });
+        Body.setAngularVelocity(body, it.spin);
+        body.isDropping = it.dropping;
+    }
+    score = shownScore = s.score;
+    scoreEl.textContent = score;
+    bestScore = s.bestScore;
+    isNewBest = s.isNewBest;
+    try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {}
+    bestEl.textContent = Math.max(startBest, score);
+    if (score <= startBest) { tickScore.crowned = false; document.getElementById('best-box').classList.remove('new-best'); }
+    combo = s.combo;
+    dropsWithoutMerge = s.dropsWithoutMerge;
+    currentTier = s.current;
+    nextTier = s.next;
+    if (s.daily) {   // the Daily Challenge: the same drops come again, and what this drop made is taken back
+        dropRandom.setState(s.daily.rng);
+        s.daily.made.forEach((n, t) => { made[t] = n; });
+        maxCombo = s.daily.maxCombo;
+        updateGoal();
+    }
+    dangerTimer = 0;
+    dropX = clampX(dropX, currentTier);
+    updateUI();
+    undoUI();
+    Sound.play('star', 0);
+    Haptics.play('praise', 1);
+    showToast('Drop taken back');
+    saveGame();
+    emitGame('booster', 'undo');
+}
+
+undoBtn.addEventListener('click', () => {
+    if (isGameOver || Ads.isShowing()) return;
+    Sound.play('tap');
+    if (!lastDrop) { showToast('Drop a gem first: Undo takes it back'); return; }
+    if (undos > 0) { undos--; storeUndos(); undoLastDrop(); return; }
+    if (Ads.rewardedReady()) Ads.showRewarded(watched => { if (watched) undoLastDrop(); });
+    else showToast('Spin the Lucky Wheel for more Undos');
+});
 
 // --- GEM SETS ---
 // The next locked set (if its art is in the game) opens when enough of the gems it asks for have been made:
