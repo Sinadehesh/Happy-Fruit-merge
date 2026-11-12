@@ -339,12 +339,58 @@ const GLOW = {
     smokeWarm: makeGlow('150,90,60', 0.5),
     purple: makeGlow('190,90,255'), green: makeGlow('140,240,80'), toxic: makeGlow('120,200,60', 0.55), cyan: makeGlow('120,240,255')
 };
+// A glow is a blur stretched big, so it's drawn with the cheap filter: the costly one used for the
+// pictures looks no different on a blur, and big explosions are made of hundreds of glows.
+let fxLayer = null;   // the half-resolution layer being drawn into, if any (see FX)
 function glow(name, x, y, r, a) {
     if (a <= 0.003 || r <= 0.5) return;
     const a0 = ctx.globalAlpha;
     ctx.globalAlpha = a0 * Math.min(1, a);
-    ctx.drawImage(GLOW[name], x - r, y - r, r * 2, r * 2);
+    if (fxLayer) {   // note the part of the layer it covers (layers use the cheap filter anyway)
+        if (x - r < fxLayer.x0) fxLayer.x0 = x - r;
+        if (x + r > fxLayer.x1) fxLayer.x1 = x + r;
+        if (y - r < fxLayer.y0) fxLayer.y0 = y - r;
+        if (y + r > fxLayer.y1) fxLayer.y1 = y + r;
+        ctx.drawImage(GLOW[name], x - r, y - r, r * 2, r * 2);
+    } else {
+        const q = ctx.imageSmoothingQuality;
+        ctx.imageSmoothingQuality = 'low';
+        ctx.drawImage(GLOW[name], x - r, y - r, r * 2, r * 2);
+        ctx.imageSmoothingQuality = q;
+    }
     ctx.globalAlpha = a0;
+}
+
+// Smoke, fire and light are soft, so on the battlefield they're drawn into two half-resolution layers,
+// each laid over the battlefield in one go: the same picture for about a quarter of the work. A layer
+// is only copied and cleared where something was drawn. FX.on = false draws them straight to the screen.
+const FX = { on: true, smoke: { c: document.createElement('canvas') }, add: { c: document.createElement('canvas') } };
+for (const lay of [FX.smoke, FX.add]) { lay.g = lay.c.getContext('2d'); lay.clear = null; }
+function fxBegin(lay) {
+    if (!FX.on) return;
+    const k = Math.min(RS, Math.max(0.75, RS * 0.5)), top = L.battleTop, g = lay.g;
+    const w = Math.ceil(W * k), h = Math.ceil((L.battleBottom - top) * k);
+    if (lay.c.width !== w || lay.c.height !== h) { lay.c.width = w; lay.c.height = h; lay.clear = null; }
+    else if (lay.clear) { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(lay.clear[0], lay.clear[1], lay.clear[2], lay.clear[3]); lay.clear = null; }
+    g.setTransform(k, 0, 0, k, 0, -top * k);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    lay.k = k; lay.top = top; lay.x0 = lay.y0 = Infinity; lay.x1 = lay.y1 = -Infinity;
+    lay.main = ctx; ctx = g; fxLayer = lay;
+}
+// lays what was drawn over the screen: op is how ('source-over' for smoke, 'lighter' for light)
+function fxEnd(lay, op) {
+    if (!FX.on) return;
+    ctx = lay.main; fxLayer = null;
+    if (!(lay.x1 > lay.x0)) return;   // nothing was drawn
+    const k = lay.k, cw = lay.c.width, ch = lay.c.height;
+    const x0 = clamp(Math.floor(lay.x0 * k) - 1, 0, cw), x1 = clamp(Math.ceil(lay.x1 * k) + 1, 0, cw);
+    const y0 = clamp(Math.floor((lay.y0 - lay.top) * k) - 1, 0, ch), y1 = clamp(Math.ceil((lay.y1 - lay.top) * k) + 1, 0, ch);
+    if (x1 <= x0 || y1 <= y0) return;
+    ctx.save();
+    ctx.globalCompositeOperation = op; ctx.globalAlpha = 1; ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(lay.c, x0, y0, x1 - x0, y1 - y0, x0 / k, lay.top + y0 / k, (x1 - x0) / k, (y1 - y0) / k);
+    ctx.restore();
+    lay.clear = [x0, y0, x1 - x0, y1 - y0];   // cleared before the next frame draws into it
 }
 
 // ---------- SOUND (synthesized, no files) ----------
@@ -521,6 +567,14 @@ function makeLayer(w, h) {
     const g = c.getContext('2d'); g.setTransform(RS, 0, 0, RS, 0, 0);
     g.imageSmoothingQuality = 'high';
     return { c, g, w, h };
+}
+// A cached layer is drawn at the screen's own resolution, so it's copied about 1:1 and the cheap filter
+// looks the same; the costly one made every frame of screen shake slow (the shake moves it a fraction of a pixel).
+function copyLayer(lay, y) {
+    const q = ctx.imageSmoothingQuality;
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(lay.c, 0, y, W, lay.h);
+    ctx.imageSmoothingQuality = q;
 }
 function ensureLayers() {
     if (!layers.dirty) return;
@@ -2135,28 +2189,35 @@ function update(dt, rdt) {
 function drawBattlefield() {
     ctx.save();
     ctx.beginPath(); ctx.rect(0, L.battleTop, W, L.battleBottom - L.battleTop); ctx.clip();
-    ctx.drawImage(layers.sky.c, 0, 0, W, layers.sky.h);
+    copyLayer(layers.sky, 0);
     if (layers.sky.drawn) drawStars();
     drawClouds();
     drawPlane();
-    ctx.drawImage(layers.ground.c, 0, layers.ground.top, W, layers.ground.h);
-    ctx.drawImage(layers.decals.c, 0, layers.decals.top, W, layers.decals.h);
+    copyLayer(layers.ground, layers.ground.top);
+    copyLayer(layers.decals, layers.decals.top);
     drawFires();
     drawAimRing();
     drawBase();
     drawEntities();
     drawCrate();
     for (const b of thrown) drawThrown(b);
+    // smoke and dirt first, the glowing stuff on top; the soft parts at half resolution (FX)
+    fxBegin(FX.smoke);
+    for (const p of fieldParts) if (p.kind === 'smoke') drawPart(p);
+    fxEnd(FX.smoke, 'source-over');
+    for (const p of fieldParts) if (!GLOWING[p.kind] && p.kind !== 'smoke') drawPart(p);
+    for (const e of explosions) drawExplosionRings(e);
+    for (const v of vortexes) drawVortex(v);
+    fxBegin(FX.add);
     ctx.globalCompositeOperation = 'lighter';
     for (const l of lights) { const k = l.t / l.life; glow(l.color, l.x, l.y, l.r, l.a * (1 - k) * (1 - k)); }
     ctx.globalCompositeOperation = 'source-over';
-    // smoke and dirt first, the glowing stuff on top
-    for (const p of fieldParts) if (!GLOWING[p.kind]) drawPart(p);
-    for (const e of explosions) drawExplosion(e);
-    for (const v of vortexes) drawVortex(v);
-    for (const p of fieldParts) if (GLOWING[p.kind]) drawPart(p);
+    for (const e of explosions) drawExplosionGlow(e);
+    for (const p of fieldParts) if (SOFT_GLOW[p.kind]) drawPart(p);
+    fxEnd(FX.add, 'lighter');
+    for (const p of fieldParts) if (GLOWING[p.kind] && !SOFT_GLOW[p.kind]) drawPart(p);   // sparks and the like stay sharp
     for (const b of bullets) drawBullet(b);
-    ctx.drawImage(layers.vignette.c, 0, L.battleTop, W, layers.vignette.h);
+    copyLayer(layers.vignette, L.battleTop);
     if (freezeT > 0) {   // frost creeping in from the edges, and how long is left
         const a = Math.min(1, freezeT / 0.6), top = L.battleTop, hgt = L.battleBottom - top;
         const fg = ctx.createRadialGradient(W / 2, top + hgt * 0.6, hgt * 0.3, W / 2, top + hgt * 0.6, W * 0.75);
@@ -2171,6 +2232,7 @@ function drawBattlefield() {
     drawAimLabel();
 }
 const GLOWING = { fire: 1, spark: 1, ember: 1, flash: 1, swirl: 1, sparkle: 1 };
+const SOFT_GLOW = { fire: 1, flash: 1 };   // glowing parts that are only a blur, drawn at half resolution
 
 // The sky drawn in code (the third sky, and what's shown if the sky art can't load)
 function drawStars() {
@@ -2434,7 +2496,8 @@ function drawThrown(b) {
     }
 }
 
-function drawExplosion(e) {
+// an explosion's fireball (all glow, drawn with the soft light) and its rings (sharp lines)
+function drawExplosionGlow(e) {
     const k = e.t / e.life;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -2443,6 +2506,8 @@ function drawExplosion(e) {
     glow(e.purple ? 'purple' : 'yellow', e.x, e.y - e.R * 0.32, fr * 1.15, (1 - k) * 0.95);
     glow(e.purple ? 'purple' : 'orange', e.x, e.y - e.R * 0.38, fr * 1.6, (1 - k) * 0.7);
     ctx.restore();
+}
+function drawExplosionRings(e) {
     // shockwave along the ground, and a ring in the air for the big ones
     const sk = easeOut(e.t / 0.32), sa = 1 - Math.min(1, e.t / 0.32);
     if (sa > 0) {
@@ -2564,7 +2629,7 @@ BOMBS.forEach(b => { b.light = shade(b.body, 0.45); });
 // ---------- DRAW: BOMB BAY ----------
 function drawBayArea() {
     const lay = layers.bay;
-    ctx.drawImage(lay.c, 0, lay.top, W, lay.h);
+    copyLayer(lay, lay.top);
     if (state === 'shop' || state === 'won') { drawShop(); return; }
     if (state === 'title') { drawTitleBay(); return; }
     const { x, y, w, h } = L.bay;
