@@ -9,7 +9,7 @@ import sys, os, glob, subprocess, wave
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 FONT = os.path.join(HERE, 'TitanOne-Regular.ttf')   # Titan One, SIL Open Font License (TitanOne-OFL.txt)
-SETS = [('rocks', 'Rocks & Gems'), ('crystal', 'Crystal Cave'), ('ocean', 'Ocean Jewels'), ('royal', 'Royal Treasury'), ('volcano', 'Volcano Gems'),
+SETS = [('rocks', 'Rocks & Gems'), ('crystal', 'Crystal Cave'), ('ocean', 'Ocean Jewels'), ('royal', 'Royal Treasury'), ('cosmic', 'Cosmic Gems'), ('volcano', 'Volcano Gems'),
         ('pixel', 'Pixel Treasure'), ('odd', 'Odd Shapes'), ('cyber', 'Cyber Circuit'), ('neon', 'Neon Nights'), ('pets', 'Gem Pets')]
 SEG, XF, END = 2.5, 0.25, 3.0
 W, H = 1080, 1920
@@ -52,9 +52,11 @@ def text(y, s, size, fill=(255, 255, 255), stroke=(60, 30, 120), sw=6):
 text(500, 'Merge alike gems.', 64); text(580, 'Collect every set!', 64)
 for i, (sid, name, _) in enumerate(segs):
     src = sorted(glob.glob(f'{REPO}/assets/{sid}/[01]*.png'))[11]
-    g = Image.open(src).convert('RGBA').resize((170, 170), Image.LANCZOS)
-    cx = 140 + (i % 5) * 200; cy = 850 + (i // 5) * 260
-    card.paste(g, (cx - 85, cy - 85), g)
+    g = Image.open(src).convert('RGBA').resize((150, 150), Image.LANCZOS)
+    per = 6 if len(segs) > 10 else 5
+    row = segs[(i // per) * per:(i // per + 1) * per]
+    cx = W // 2 + ((i % per) - (len(row) - 1) / 2) * (174 if per == 6 else 200); cy = 860 + (i // per) * 230
+    card.paste(g, (int(cx - 75), int(cy - 75)), g)
 text(1300, '11 GEM SETS', 70, fill=(255, 228, 120)); text(1390, '20 Gem Mine stages, daily gifts', 44)
 bx0, by0, bx1, by1 = 170, 1560, W - 170, 1695
 d.rounded_rectangle([bx0, by0 + 10, bx1, by1 + 10], radius=68, fill=(40, 110, 30)); d.rounded_rectangle([bx0, by0, bx1, by1], radius=68, fill=(124, 194, 66))

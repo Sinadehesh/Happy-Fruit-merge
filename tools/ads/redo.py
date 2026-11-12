@@ -6,7 +6,7 @@ D = os.environ.get('ADS_WORK') or os.path.join(HERE, 'work')   # frames, sounds 
 os.makedirs(D, exist_ok=True)
 import json, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
-SETS = [('rocks', 'Rocks & Gems'), ('crystal', 'Crystal Cave'), ('ocean', 'Ocean Jewels'), ('royal', 'Royal Treasury'), ('volcano', 'Volcano Gems'),
+SETS = [('rocks', 'Rocks & Gems'), ('crystal', 'Crystal Cave'), ('ocean', 'Ocean Jewels'), ('royal', 'Royal Treasury'), ('cosmic', 'Cosmic Gems'), ('volcano', 'Volcano Gems'),
         ('pixel', 'Pixel Treasure'), ('odd', 'Odd Shapes'), ('cyber', 'Cyber Circuit'), ('neon', 'Neon Nights'), ('pets', 'Gem Pets')]
 SONGS = ['carefree', 'easy_lemon', 'wallpaper', 'monkeys_spinning_monkeys']
 res = json.load(open(f'{D}/explore.json'))
