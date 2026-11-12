@@ -941,7 +941,8 @@
                 { id: 'crystal', name: 'Crystal Cave' },
                 { id: 'ocean', name: 'Ocean Jewels' },
                 { id: 'royal', name: 'Royal Treasury' },
-                { id: 'cosmic', name: 'Cosmic Gems', float: true },   // zero gravity: dropped at the bottom, they float up
+                // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
+                { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
                 { id: 'volcano', name: 'Volcano Gems' },
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears

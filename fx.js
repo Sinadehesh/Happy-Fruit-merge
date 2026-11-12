@@ -9,6 +9,34 @@ const FX = (() => {
     let down = 1;
     const wordY = () => down > 0 ? 270 : H - 270;
     function flip(on) { down = on ? -1 : 1; }
+    // threads between gems that pull each other (game.js PULL): a function giving [x1, y1, r1, x2, y2, r2, strength]
+    let threadsOf = null;
+    function threads(fn) { threadsOf = fn; }
+    function drawThreads(t) {
+        let list;
+        try { list = threadsOf(); } catch (e) { return; }
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (const [x1, y1, r1, x2, y2, r2, s] of list) {
+            const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+            const gap = d - (r1 + r2) * 0.92;
+            if (s < 0.05 || gap < 4) continue;
+            const ux = dx / d, uy = dy / d;
+            const ax = x1 + ux * r1 * 0.92, ay = y1 + uy * r1 * 0.92, bx = x2 - ux * r2 * 0.92, by = y2 - uy * r2 * 0.92;
+            const mx = (ax + bx) / 2, my = (ay + by) / 2, a = Math.min(0.9, 0.4 + 0.6 * s);
+            // a soft glow, then dashes flowing from both gems toward the middle
+            ctx.setLineDash([]);
+            ctx.strokeStyle = `rgba(196, 170, 255, ${a * 0.4})`;
+            ctx.lineWidth = 7 + 5 * s;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+            ctx.setLineDash([7, 6]);
+            ctx.lineDashOffset = -t * 40;
+            ctx.strokeStyle = `rgba(250, 244, 255, ${a})`;
+            ctx.lineWidth = 2.5 + 2 * s;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mx, my); ctx.moveTo(bx, by); ctx.lineTo(mx, my); ctx.stroke();
+        }
+        ctx.restore();
+    }
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
@@ -268,6 +296,7 @@ const FX = (() => {
         last = now;
         ctx.clearRect(0, 0, W, H);
         shakeStep(dt);
+        if (threadsOf) drawThreads(now / 1000);
         for (const e of effects) {
             e.t += dt;
             const k = e.t / e.dur;
@@ -307,5 +336,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, merge, praise, zap, banner, splinters, thud };
 })();

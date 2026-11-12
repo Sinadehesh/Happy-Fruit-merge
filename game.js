@@ -379,6 +379,39 @@ Events.on(engine, 'beforeUpdate', () => {
         if (b.isDropping && b.tier !== undefined) b.force.y += b.mass * g * (fallPull(b.tier) - 1);
     }
 });
+
+// --- PULL --- (a set with pull: true in GAME.skins, the Cosmic Gems)
+// Gems of the same level pull each other in, like planets, so alike gems near each other drift together, meet
+// and merge. The higher the level, the stronger the pull. It falls off with the distance between them (as
+// gravity does, 1 / distance squared) and reaches PULL_RANGE; gems of different levels don't pull each other.
+// Each pair pulls both ways with the same force, so the jar as a whole doesn't move. Faint threads show the
+// pairs that pull (fx.js).
+const PULL = !!(SKIN && SKIN.pull);
+const PULL_RANGE = 3.5;                       // how far the pull reaches, in touching distances (the two radii added)
+const pullOf = tier => 0.5 + 0.08 * tier;     // x a gem's weight when the two touch, growing with the level
+const PULL_MAX = 0.9;                         // never more than this x its weight, so a gem never flies up to another
+let pullLinks = [];                           // the pairs pulling right now: [gem, gem, strength 0-1]
+if (PULL) Events.on(engine, 'beforeUpdate', () => {
+    pullLinks = [];
+    if (isGameOver) return;
+    const w = engine.gravity.scale;           // a gem's weight is its mass x this
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    for (let i = 0; i < gems.length; i++) {
+        const a = gems[i];
+        for (let j = i + 1; j < gems.length; j++) {
+            const b = gems[j];
+            if (a.tier !== b.tier) continue;
+            const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y;
+            const d = Math.hypot(dx, dy) || 1, touch = a.currentRadius + b.currentRadius;
+            if (d > touch * PULL_RANGE) continue;
+            const k = Math.min(PULL_MAX, pullOf(a.tier) * (touch / d) ** 2);
+            const f = k * w * Math.min(a.mass, b.mass);
+            a.force.x += f * dx / d; a.force.y += f * dy / d;
+            b.force.x -= f * dx / d; b.force.y -= f * dy / d;
+            pullLinks.push([a, b, k / PULL_MAX]);
+        }
+    }
+});
 // how fast two bodies meet, along the line between them
 function meetSpeed(pair) {
     const n = pair.collision.normal, a = pair.bodyA.velocity, b = pair.bodyB.velocity;
@@ -835,6 +868,17 @@ audioButtons();
 vibeButton();
 FX.init(board);
 FX.flip(FLOAT);
+// the threads between gems that pull each other (PULL), from edge to edge, where no other gem is in the way
+if (PULL) FX.threads(() => {
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined);
+    const clear = (a, b) => gems.every(c => {
+        if (c === a || c === b) return true;
+        const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y, L = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((c.position.x - a.position.x) * dx + (c.position.y - a.position.y) * dy) / L));
+        return Math.hypot(a.position.x + t * dx - c.position.x, a.position.y + t * dy - c.position.y) > c.currentRadius * 0.8;
+    });
+    return pullLinks.filter(([a, b]) => clear(a, b)).map(([a, b, s]) => [a.position.x, a.position.y, a.currentRadius, b.position.x, b.position.y, b.currentRadius, s]);
+});
 
 // --- DAILY CHALLENGE ---
 // One special game a day (GAME.daily; the Daily button opens it): the same drops and the same goal for
@@ -1214,10 +1258,11 @@ function renderSets() {
         gems.className = 'set-gems';
         MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
         card.append(head, gems);
-        if (sk.float) {
+        const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in'].filter(Boolean);
+        if (notes.length) {
             const note = document.createElement('div');
             note.className = 'set-note';
-            note.textContent = '⬆ Zero gravity: drop them from the bottom and they float up';
+            note.textContent = notes.join(', ');
             card.append(note);
         }
         if (!open) card.append(needChips(i, i === next));
