@@ -446,7 +446,7 @@ const Mine = (() => {
             idle = 0;
             isGameOver = false;
             dangerTimer = 0;
-            ['go-stars', 'go-xp', 'more-drops', 'revive', 'go-unlock', 'go-goal', 'go-reward'].forEach(id => { $(id).style.display = 'none'; });
+            ['go-stars', 'go-xp', 'more-drops', 'revive', 'go-unlock', 'go-goal', 'go-reward', 'go-boost', 'go-bonus'].forEach(id => { $(id).style.display = 'none'; });
             $('gameover').classList.remove('show');
             dropsUI();
             showTip('+5 drops. You can do it!', 1800);
@@ -640,7 +640,7 @@ const Mine = (() => {
     function restart(opts = {}) {
         if (!stage) return;
         Matter.Composite.allBodies(engine.world).filter(b => b.tier !== undefined || b.crate).forEach(b => Matter.Composite.remove(engine.world, b));
-        isGameOver = false; dangerTimer = 0; score = 0; combo = 0; dropsWithoutMerge = 0; revived = false;
+        isGameOver = false; dangerTimer = 0; score = 0; combo = 0; dropsWithoutMerge = 0; revives = 0;
         $('gameover').classList.remove('show');
         dropRandom.setState(seedOf(N));
         currentTier = randomDropTier(); nextTier = randomDropTier(); afterTier = randomDropTier();

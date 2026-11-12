@@ -13,19 +13,22 @@
 // - peak-end rule: a game ends on the XP gained and the best gem made, then the level-up card if one came
 // - streaks and time windows: the Daily streak, quests that change every 8 hours, a 90-second Rush
 // - flow: calm Classic play and fast Gem Rush to switch between; soft sounds and buzzes for every reward
+// - a reason to come back each day: the Daily Gift and the Lucky Wheel (bonus.js), and in the app a 2x XP
+//   boost for 10 minutes that the player can choose to watch an ad for
 (() => {
     if (!GAME.meta) return;
     const $ = id => document.getElementById(id);
     const fmt = n => Math.round(n).toLocaleString();
     const short = n => n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k' : String(n);
     const inApp = !!window.AndroidApp;
-    const ICON = { zap: 'assets/ui/icon_bolt.png', star: 'assets/ui/icon_star.png', daily: 'assets/ui/icon_coin.png', quests: 'assets/ui/btn_check.png', gem: 'assets/ui/icon_gem.png', mine: 'assets/mine/icon_pickaxe.png' };
+    const ICON = { zap: 'assets/ui/icon_bolt.png', star: 'assets/ui/icon_star.png', daily: 'assets/ui/icon_coin.png', quests: 'assets/ui/btn_check.png', gem: 'assets/ui/icon_gem.png', mine: 'assets/mine/icon_pickaxe.png',
+        wheel: 'assets/ui/icon_wheel.png', gift: 'assets/ui/icon_gift.png', undo: 'assets/ui/icon_undo.png' };
     const img = (src, cls) => { const i = document.createElement('img'); i.src = src; i.alt = ''; if (cls) i.className = cls; return i; };
     const watch = () => document.querySelector('#tile-rush .icon-watch').cloneNode(true);
 
     // ---------- profile ----------
     const PROFILE_KEY = `${GAME.id}.profile`;
-    const P = Object.assign({ xp: 0, level: 1, tutorial: false, quests: 0, rushStars: 0, bestStreak: 0, theme: 'default', seen: -1 },
+    const P = Object.assign({ xp: 0, level: 1, tutorial: false, quests: 0, rushStars: 0, bestStreak: 0, theme: 'default', seen: -1, boostUntil: 0 },
         (() => { try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}; } catch (e) { return {}; } })());
     const saveProfile = () => { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(P)); } catch (e) {} };
 
@@ -42,8 +45,8 @@
         [150, 'Star Gazer'], [160, 'Moonstone Mystic'], [170, 'Crown Keeper'], [180, 'Diamond Duke'], [190, 'Gem Grandmaster'], [200, 'Gem Legend']];
     const titleFor = n => TITLES.filter(([l]) => l <= n).pop()[1];
     // what opens at which level
-    const FEATURES = { daily: 2, mine: 2, quests: 3, rush: 4, star: 6 };
-    const FEATURE_NAME = { daily: 'Daily Challenge', mine: 'Gem Mine', quests: 'Quests', rush: 'Gem Rush', star: 'Star booster' };
+    const FEATURES = { daily: 2, mine: 2, gift: 2, quests: 3, wheel: 3, rush: 4, undo: 5, star: 6 };
+    const FEATURE_NAME = { daily: 'Daily Challenge', mine: 'Gem Mine', gift: 'Daily Gift', quests: 'Quests', wheel: 'Lucky Wheel', rush: 'Gem Rush', undo: 'Undo booster', star: 'Star booster' };
     const featureOpen = f => P.level >= FEATURES[f];
     // jar colours: most open with levels, three with challenges (colours match index.html)
     const THEMES = [
@@ -87,10 +90,36 @@
         return r;
     }
 
+    // ---------- 2x XP (Android app): the player may watch an ad to double all XP for 10 minutes ----------
+    const BOOST_MS = 10 * 60000;
+    const boostLeft = () => Math.max(0, Math.min(BOOST_MS, (P.boostUntil || 0) - Date.now()));   // (never longer, whatever the clock says)
+    const boostOn = () => boostLeft() > 0;
+    const canBoost = () => inApp && !boostOn() && Ads.rewardedReady();
+    function startBoost() {
+        P.boostUntil = Date.now() + BOOST_MS;
+        saveProfile();
+        boostUI();
+        Sound.play('levelUp');
+        Haptics.play('praise', 2);
+        (menuOpen ? showToastMenu : showToast)('2× XP for 10 minutes!');
+    }
+    const offerBoost = then => { if (canBoost()) Ads.showRewarded(watched => { if (watched) { startBoost(); if (then) then(); } }); };
+    function boostUI() {
+        const left = boostLeft(), on = left > 0;
+        const clock = `${Math.floor(left / 60000)}:${String(Math.floor(left / 1000) % 60).padStart(2, '0')}`;
+        $('lvl-chip').classList.toggle('boost', on);
+        $('lvl-boost').textContent = on ? `2× ${clock}` : '';
+        const chip = $('menu-boost');
+        chip.style.display = on || canBoost() ? '' : 'none';
+        chip.classList.toggle('on', on);
+        chip.textContent = on ? `2× XP ${clock}` : '▶ 2× XP';
+        if (on) $('go-boost').style.display = 'none';
+    }
+
     let pending = null;   // levels gained since the last level-up card
     function addXP(n) {
         if (!(n > 0)) return;
-        P.xp += Math.round(n);
+        P.xp += Math.round(n * (boostOn() ? 2 : 1));
         const target = levelOf(P.xp);
         while (P.level < target) {
             P.level++;
@@ -112,6 +141,7 @@
     }
     function levelUpNow(n, zapsGot) {
         if (n >= FEATURES.star) setStarOpen(true);
+        if (n >= FEATURES.undo) setUndoOpen(true);
         if (!menuOpen && !isGameOver) {
             FX.banner('word_levelup');
             Sound.play('levelUp');
@@ -389,7 +419,7 @@
             lastTick = 0;
             isGameOver = false;
             dangerTimer = 0;
-            ['go-stars', 'go-xp', 'more-time', 'revive', 'go-unlock'].forEach(id => { $(id).style.display = 'none'; });
+            ['go-stars', 'go-xp', 'more-time', 'revive', 'go-unlock', 'go-boost', 'go-bonus'].forEach(id => { $(id).style.display = 'none'; });
             $('gameover').classList.remove('show');
             rushUI();
         });
@@ -439,6 +469,8 @@
             box.append(sw, `${nextT.name} colours at Level ${nextT.level}`);
         }
         box.style.display = box.childNodes.length ? '' : 'none';
+        boostUI();
+        if (window.Bonus) Bonus.refresh();   // the Lucky Wheel and the Daily Gift (bonus.js)
     }
     function floaters() {
         const box = $('menu-floaters');
@@ -458,6 +490,7 @@
         floaters();
         $('menu').style.display = 'flex';
         if (pending) setTimeout(() => { if (menuOpen) showLevelCard(); }, 500);
+        if (window.Bonus) Bonus.onMenuOpen();   // today's gift, if it hasn't been collected
     }
     function closeMenu() {
         menuOpen = false;
@@ -489,6 +522,7 @@
         $('btn-close-quests').onclick = () => { $('quests').classList.remove('show'); updateMenu(); if (!menuOpen) Runner.run(runner, engine); };
         // the settings panel opened from the menu: keep the game paused behind the menu when it closes
         $('btn-close-settings').addEventListener('click', () => { if (menuOpen) Runner.stop(runner); });
+        $('menu-boost').onclick = () => { if (!boostOn()) { Sound.play('tap'); offerBoost(); } };
         setInterval(() => { if (menuOpen) updateMenu(); if ($('quests').classList.contains('show')) $('quests-timer').textContent = `New quests in ${timeLeft(periodEnds(Q.period) - Date.now())}`; }, 30000);
     }
     goHome = () => {
@@ -619,10 +653,14 @@
         questUpdate((q, s) => { if (q.k === 'games') s.have++; });
         if (RUSH) rushEnd(reason, sc);
         gameOverXP();
+        // 2x XP for the next games: offered here only when no other ad is (Keep Going, more time, more drops)
+        const otherOffer = ['revive', 'more-time', 'more-drops'].some(id => $(id).style.display !== 'none');
+        $('go-boost').style.display = canBoost() && !otherOffer ? '' : 'none';
+        if (window.Bonus) Bonus.onGameOver();
         $('btn-go-home').style.display = '';
         setTimeout(() => { if ($('gameover').classList.contains('show')) showLevelCard(); }, 1500);
     });
-    onGame('revive', () => { $('go-xp').style.display = 'none'; $('go-stars').style.display = 'none'; });
+    onGame('revive', () => { ['go-xp', 'go-stars', 'go-boost', 'go-bonus'].forEach(id => { $(id).style.display = 'none'; }); });
     onGame('daily', streak => {
         addXP(10000);
         if (streak >= 7 && P.bestStreak < 7) setTimeout(() => showToast('Frost colours opened!'), 2600);
@@ -635,6 +673,10 @@
     applyTheme(themeOpen(THEMES.find(t => t.id === P.theme) || THEMES[0]) ? P.theme : 'default');
     if (levelOf(P.xp) > P.level) addXP(0.0001);   // catch up on levels from an older save
     setStarOpen(featureOpen('star'));
+    setUndoOpen(featureOpen('undo'));
+    $('btn-go-boost').onclick = () => offerBoost();
+    setInterval(boostUI, 1000);
+    boostUI();
     $('btn-go-home').onclick = () => Ads.showInterstitial(() => {
         clearSave();
         try { sessionStorage.setItem(MENU_NEXT, '1'); } catch (e) {}
@@ -665,6 +707,7 @@
 
     // for tests, the console and the Gem Mine (mine.js)
     window.Meta = { P, xpFor, levelOf, addXP, openMenu, renderQuests, get quests() { ensureQuests(); return Q; }, rushStarsFor, THEMES, applyTheme,
-        refreshMenu: () => updateMenu(), featureOpen,
+        refreshMenu: () => updateMenu(), featureOpen, FEATURES, ICON, showLevelCard, showToastMenu, timeLeft,
+        boostOn, boostLeft, startBoost,
         get tutorialStep() { return tut; }, get rushLeft() { return rushLeft; }, set rushLeft(v) { rushLeft = v; }, get menuOpen() { return menuOpen; } };
 })();

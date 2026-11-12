@@ -17,6 +17,9 @@ async function page(b, store, session = true) {
         if (session) sessionStorage.setItem('gemJar.session', '1');
         sessionStorage.setItem('_init', '1');
       }
+      // today's Daily Gift doesn't open by itself over the menu
+      const d = new Date();
+      sessionStorage.setItem('gemJar.giftShown', `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
     } catch (e) {}
   }, [store, session]);
   const p = await ctx.newPage();
@@ -82,6 +85,18 @@ const scenes = {
     const p = await page(b, { 'gemJar.profile': profile(9), 'gemJar.mine': JSON.stringify({ stars: [3, 3, 2, 3, 3, 3, 2, 3, 1], seen: 10 }), 'gemJar.unlock': JSON.stringify({ opened: 3, made: [] }), 'gemJar.best.rocks': '24310', 'gemJar.best': '24310' }, false);
     await p.goto(BASE); await p.waitForTimeout(2000);
     await p.screenshot({ path: `${OUT}/menu.png` });
+    await p.context().close();
+  },
+  // the Daily Gift on its third day in a row, over the menu
+  async gift(b) {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const p = await page(b, { 'gemJar.profile': profile(9), 'gemJar.mine': JSON.stringify({ stars: [3, 3, 2, 3, 3, 3, 2, 3, 1], seen: 10 }), 'gemJar.unlock': JSON.stringify({ opened: 3, made: [] }),
+      'gemJar.best': '24310', 'gemJar.gift': JSON.stringify({ last: yesterday, day: 2, streak: 2 }) }, false);
+    await p.goto(BASE); await p.waitForTimeout(1500);
+    await p.screenshot({ path: `${OUT}/menu.png` });   // the menu, with the Lucky Wheel and the Daily Gift beside Play
+    await p.evaluate(() => Bonus.openGift()); await p.waitForTimeout(600);
+    await p.screenshot({ path: `${OUT}/gift.png` });
     await p.context().close();
   },
   async newset(b) {
