@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Zombie Bomber for Android: one full-screen window running the game from the files packed in the app,
-     with AdMob ads and a one-time "No Ads" purchase. Package name and versions are in build.gradle.kts. -->
+     with AdMob ads, Google Play purchases (No Ads, gem packs, a starter pack) and an optional daily-reward reminder. Package name and versions are in build.gradle.kts. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- the reminder when the next daily reward is ready; on Android 13+ the player is asked first -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="Zombie Bomber"
@@ -28,5 +30,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver android:name=".ReminderReceiver" android:exported="false" />
     </application>
 </manifest>

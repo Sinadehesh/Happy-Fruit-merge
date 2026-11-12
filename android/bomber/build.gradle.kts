@@ -10,7 +10,7 @@ val admob = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 fun admobId(key: String, testId: String): String = admob.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() } ?: testId
-val admobKeys = listOf("app_id", "banner_id", "interstitial_id", "rewarded_revive_id", "rewarded_double_id", "rewarded_coins_id", "rewarded_boost_id")
+val admobKeys = listOf("app_id", "banner_id", "interstitial_id", "rewarded_revive_id", "rewarded_double_id", "rewarded_coins_id", "rewarded_boost_id", "rewarded_bonus_id")
 val testAds = admobKeys.any { admob.getProperty(it).isNullOrBlank() }
 val testRewarded = "ca-app-pub-3940256099942544/5224354917"
 
@@ -32,6 +32,7 @@ android {
         buildConfigField("String", "REWARDED_DOUBLE_ID", "\"" + admobId("rewarded_double_id", testRewarded) + "\"")
         buildConfigField("String", "REWARDED_COINS_ID", "\"" + admobId("rewarded_coins_id", testRewarded) + "\"")
         buildConfigField("String", "REWARDED_BOOST_ID", "\"" + admobId("rewarded_boost_id", testRewarded) + "\"")
+        buildConfigField("String", "REWARDED_BONUS_ID", "\"" + admobId("rewarded_bonus_id", testRewarded) + "\"")
         buildConfigField("boolean", "TEST_ADS", testAds.toString())
     }
 

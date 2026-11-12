@@ -1,7 +1,14 @@
 package com.sinadehesh.zombiebomber;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -31,6 +38,7 @@ import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.ConsumeParams;
 import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
@@ -55,19 +63,31 @@ import com.google.android.ump.UserMessagingPlatform;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.json.JSONObject;
 
 /**
  * Zombie Bomber: one full-screen window running the web game packed in the app (assets/www), with
  * AdMob ads: a banner across the top of the screen (away from the bomb bay, where the fingers are),
- * a full-screen ad between levels, and four rewarded ads the player can choose to watch (repair the
- * base, double the coins, free coins, a head start). A one-time "No Ads" purchase through Google Play
- * switches the banner and the full-screen ads off for good; the rewarded offers stay, since the player
- * always chooses them.
+ * a full-screen ad between levels, and rewarded ads the player can choose to watch (repair the base,
+ * double the coins, free coins, a head start, and a shared "bonus" unit for the smaller offers: the
+ * wheel, the daily reward, coins collected while away, a free booster, a golden crate).
+ *
+ * Google Play purchases: a one-time "No Ads" that switches the banner and the full-screen ads off for
+ * good (the rewarded offers stay, since the player always chooses them), and things bought again and
+ * again: gem packs and the starter pack. What those give is decided by the game (meta.js); this class
+ * tells the game a purchase is paid for, and uses it up once the game says it has been given.
+ *
+ * If the player agrees, a reminder notification when the next daily reward is ready (ReminderReceiver).
  *
  * When each ad may show is decided by the game (bomber/ads.js): this class keeps the ads loaded, shows
  * them when asked, and keeps its own minimum gap between full-screen ads as a safety net.
@@ -84,6 +104,8 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
 
     /** The one-time product to create in Play Console (Monetize > Products > In-app products), $4.99. */
     static final String NO_ADS_PRODUCT = "remove_ads";
+    /** Products that can be bought again (used up once given): create them in Play Console too. */
+    static final List<String> CONSUMABLES = Arrays.asList("starter_pack", "gems_1", "gems_2", "gems_3", "gems_4");
     /** Never two full-screen ads within 2 minutes, whatever the game asks (the game itself waits 2.5). */
     private static final long MIN_FULLSCREEN_GAP_MS = 120_000;
     /** AdMob's loaded ads expire after an hour: older ones are thrown away and loaded again. */
@@ -95,6 +117,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         { "double", BuildConfig.REWARDED_DOUBLE_ID },   // level cleared: double its coins
         { "coins", BuildConfig.REWARDED_COINS_ID },     // upgrade shop: free coins
         { "boost", BuildConfig.REWARDED_BOOST_ID },     // upgrade shop: start the next level with a big bomb
+        { "bonus", BuildConfig.REWARDED_BONUS_ID },     // the smaller offers: wheel, daily x2, away x2, booster, golden crate
     };
 
     /** A rewarded ad unit and the ad loaded for it. */
@@ -124,6 +147,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
     private final AtomicBoolean adsStarted = new AtomicBoolean(false);
     private BillingClient billing;
     private volatile ProductDetails noAdsProduct;
+    private final Map<String, ProductDetails> products = new ConcurrentHashMap<>();
 
     @Override
     protected void onCreate(Bundle state) {
@@ -285,6 +309,47 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         }
 
         @JavascriptInterface public boolean testAds() { return BuildConfig.TEST_ADS; }
+
+        /** A gem pack's or the starter pack's price in the player's currency, or "" before Google Play has said. */
+        @JavascriptInterface public String productPrice(String id) {
+            ProductDetails p = products.get(id);
+            if (p == null) return "";
+            ProductDetails.OneTimePurchaseOfferDetails o = p.getOneTimePurchaseOfferDetails();
+            return o == null ? "" : o.getFormattedPrice();
+        }
+
+        /** Starts buying a gem pack or the starter pack; once paid for, the game is told window.onPurchase(id, token). */
+        @JavascriptInterface public void buyProduct(final String id) {
+            runOnUiThread(new Runnable() { @Override public void run() { launchPurchase(id); } });
+        }
+
+        /** The game has given what was bought: use the purchase up, so it can be bought again. */
+        @JavascriptInterface public void consumePurchase(final String token) {
+            runOnUiThread(new Runnable() { @Override public void run() { consume(token); } });
+        }
+
+        /** The game has loaded: hand over anything paid for but not yet given. */
+        @JavascriptInterface public void gameReady() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() { if (billing != null && billing.isReady()) checkOwnedPurchases(); }
+            });
+        }
+
+        /** The player collected a daily reward: from now on, remind them when the next one is ready (asks once). */
+        @JavascriptInterface public void enableReminders() {
+            runOnUiThread(new Runnable() { @Override public void run() { turnOnReminders(); } });
+        }
+
+        /** What a reminder says when it shows; kind is "daily" (the next day) or "back" (three days on). */
+        @JavascriptInterface public void setReminderText(String kind, String title, String text) {
+            if (title == null || text == null || title.isEmpty() || text.isEmpty()) return;
+            int n = "daily".equals(kind) ? 1 : "back".equals(kind) ? 2 : 0;
+            if (n == 0) return;
+            prefs.edit()
+                .putString(ReminderReceiver.TITLE + n, title.length() > 80 ? title.substring(0, 80) : title)
+                .putString(ReminderReceiver.TEXT + n, text.length() > 300 ? text.substring(0, 300) : text)
+                .apply();
+        }
     }
 
     // ---------- ad consent, then ads ----------
@@ -453,7 +518,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
                     return;
                 }
                 checkOwnedPurchases();
-                loadNoAdsProduct();
+                loadProducts();
             }
             @Override public void onBillingServiceDisconnected() { }
         });
@@ -468,28 +533,40 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
             });
     }
 
-    private void loadNoAdsProduct() {
-        QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
-            .setProductList(Collections.singletonList(QueryProductDetailsParams.Product.newBuilder()
-                .setProductId(NO_ADS_PRODUCT).setProductType(BillingClient.ProductType.INAPP).build()))
-            .build();
-        billing.queryProductDetailsAsync(params, (result, details) -> {
-            List<ProductDetails> list = details.getProductDetailsList();
-            if (result.getResponseCode() == BillingClient.BillingResponseCode.OK && !list.isEmpty()) {
-                noAdsProduct = list.get(0);
-                tellGame("window.onAdFreeChanged && window.onAdFreeChanged()");   // the price is known now
-            }
+    /** Asks Google Play for the products (No Ads, the gem packs, the starter pack) and their prices. */
+    private void loadProducts() {
+        if (billing == null) return;
+        List<QueryProductDetailsParams.Product> wanted = new ArrayList<>();
+        List<String> ids = new ArrayList<>(CONSUMABLES);
+        ids.add(NO_ADS_PRODUCT);
+        for (String id : ids) {
+            wanted.add(QueryProductDetailsParams.Product.newBuilder().setProductId(id).setProductType(BillingClient.ProductType.INAPP).build());
+        }
+        billing.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(wanted).build(), (result, details) -> {
+            if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) return;
+            for (ProductDetails p : details.getProductDetailsList()) products.put(p.getProductId(), p);
+            noAdsProduct = products.get(NO_ADS_PRODUCT);
+            tellGame("window.onAdFreeChanged && window.onAdFreeChanged()");   // the prices are known now
         });
     }
 
-    private void launchNoAdsPurchase() {
-        ProductDetails p = noAdsProduct;
-        if (p == null || billing == null) { loadNoAdsProduct(); return; }
+    private void launchNoAdsPurchase() { launchPurchase(NO_ADS_PRODUCT); }
+
+    private void launchPurchase(String id) {
+        ProductDetails p = products.get(id);
+        if (p == null || billing == null) { loadProducts(); return; }
         BillingFlowParams.ProductDetailsParams.Builder item = BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(p);
         ProductDetails.OneTimePurchaseOfferDetails offer = p.getOneTimePurchaseOfferDetails();
         if (offer != null && offer.getOfferToken() != null) item.setOfferToken(offer.getOfferToken());
         billing.launchBillingFlow(this, BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(Collections.singletonList(item.build())).build());
+    }
+
+    /** Uses up a gem pack or starter pack purchase the game has given, so it can be bought again. */
+    private void consume(String token) {
+        if (billing == null || token == null || token.isEmpty()) return;
+        billing.consumeAsync(ConsumeParams.newBuilder().setPurchaseToken(token).build(),
+            (result, t) -> Log.i(TAG, "purchase used up: " + result.getResponseCode()));
     }
 
     @Override
@@ -499,19 +576,94 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         else if (code == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) checkOwnedPurchases();
     }
 
-    /** Grants "No Ads" for a completed purchase and confirms it to Google Play (unconfirmed ones are refunded after 3 days). */
+    /**
+     * Completed purchases. "No Ads" is granted here and confirmed to Google Play (unconfirmed ones are
+     * refunded after 3 days). A gem pack or the starter pack is handed to the game, which gives it once
+     * (it remembers the purchase's token) and then asks for it to be used up; until then Google Play
+     * keeps reporting it, so nothing paid for is lost if the app closes in between.
+     */
     private void handlePurchases(List<Purchase> purchases, boolean fullList) {
         boolean owned = false;
         for (Purchase p : purchases) {
-            if (!p.getProducts().contains(NO_ADS_PRODUCT) || p.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
-            owned = true;
-            if (!p.isAcknowledged()) {
-                billing.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(p.getPurchaseToken()).build(),
-                    r -> Log.i(TAG, "purchase confirmed: " + r.getResponseCode()));
+            if (p.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
+            if (p.getProducts().contains(NO_ADS_PRODUCT)) {
+                owned = true;
+                if (!p.isAcknowledged()) {
+                    billing.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(p.getPurchaseToken()).build(),
+                        r -> Log.i(TAG, "purchase confirmed: " + r.getResponseCode()));
+                }
+                continue;
+            }
+            for (String id : p.getProducts()) {
+                if (!CONSUMABLES.contains(id)) continue;
+                tellGame("window.onPurchase && window.onPurchase(" + JSONObject.quote(id) + "," + JSONObject.quote(p.getPurchaseToken()) + ")");
             }
         }
         if (owned) setAdFree(true);
         else if (fullList) setAdFree(false);
+    }
+
+    // ---------- reminders ----------
+
+    /**
+     * Reminders are off until the player has collected a daily reward. Then, each time the game is left,
+     * two are set: one for the next day, when the next daily reward is ready, and one three days on.
+     * Coming back cancels them, so a player who plays every day never sees one. On Android 13 and up
+     * the system asks first, once; on older Android the player can switch them off in Settings.
+     */
+    private void turnOnReminders() {
+        prefs.edit().putBoolean("reminders", true).apply();
+        if (Build.VERSION.SDK_INT >= 33 && !prefs.getBoolean("askedNotifications", false)
+            && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            prefs.edit().putBoolean("askedNotifications", true).apply();
+            requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, 7);
+        }
+    }
+
+    private PendingIntent reminderIntent(int kind) {
+        Intent i = new Intent(this, ReminderReceiver.class).putExtra(ReminderReceiver.KIND, kind);
+        return PendingIntent.getBroadcast(this, kind, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    /**
+     * When a reminder should show: about `hours` from now, but never on the day the game was left (the
+     * daily reward is new each day, at midnight, so the reminder would be wrong) and only between 9 in
+     * the morning and 9 at night; otherwise the next 9 in the morning.
+     */
+    static long reminderTime(long now, int hours) {
+        Calendar left = Calendar.getInstance();
+        left.setTimeInMillis(now);
+        Calendar at = Calendar.getInstance();
+        at.setTimeInMillis(now + hours * 3_600_000L);
+        boolean sameDay = at.get(Calendar.YEAR) == left.get(Calendar.YEAR) && at.get(Calendar.DAY_OF_YEAR) == left.get(Calendar.DAY_OF_YEAR);
+        int hour = at.get(Calendar.HOUR_OF_DAY);
+        if (!sameDay && hour >= 9 && hour < 21) return at.getTimeInMillis();
+        if (sameDay || hour >= 21) at.add(Calendar.DAY_OF_YEAR, 1);
+        at.set(Calendar.HOUR_OF_DAY, 9);
+        at.set(Calendar.MINUTE, 0);
+        at.set(Calendar.SECOND, 0);
+        at.set(Calendar.MILLISECOND, 0);
+        return at.getTimeInMillis();
+    }
+
+    private void setReminders(boolean on) {
+        try {
+            AlarmManager alarms = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (alarms == null) return;
+            long now = System.currentTimeMillis();
+            for (int kind = 1; kind <= 2; kind++) {
+                PendingIntent pi = reminderIntent(kind);
+                alarms.cancel(pi);
+                // about the time given, when the phone is next awake: no exact-alarm permission needed
+                if (on) alarms.set(AlarmManager.RTC, reminderTime(now, kind == 1 ? 20 : 72), pi);
+            }
+            if (!on) {
+                NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                if (nm != null) nm.cancelAll();
+            }
+        } catch (RuntimeException e) {
+            Log.w(TAG, "reminders: " + e.getMessage());
+        }
     }
 
     // ---------- window ----------
@@ -544,6 +696,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
     protected void onPause() {
         if (banner != null) banner.pause();
         web.onPause();
+        if (prefs.getBoolean("reminders", false)) setReminders(true);
         super.onPause();
     }
 
@@ -553,6 +706,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         web.onResume();
         if (banner != null) banner.resume();
         hideSystemBars();
+        setReminders(false);
         if (billing != null && billing.isReady()) checkOwnedPurchases();   // e.g. a purchase finished while away
     }
 

@@ -144,19 +144,32 @@ A second game built on the same drop-and-merge engine: https://sinadehesh.github
 
 Each level comes in waves (2 to 5, the last one is the biggest, red arrows warn of the next one) and the soldiers on the base shoot too. A zombie that reaches the base pounds on it until it dies; if the base runs out of health the level is lost (the coins you picked up are kept). Later levels have more zombies, tougher and faster, in bigger packs. There are 12 zombie types: Walker, Runner, Brute and the Zombie King (a boss every 5 levels) show up in the first 10 levels; after that a new type is discovered every 20 levels (Trooper 20, Sprinter 40, Bloater 60, Screamer 80, Hulk 100, Ghoul 120, Juggernaut 140, Titan 160). Bloaters burst when they die and hurt the zombies around them, Screamers make the zombies near them faster, and Troopers and Juggernauts are armored against bullets.
 
+**Things that change from level to level.** The scenery changes every 20 levels: 15 zones, each one of the 3 skies in one of 5 kinds of light (dusk, night, toxic, blood-red, ash). The zone's name is shown when you reach it, and a row of dots between levels shows how far through it you are. Every 5th level from level 8 (8, 13, 18, …) is a special level, taking turns: **Coin Rush** (every zombie drops 3x coins), **The Swarm** (1.9x as many zombies, small kinds only, half as tough) and **Armored Column** (0.6x as many, twice as tough). A **win streak** adds 5% to a level's coins for each level cleared in a row, up to 25%; losing a level ends it (repairing the base keeps it).
+
+**Boosters and supply crates.** From level 3 there are two buttons at the top right of the battlefield: **Air Strike** (the plane dives in and bombs the whole road) and **Freeze** (every zombie stands still for 6 seconds). You start with one of each and get more from rewards and the store. On most levels the plane also parachutes in a **supply crate**: tap it within 9 seconds for coins, a booster or gems.
+
+**Reasons to come back** (`bomber/meta.js`). These open up one by one over the first levels, so a new player isn't shown everything at once: crates at level 2; boosters, the daily reward and the store at 3; missions and coins-while-away at 4; the wheel at 5; achievements at 6. They sit in a row of buttons at the top of the title screen and the between-levels screen, with a red dot when there's something to collect.
+- **Gems** are the second currency. Earned from achievements, missions, the daily reward, the wheel, crates, each Zombie King level beaten for the first time (3) and each zone finished (10). Spent in the store on boosters and coins, or on repairing the base (20).
+- **Daily reward:** 7 days that grow (day 7 is the jackpot), then round again. Missing a day doesn't lose your place.
+- **Daily missions:** 3 a day (the same 3 all day), each paying coins and a gem, and a bonus chest for doing all three.
+- **Lucky wheel:** one free spin a day. 8 slices, each as likely as the next, and the slice under the pointer is the one that pays.
+- **Coins while away:** the soldiers collect coins while the game is closed, for up to 8 hours (more soldiers collect more). Coming back in the middle of a level counts too; the "welcome back" panel waits for the shop.
+- **Achievements:** 12, each with 3 to 6 steps, paying gems.
+- Rewards are counted in "levels' worth of coins", so they stay worth having at any level.
+
 **Upgrade shop.** Zombies drop coins, and every level cleared pays a bonus plus coins for each bomb still in the bay (they pop one by one). After each level, or after losing one, the shop shows 4 upgrades: Soldiers (more soldiers, each level a new look, 8 levels), Weapons (damage and fire rate, 12 levels), Base (more HP, 20 levels) and Bombs (bigger bombs to drop and more bomb damage, 16 levels). Prices go up with each level. Soldiers only get stronger through upgrades while zombies get tougher every level, so the later levels are won with the bombs you merge.
 
 The first game shows a short tutorial. Big hits come with screen shake, a short freeze and flashes, the last zombie of a level goes down in slow motion, zombies fly when they're blown up, and sounds are synthesized (no files); Android phones also vibrate. The screen height follows the phone's shape, so the game fills the screen. Your level, coins, upgrades and discovered bombs are saved in the browser.
 
-Art lives in `assets/bomber/`: bombs, all 12 zombies (`zombies/` for the first 4, `zombies2/` for the 8 later ones), soldier bullets, UI icons and buttons, the plane and two backgrounds (the 🌆 button switches between them and the original drawn one). Soldiers (8 looks, each with its own projectile and muzzle flash from `assets/bomber/shots`) and the base (4 stages) follow the shop upgrades. Anything that can't load is drawn in code instead. Sheets are cut with `tools/cut_flood.py` (whole sheets; also removes enclosed gaps like between legs or inside windows; `native` keeps relative sizes) and `tools/cut_boxes.py` (named boxes). Bomb hitboxes are their sprite outlines (`bomber/shapes.js`, from `tools/make_shapes.py`); `tools/soft_glow.py` re-cuts glowing items like the Black Hole bomb with a soft halo. Asset prompts are in `bomber/ASSET_PROMPTS.md`.
+Art lives in `assets/bomber/`: bombs, all 12 zombies (`zombies/` for the first 4, `zombies2/` for the 8 later ones), soldier bullets, UI icons and buttons, the plane and two sky backgrounds (the zones use them and a third sky drawn in code). Soldiers (8 looks, each with its own projectile and muzzle flash from `assets/bomber/shots`) and the base (4 stages) follow the shop upgrades. Anything that can't load is drawn in code instead. Sheets are cut with `tools/cut_flood.py` (whole sheets; also removes enclosed gaps like between legs or inside windows; `native` keeps relative sizes) and `tools/cut_boxes.py` (named boxes). Bomb hitboxes are their sprite outlines (`bomber/shapes.js`, from `tools/make_shapes.py`); `tools/soft_glow.py` re-cuts glowing items like the Black Hole bomb with a soft halo. Asset prompts are in `bomber/ASSET_PROMPTS.md`.
 
 ## Zombie Bomber for Android
 
 - Package `com.sinadehesh.zombiebomber`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires.
 - **Build:** `python3 tools/build_bomber_android.py <version name> <version code>` packs the bomber page and only the files it uses (plus Matter.js and the Luckiest Guy font, so it plays offline), makes the launcher icons from the TNT bomb (and the 512 px store icon, `android/build-bomber/store_icon_512.png`; a copy for the Play listing is in `android/store/bomber/icon_512.png`), then builds and signs with Gradle. Output in `android/build-bomber/`: `ZombieBomber-<version>.aab` to upload to Google Play and `ZombieBomber-<version>.apk` to install directly. The Android SDK set-up is shared with the Gem Jar build.
-- **AdMob IDs:** `android/bomber/admob.properties` (the app and its 6 ad units, below). While any is empty, Google's test ads are used and only a `ZombieBomber-<version>-TEST-ADS.apk` is made, never a Play bundle.
+- **AdMob IDs:** `android/bomber/admob.properties` (the app and its 7 ad units, below). While any is empty, Google's test ads are used and only a `ZombieBomber-<version>-TEST-ADS.apk` is made, never a Play bundle.
 - **Signing:** `BOMBER_KEYSTORE` and `BOMBER_KEYSTORE_PASS` (key alias `BOMBER_KEY_ALIAS`, default `zombiebomber`), or Gem Jar's `GEMJAR_KEYSTORE` and `GEMJAR_KEYSTORE_PASS` to use the same upload key for both apps, which Google Play allows. Every update must be signed with the same key and have a higher version code.
-- Android source: `android/bomber` (manifest, theme, `MainActivity.java`: the game window, ads, consent and billing). The game talks to it through `window.AndroidApp`; `bomber/ads.js` decides when each ad may show.
+- Android source: `android/bomber` (manifest, theme, `MainActivity.java`: the game window, ads, consent and billing; `ReminderReceiver.java`: the daily-reward reminder). The game talks to it through `window.AndroidApp`; `bomber/ads.js` decides when each ad may show, and `bomber/meta.js` what each purchase gives.
 - **Privacy policy** (for the Play listing and AdMob): `bomber/privacy.html`, https://sinadehesh.github.io/Happy-Fruit-merge/bomber/privacy.html.
 - **app-ads.txt:** the one Gem Jar uses (https://www.sinadehesh.com/app-ads.txt) covers this app too, since both are in the same AdMob account. Set the Play listing's website to https://www.sinadehesh.com so AdMob can find it.
 
@@ -167,18 +180,22 @@ The rule: as many ads as players are happy to watch, and as few as possible they
 - **Rewarded ads, always the player's choice,** at the moments they're worth the most. Each has a button marked ▶ AD:
   - **Repair the base:** when the base falls, repair it to 60% health with a blast that throws back the zombies at the gate, and keep fighting. Once a level, with a 9-second countdown.
   - **x2 coins:** on the level-cleared screen, double every coin from that level. "No thanks" appears a second later.
-  - **Free coins:** in the upgrade shop, once a visit (20 + 6 per level, rounded to 5).
+  - **Free coins:** in the upgrade shop, once a visit (most of a level's worth).
   - **Head start:** in the shop, start the next level with a big bomb already in the bay (4 sizes above your smallest drop, 5 before a boss).
+  - And five smaller offers that share one "bonus" ad unit: **another wheel spin** (up to 5 a day), **x2 daily reward**, **x2 coins collected while away**, a **free Air Strike or Freeze** when you're out of them (2 a level; it's used straight away), and opening a **golden supply crate** (about 3 in 10 crates from level 4, worth much more than a plain one).
 - **Full-screen ad between levels,** when PLAY is pressed in the shop: never during a level, none before level 4, at most one every 2.5 minutes, and none within 2.5 minutes of a rewarded ad, so players who choose rewarded ads see fewer of the ones they don't choose. Retrying after a loss never shows one. The app keeps its own 2-minute minimum as a safety net.
 - **Banner across the top of the screen,** away from the bomb bay where the fingers are (an accidental tap on a banner is against AdMob's rules). Its room is kept from the start so the game doesn't jump when an ad arrives; the large adaptive banner on tall phones, the regular one on short phones.
+- **Gems for money** (the store's GEMS tab): four gem packs (`gems_1` to `gems_4`: 80, 500, 1,200 and 3,000 gems) and a one-time **starter pack** (`starter_pack`: 300 gems, 5 Air Strikes, 5 Freezes and 5 levels' worth of coins, about twice what the same money buys in gem packs). Running out of gems while buying something opens the gem packs. The starter pack is offered once, on reaching level 7, and stays in the store. A purchase is given once (the game remembers its token) and then used up, so a pack can be bought again and nothing paid for is lost if the app closes in between. Gems live in the game saved on the phone (the store says so), so unlike No Ads they don't follow the player to a new phone.
+- **Nothing random is sold:** wheel spins and crates are free or for a rewarded ad, never for gems or money, so there are no paid loot boxes.
 - **No Ads** ($4.99, a one-time Google Play purchase, product ID `remove_ads`): switches the banner and the full-screen ads off for good and gives the game the banner's room. It comes back on a new phone or after reinstalling. The rewarded offers stay, since the player chooses them. The NO ADS button (title screen and shop) shows Google Play's price in the player's currency.
 - Ads that fail to load are tried again after 30 s, then 1, 2, 4 and at most 5 minutes. Loaded ads older than 55 minutes are replaced (AdMob's expire after an hour).
 - **Consent:** Google's consent message (UMP) where the law asks for it (EU, UK, some US states); the title screen then has a PRIVACY button to change the choice.
-- On the website there are no ads and no ad offers. Add `#adtest` to the address (`bomber/#adtest`) to try every offer with stand-in ads and a pretend No Ads purchase.
+- **Reminders:** after the player collects their first daily reward the app asks, once, whether it may send notifications (Android 13 and up; on older Android they are allowed unless switched off in Settings). From then on, leaving the game sets two reminders: one for the next day (about 20 hours on) and one 3 days on. Coming back cancels them, so someone who plays every day never sees one. A reminder never shows on the day the game was left (the daily reward is new at midnight, so it would be wrong) or outside 9:00 to 21:00; it waits for the next 9:00 instead. What it says is worked out by the game when it is left, so it is true when it shows: the day's reward by name, the coins the soldiers will have collected and the free spin, each only if the player has unlocked it. No server and no push messaging: the app sets them itself.
+- On the website there are no ads, no ad offers and nothing to buy with money; everything else works the same. Add `#adtest` to the address (`bomber/#adtest`) to try every offer with stand-in ads and pretend purchases.
 
 ### Setting up AdMob and Google Play
 
-1. **AdMob:** Apps > Add app > Android, "Zombie Bomber" (link it to the Play listing once it's published). Then create these 6 ad units and put their IDs, and the app ID, in `android/bomber/admob.properties`:
+1. **AdMob:** Apps > Add app > Android, "Zombie Bomber" (link it to the Play listing once it's published). Then create these 7 ad units and put their IDs, and the app ID, in `android/bomber/admob.properties`:
 
 | Ad unit (suggested name) | Format | Where it shows | Key |
 |---|---|---|---|
@@ -188,6 +205,18 @@ The rule: as many ads as players are happy to watch, and as few as possible they
 | ZB Double coins | Rewarded | Level cleared: x2 coins | `rewarded_double_id` |
 | ZB Free coins | Rewarded | Upgrade shop: free coins | `rewarded_coins_id` |
 | ZB Head start | Rewarded | Upgrade shop: start the next level with a big bomb | `rewarded_boost_id` |
+| ZB Bonus | Rewarded | Wheel spins, x2 daily reward, x2 coins while away, free booster, golden crate | `rewarded_bonus_id` |
 
    For the rewarded units, the reward amount and item in AdMob don't matter (any, e.g. 1 "Reward"): the game decides what each gives. Each offer has its own unit so AdMob shows how each one does.
-2. **Google Play Console:** create the app (package `com.sinadehesh.zombiebomber`), upload the first `.aab`, then Monetize > Products > In-app products > Create product: ID `remove_ads`, name "No Ads", price $4.99 (Play fills in other currencies). Add the privacy policy link, and fill in Data safety from the privacy policy (AdMob collects the device's advertising ID, rough location from the IP address, app interactions and diagnostics; nothing is collected by the game itself).
+2. **Google Play Console:** create the app (package `com.sinadehesh.zombiebomber`), upload the first `.aab`, then Monetize > Products > In-app products > Create product, for each of these 6 (Play fills in other currencies from the price):
+
+| Product ID | Name | Price | What it gives |
+|---|---|---|---|
+| `remove_ads` | No Ads | $4.99 | No banner and no ads between levels, for good |
+| `starter_pack` | Starter Pack | $1.99 | 300 gems, 5 Air Strikes, 5 Freezes, coins (once per player) |
+| `gems_1` | 80 Gems | $0.99 | 80 gems |
+| `gems_2` | 500 Gems | $4.99 | 500 gems |
+| `gems_3` | 1,200 Gems | $9.99 | 1,200 gems |
+| `gems_4` | 3,000 Gems | $19.99 | 3,000 gems |
+
+   The IDs must match exactly. The amounts are set in `bomber/meta.js` (`GEM_PACKS`, `starterPack`); if you change a price a lot, change the amount to match. Add the privacy policy link, and fill in Data safety from the privacy policy (AdMob collects the device's advertising ID, rough location from the IP address, app interactions and diagnostics; purchases are handled by Google Play; nothing is collected by the game itself). The game has in-app purchases and ads, so tick both on the listing.

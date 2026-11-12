@@ -1,6 +1,7 @@
 # Builds the signed Android app for Zombie Bomber from the game files in this repo: an App Bundle (.aab)
 # to upload to Google Play, and an APK to install directly. The app has AdMob ads (a banner, a
-# full-screen ad between levels and four rewarded offers) and a one-time "No Ads" purchase.
+# full-screen ad between levels and rewarded offers), Google Play purchases (No Ads, gem packs, a
+# starter pack) and an optional reminder when the daily reward is ready.
 #
 # What it does: packs the bomber page and only the files it uses (plus Matter.js and the Luckiest Guy font,
 # so it plays offline) into android/build-bomber/assets, makes the launcher icons from the TNT bomb into
@@ -30,7 +31,7 @@ APP = ANDROID / 'bomber'
 BUILD = ANDROID / 'build-bomber'
 VERSION_NAME = sys.argv[1] if len(sys.argv) > 1 else '1.0'
 VERSION_CODE = sys.argv[2] if len(sys.argv) > 2 else '1'
-AD_KEYS = ('app_id', 'banner_id', 'interstitial_id', 'rewarded_revive_id', 'rewarded_double_id', 'rewarded_coins_id', 'rewarded_boost_id')
+AD_KEYS = ('app_id', 'banner_id', 'interstitial_id', 'rewarded_revive_id', 'rewarded_double_id', 'rewarded_coins_id', 'rewarded_boost_id', 'rewarded_bonus_id')
 VENDOR = {      # what the web page loads from the internet, packed into the app instead
     'bomber/vendor/matter.min.js': 'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js',
     'bomber/vendor/luckiest-guy-latin.woff2': 'https://fonts.gstatic.com/s/luckiestguy/v25/_gP_1RrxsjcxVyin9l9n_j2hTd52.woff2',
@@ -72,7 +73,7 @@ def build_www(www):
     assert 'https://' not in html, 'the app page must not load anything from the internet'
     (www / 'bomber' / 'index.html').write_text(html)
 
-    for js in ('ads.js', 'shapes.js', 'bomber.js'):
+    for js in ('ads.js', 'meta.js', 'shapes.js', 'bomber.js'):
         shutil.copy(ROOT / 'bomber' / js, www / 'bomber' / js)
     cache = gem.SDK / 'web-cache'
     for name, url in VENDOR.items():
@@ -142,6 +143,15 @@ def make_icons(res):
         # adaptive icon (Android 8+): 108dp layers, the bomb inside the 66dp safe circle
         tile(int(108 * k), 'full').save(d / 'ic_launcher_background.png')
         with_bomb(Image.new('RGBA', (int(108 * k),) * 2, (0, 0, 0, 0)), 0.55).save(d / 'ic_launcher_foreground.png')
+        # the reminder notification's small icon: Android shows only its shape, in white
+        sd = res / f'drawable-{folder}'
+        sd.mkdir(parents=True, exist_ok=True)
+        size = int(24 * k)
+        b = bomb.copy()
+        b.thumbnail((size - 2, size - 2), Image.LANCZOS)
+        stat = Image.new('RGBA', (size, size), (255, 255, 255, 0))
+        stat.paste(Image.new('RGBA', b.size, (255, 255, 255, 255)), ((size - b.width) // 2, (size - b.height) // 2), b.split()[3])
+        stat.save(sd / 'ic_stat_bomb.png')
     with_bomb(tile(512, 'full'), 0.72).convert('RGB').save(BUILD / 'store_icon_512.png')   # for the Play Store listing
 
 
