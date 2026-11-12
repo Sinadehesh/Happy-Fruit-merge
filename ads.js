@@ -1,81 +1,35 @@
 // --- ADS ---
 //
-// Never while a game is being played: an ad break shows only between games (on "Play Again", on the way
-// home after a game, between Gem Mine stages), at most once a minute. In the Android app the banner shows
-// only off the board too: on the home menu and the Gem Mine map, never during a game.
+// Only in the Android app. The web version (the game in a browser) shows no ads at all.
 //
-// If Google's H5 Games Ads (adBreak) is loaded on the page, real ads are shown.
-// Otherwise a placeholder ad with a countdown is shown, so the flow can be
-// tested before an ad account is set up. See README.md -> Ads.
-//
-// In the Android app (window.AndroidApp, from MainActivity) the ads are real AdMob ads shown
-// by the app: a banner on the menu and the map, a full-screen ad only between games, never in the
-// middle of one, as AdMob's rules ask, and ads the player chooses to watch for a reward (to keep going
-// when the jar fills up, a booster, a spin...). Buying "No Ads" switches off the banner and full-screen
-// ads; the reward ads stay, since the player chooses to watch them.
-
-const AD_CLOSE_DELAY_S = 5;
-const AD_MIN_GAP_MS = 60 * 1000;   // between-games ads at most once a minute (the app's own rule, kept on the web too)
+// In the Android app (window.AndroidApp, from MainActivity) the ads are real AdMob ads shown by the app, never
+// while a game is being played: a banner on the home menu and the Gem Mine map, a full-screen ad only between
+// games (on "Play Again", on the way home after a game, between Gem Mine stages; the app keeps them at most once
+// a minute), and ads the player chooses to watch for a reward (to keep going when the jar fills up, a booster,
+// a spin...). Buying "No Ads" switches off the banner and full-screen ads; the reward ads stay, since the
+// player chooses to watch them.
 
 const App = window.AndroidApp || null;
 
 const Ads = (() => {
-    let lastAdAt = Date.now();
     let showing = false;
     let hooks = { onPause() {}, onResume() {} };
 
-    const overlay = document.getElementById('ad-overlay');
-    const closeBtn = document.getElementById('ad-close');
-
     function finish(onClose) {
         showing = false;
-        lastAdAt = Date.now();
-        overlay.style.display = 'none';
         hooks.onResume();
         if (onClose) onClose();
     }
 
-    function showPlaceholder(onClose) {
-        overlay.style.display = 'flex';
-        let left = AD_CLOSE_DELAY_S;
-        closeBtn.disabled = true;
-        closeBtn.textContent = `Close in ${left}`;
-        const timer = setInterval(() => {
-            left--;
-            if (left > 0) {
-                closeBtn.textContent = `Close in ${left}`;
-            } else {
-                clearInterval(timer);
-                closeBtn.disabled = false;
-                closeBtn.textContent = 'Close ✕';
-            }
-        }, 1000);
-        closeBtn.onclick = () => { if (!closeBtn.disabled) finish(onClose); };
-    }
-
+    // between games: the app shows a real full-screen ad, then tells us it's over (or right away if there's
+    // none); the web goes straight on
     function showInterstitial(onClose) {
-        if (GAME.ads === false || (App && App.isAdFree())) { if (onClose) onClose(); return; }
-        // the app keeps its own gap between full-screen ads; on the web, the same once-a-minute rule
-        if (!App && Date.now() - lastAdAt < AD_MIN_GAP_MS) { if (onClose) onClose(); return; }
+        if (!App || GAME.ads === false || App.isAdFree()) { if (onClose) onClose(); return; }
         if (showing) return;
         showing = true;
         hooks.onPause();
-
-        if (App) {   // the app shows a real full-screen ad, then tells us it's over (or right away if there's none)
-            window.onNativeAdDone = () => { window.onNativeAdDone = null; finish(onClose); };
-            App.showFullscreenAd();
-            return;
-        }
-
-        if (typeof window.adBreak === 'function') {
-            window.adBreak({
-                type: 'next',
-                name: 'ad-break',
-                adBreakDone: () => finish(onClose)
-            });
-        } else {
-            showPlaceholder(onClose);
-        }
+        window.onNativeAdDone = () => { window.onNativeAdDone = null; finish(onClose); };
+        App.showFullscreenAd();
     }
 
     return {

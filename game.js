@@ -173,6 +173,13 @@ const SKIN = (() => {
     return SKINS.find((sk, i) => sk.id === id && skinOpen(i)) || SKINS[0];
 })();
 const SPRITES = MODES[SKIN ? SKIN.id : MODE].sprites;
+// A floating set (GAME.skins float: the Cosmic Gems) turns gravity around: gems are let go at the bottom of the
+// jar and float up, the higher the level the faster and harder they rise (the weight below, the other way up),
+// the jar fills from the top down and the line is near the bottom. In every mode (the Gem Mine's jars are turned
+// upside down too). The physics is the plain game's mirror image, so it is just as hard.
+const FLOAT = !!(SKIN && SKIN.float);
+const DOWN = FLOAT ? -1 : 1;                        // the way gems fall: down (1) or up (-1)
+const flipY = y => FLOAT ? GAME_HEIGHT - y : y;     // a height in a plain jar, measured from its top, in this jar
 // Daily Challenge (GAME.daily, opened with ?daily): one special game a day, see DAILY CHALLENGE below
 const DAILY = !!GAME.daily && params.has('daily');
 // Gem Rush (GAME.rush, opened with ?rush): a 90-second race for points (the clock is in meta.js); not saved
@@ -262,6 +269,7 @@ const bestEl = document.getElementById('best-val');
 const nextImg = document.getElementById('next-img');
 const dropGuide = document.getElementById('drop-guide');
 const aimLine = document.getElementById('aim-line');
+board.classList.toggle('float', FLOAT);   // (the line, the guide and messages sit the other way up: index.html)
 
 function randomDropTier() {
     return Math.floor(dropRandom() * DROP_TIERS);
@@ -325,7 +333,7 @@ function updateUI() {
     nextImg.src = SPRITES[nextTier];
     if (MINE) next2Img.src = SPRITES[afterTier];
 
-    // The fruit you're about to drop hangs at the top, following the pointer
+    // The fruit you're about to drop hangs at the top (a floating set: at the bottom), following the pointer
     const scale = board.clientWidth / GAME_WIDTH;
     const r = TIERS[currentTier] * SPRITE_FIT;
     dropGuide.style.backgroundImage = `url('${SPRITES[currentTier]}')`;
@@ -333,11 +341,13 @@ function updateUI() {
     dropGuide.style.top = `${(spawnY(currentTier) - r) * scale}px`;
     dropGuide.style.left = `${dropX * scale}px`;
     aimLine.style.left = `${dropX * scale}px`;
-    aimLine.style.top = `${(spawnY(currentTier) + r) * scale}px`;
+    // the guide line: from the gem to the far end of the jar
+    if (FLOAT) aimLine.style.height = `${Math.max(0, spawnY(currentTier) - r) * scale}px`;
+    else aimLine.style.top = `${(spawnY(currentTier) + r) * scale}px`;
 }
 
 function spawnY(tier) {
-    return TIERS[tier] + 10;
+    return flipY(TIERS[tier] + 10);
 }
 
 function clampX(x, tier) {
@@ -348,6 +358,7 @@ function clampX(x, tier) {
 
 // Extra solver iterations so heavy piles don't sink into each other
 const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 });
+engine.gravity.y = DOWN;   // (floating sets: up)
 
 // --- WEIGHT ---
 // Every gem is heavier than the one before it, and it shows. Its mass grows with its size and density (each
@@ -355,7 +366,8 @@ const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 })
 // smallest drifts down a little lighter than plain gravity, bigger ones drop harder), it bounces less the
 // heavier it is, and it lands with a thud, a buzz and a puff of dust that are deeper and stronger for heavier
 // gems and harder landings, and a shake of the jar for the heavy ones (sound.js, haptics.js, fx.js). A gem
-// already in the jar that falls into a gap lands the same way.
+// already in the jar that falls into a gap lands the same way. In a floating set all of it works upward: the
+// pull follows gravity, so the higher the level, the harder a gem shoots up.
 const fallPull = tier => 0.8 + 0.1 * tier;                       // x gravity while a dropped gem is falling
 const bounceOf = tier => Math.max(0.04, 0.24 - 0.018 * tier);     // how much it bounces (restitution)
 const FULL_DROP_SPEED = 14;   // how fast a gem dropped from the top hits the floor of an empty jar, px per step
@@ -378,7 +390,7 @@ function thud(gem, speed, scale = 1) {
     gem.lastThud = performance.now();
     Sound.play('land', gem.tier, impact);
     Haptics.play('land', gem.tier, impact);
-    FX.thud(gem.position.x, gem.bounds.max.y, TIERS[gem.tier], gem.tier, impact);
+    FX.thud(gem.position.x, FLOAT ? gem.bounds.min.y : gem.bounds.max.y, TIERS[gem.tier], gem.tier, impact);
 }
 // a gem already in the jar knocking hard into something (a big gem falling into a gap); the heavier of two
 // gems makes the sound, and each gem at most every 0.35 s, so a settling pile stays quiet
@@ -399,7 +411,7 @@ const runner = Runner.create();
 Runner.run(runner, engine);
 
 const wallOptions = { isStatic: true, render: { fillStyle: '#34495e' } };
-const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 25, GAME_WIDTH, 50, wallOptions);
+const ground = Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);   // (floating: the ceiling)
 const leftWall = Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 const rightWall = Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 Composite.add(engine.world, [ground, leftWall, rightWall]);
@@ -437,9 +449,9 @@ Events.on(engine, 'beforeUpdate', () => {
         }
 
         // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
-        // entirely above it (its lowest point is above the line)
+        // entirely above it (its lowest point is above the line; floating: entirely below it)
         if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping) {
-            if (body.bounds.max.y < DANGER_Y) {
+            if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
                 }
@@ -474,7 +486,7 @@ function gameOver(reason) {
     // in the app: the player may watch an ad to keep going (clearing the top of the jar), MAX_REVIVES times a game
     const canRevive = reason === 'full' && revives < MAX_REVIVES && Ads.canRevive();
     document.getElementById('revive').style.display = canRevive ? 'block' : 'none';
-    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + 'atch a short ad to clear the top of the jar';
+    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + `atch a short ad to clear the ${FLOAT ? 'bottom' : 'top'} of the jar`;
     showNextSetProgress();
     if (reason === 'full' || reason === 'time') {
         Sound.play('gameOver');
@@ -546,6 +558,7 @@ function dropFruit() {
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
+    if (FLOAT) floatHint();
 
     currentTier = nextTier;
     if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
@@ -555,6 +568,16 @@ function dropFruit() {
     if (MINE) Mine.afterDrop();
 
     if (!MINE) Ads.onDrop();   // (never an ad in the middle of a stage)
+}
+
+// the first 3 games with a floating set say what's going on, at the first drop
+let floatHinted = false;
+function floatHint() {
+    if (floatHinted) return;
+    floatHinted = true;
+    let told = 0;
+    try { told = +localStorage.getItem(`${GAME.id}.floatTold`) || 0; localStorage.setItem(`${GAME.id}.floatTold`, told + 1); } catch (e) {}
+    if (told < 3) showToast('Zero gravity: these gems float up!');
 }
 
 // --- MERGING ---
@@ -643,7 +666,7 @@ function spawnItem(x, y, tier, animateGrowth) {
     body.render.sprite.xOffset = centre.x / SPRITE_SIZE;
     body.render.sprite.yOffset = centre.y / SPRITE_SIZE;
 
-    if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 }); // slight downward push (dev plan §4)
+    if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 * DOWN }); // slight push the way gems fall (dev plan §4)
     body.isDropping = !animateGrowth; // merge results are already in the pile
     body.isGrowing = animateGrowth;
     body.currentRadius = startRadius;
@@ -675,8 +698,9 @@ document.getElementById('btn-revive').addEventListener('click', () => {
 function revive() {
     revives++;
     lastDrop = null;   // (nothing to undo: the drop that filled the jar is gone)
-    const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar
-    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && b.bounds.min.y < clearAbove).forEach(b => {
+    const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar (floating: the bottom part)
+    const inThere = b => FLOAT ? b.bounds.max.y > GAME_HEIGHT - clearAbove : b.bounds.min.y < clearAbove;
+    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && inThere(b)).forEach(b => {
         if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
         FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
         Composite.remove(engine.world, b);
@@ -704,7 +728,7 @@ function saveGame() {
     const items = Composite.allBodies(engine.world)
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
-    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items };
+    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items, float: FLOAT };
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
@@ -721,10 +745,12 @@ function loadGame() {
     if (!data || data.v !== 1 || !Array.isArray(data.items)) return;
     if (DAILY && data.date !== TODAY) return;   // yesterday's daily game: today's starts fresh
     const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
+    // saved with a set that falls the other way (the set was changed): the pile is turned upside down
+    const turn = !!data.float !== FLOAT;
     for (const [tier, x, y, angle] of data.items) {
         if (!okTier(tier)) continue;
-        const body = spawnItem(x, y, tier, false);
-        Body.setAngle(body, angle || 0);
+        const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
+        Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
     }
     score = shownScore = Math.max(0, data.score | 0);
@@ -808,6 +834,7 @@ vibeBtn.addEventListener('click', () => { Haptics.setOn(!Haptics.isOn()); Haptic
 audioButtons();
 vibeButton();
 FX.init(board);
+FX.flip(FLOAT);
 
 // --- DAILY CHALLENGE ---
 // One special game a day (GAME.daily; the Daily button opens it): the same drops and the same goal for
@@ -1187,6 +1214,12 @@ function renderSets() {
         gems.className = 'set-gems';
         MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
         card.append(head, gems);
+        if (sk.float) {
+            const note = document.createElement('div');
+            note.className = 'set-note';
+            note.textContent = '⬆ Zero gravity: drop them from the bottom and they float up';
+            card.append(note);
+        }
         if (!open) card.append(needChips(i, i === next));
         if (open && !inUse) {
             const use = document.createElement('button');

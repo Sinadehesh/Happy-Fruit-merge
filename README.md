@@ -39,20 +39,7 @@ Any static server works, e.g. `python3 -m http.server` and open http://localhost
 Every merge adds points (bigger items are worth more). Your best score is saved in the browser (separately for each mode) and shown next to the current score.
 
 ## Ads
-`ads.js` shows an ad break only between games, when you press **Play Again** (at most once a minute), never in the middle of a game. Change `AD_CLOSE_DELAY_S` and `AD_MIN_GAP_MS` at the top of `ads.js`.
-
-Until an ad network is connected it shows a placeholder ad. To show real ads on the web, sign up for Google AdSense, apply for [H5 Games Ads](https://developers.google.com/ad-placement), and add their snippet to `<head>` in `index.html`:
-
-```html
-<script async data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<script>
-  window.adsbygoogle = window.adsbygoogle || [];
-  var adBreak = adConfig = function(o) { adsbygoogle.push(o); };
-</script>
-```
-
-`ads.js` detects `adBreak` and uses it automatically. For the Android/iOS build (Capacitor) the same `showInterstitial()` hook can call the AdMob plugin instead.
+The web version (the game in a browser) shows no ads at all. Ads are only in the Android app (`ads.js` asks the app to show them): see **How the app makes money** below.
 
 ## Hitboxes
 Each item's hitbox is its sprite's own outline (in `shapes.js`), so items rest against each other where the art touches instead of overlapping. If you change or add sprites, regenerate it with:
@@ -71,6 +58,7 @@ The Rocks set as its own game: drop gems in the jar, merge two of a kind into a 
 - **Zap booster** (the lightning bolt by NEXT, with how many you have): tap it, then tap any gem, and lightning strikes it away. You start with 2 and earn more from the Daily Challenge; in the Android app, when you have none, the badge says AD and watching a rewarded ad gives one.
 - Both are switched on by `daily: true` and `boosters: true` in the gem page's `GAME_SETUP`, so Happy Fruit Merge could have them too.
 - **Gem sets** (Settings > Gems): the same game with another look, set in the gem page's `GAME_SETUP.skins`, opening in order. Rocks & Gems is always open. Each next set opens by making the gems in `GAME_SETUP.unlocks`, counted from when the set before it opened (every game counts, daily ones too). Locked sets show their 12 gems greyed out and, instead of words, pictures of the gems to make with counts; the game-over panel shows the same for the next set. A simulated 22 hours of play made about 49 Gold Nuggets, 13 Rubies and 1 Opal an hour, so the sets ask for 40 Gold Nuggets and 12 Rubies (about 1 hour), then 25 Rubies and 2 Opals (about 2 hours), 50 and 4 (4 hours), 100 and 8 (8 hours) and 200 and 16 (16 hours). The sets that open by making gems, in order: **Crystal Cave** (`assets/crystal`), **Ocean Jewels** (`assets/ocean`), **Royal Treasury** (`assets/royal`), **Cosmic Gems** (`assets/cosmic`) and **Volcano Gems** (`assets/volcano`). Five more open with stars in the Gem Mine (`mineStars` in the gem page's `GAME_SETUP.skins`, 60 stars in all for now): **Pixel Treasure** at 18 (about half the stages), **Odd Shapes** at 30, **Cyber Circuit** at 40, **Neon Nights** at 48 and **Gem Pets** at 55 (nearly every stage with 3 stars). Their cards show the pickaxe and the stars so far, the Gem Mine map says which set opens next, and the stage win that reaches a set shows it on the panel. Picking a set reloads the page and the game in progress goes on with the new look. All the gems are cut by `python3 tools/cut_sets.py`, which lists where each set's gems come from (its sheet, kept in the set's folder, and the gems made again in `assets/fixes`) and cuts them cleanly with `tools/gemcut.py`: the background is all the white the outside can reach (so the white in notches, between parts and in every step of pixel art goes too, along with faint pencil lines and the light pockets they wall off), the edge pixels are un-mixed from that white, so nothing white or pale is left around a gem on the dark jar, a white highlight line that touches the edge stays part of the gem, and glowing gems get a see-through halo. Gems drawn inside a dark outline all round with light marks outside it (all of Pixel Treasure, two others) are cut to their outline (`outline` in the set's entry). A new set is added there, to `MODES` in `game.js`, to `skins` in `tools/make_gems_page.py`, to `GEM_SETS` in `tools/build_gem_android.py`, and to the hitboxes with `tools/make_shapes.py` (the command is at the top of that file).
+- **Zero gravity in Cosmic Gems** (`float: true` in its `GAME_SETUP.skins` entry, `FLOAT` in `game.js`): gravity is reversed. Gems are let go at the bottom of the jar and float up, the higher the level the faster and harder they rise (the weight, the other way up), the jar fills from the top down and the line is near the bottom; Keep Going clears the bottom of the jar. It works in every mode: the Gem Mine's jars (beams, pegs, crates, starting gems) are built upside down, and a saved game turns over when the set is changed. The physics is the plain game's mirror image, so it is just as hard (the stage bot wins 87% of the stages either way with these gems: `SKIN=cosmic VERIFY=1 node tools/calibrate_mine.js`).
 - Cutting tools for gem art: `tools/cut_light.py` (pale or clear items, whose light outline lets the background leak in) and `tools/cut_glow.py` (a saturated item with a baked-in glow: solid body, see-through halo, cropped so the body fills the sprite).
 - The best score and game in progress from the old Rocks mode are carried over the first time it opens.
 - `gems/index.html` is built from `index.html` by `python3 tools/make_gems_page.py`; run it again after changing `index.html`.
@@ -114,7 +102,7 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 
 - **Google Play:** upload `gems/GemJar.aab` (App Bundle, https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.aab).
 - **Install directly:** `gems/GemJar.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.apk).
-- The files there are version 1.3 (code 4): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
+- The files there are version 1.4 (code 5): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
 - **Test build:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk) is the same version with Google's test ads (marked "Test Ad"), for trying the ads on your own phone without touching real ones; it is never uploaded to Google Play.
 - Package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
 - **Store listing** (name, short and full description, within Play's limits): `android/store/listing.md`. The 8 phone screenshots (1080 x 1920) are in `android/store/screenshots/`, made by `python3 tools/make_store_screens.py <TitanOne.ttf>` from real screens of the game that `tools/store_capture.js` takes (`android/store/captures/`): a headline, the screen, and gems from the sets around it. The game's web page is https://www.sinadehesh.com/apps/gemjar/ (`site/apps/gemjar/` in the Flora repository).
@@ -131,7 +119,7 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 - **No Ads** ($5.99, a one-time Google Play purchase, product ID `remove_ads`): switches the banner and full-screen ads off for good and comes back on a new phone or after reinstalling. Keep Going stays on offer, since the player chooses to watch it. The price is set in Play Console (Monetize, Products, In-app products); the button shows Google Play's price in the player's currency.
 - **Consent:** Google's consent message (UMP) is shown where the law asks for it (EU, UK, some US states). Settings then has a Privacy button to change the choice.
 - The game is fair: difficulty never depends on ads or on the player.
-- On the website none of this applies: the web page keeps its placeholder ad breaks (between games at most once a minute, never during one, like the app).
+- On the website none of this applies: the browser version has no ads.
 
 ### Building
 

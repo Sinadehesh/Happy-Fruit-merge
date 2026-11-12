@@ -4,6 +4,11 @@
 
 const FX = (() => {
     const W = 450, H = 640;   // same logical size as the board
+    // the way gems fall (1: down; -1: up, a floating set): the words pop in the empty part of the jar and the
+    // dust puffs away from where a gem touched
+    let down = 1;
+    const wordY = () => down > 0 ? 270 : H - 270;
+    function flip(on) { down = on ? -1 : 1; }
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
@@ -85,7 +90,7 @@ const FX = (() => {
         if (combo >= 2) {
             // one COMBO label at a time: the one before fades out fast
             effects.forEach(e => { if (e.kind === 'combo') e.t = Math.max(e.t, e.dur * 0.88); });
-            const ly = Math.max(70, y - r - 28);
+            const ly = down > 0 ? Math.max(70, y - r - 28) : Math.min(H - 70, y + r + 28);
             effects.push({ kind: 'combo', x: Math.max(120, Math.min(W - 120, x)), y: ly, count: combo, t: 0, dur: 1.1, off: 0 });
         }
     }
@@ -95,10 +100,11 @@ const FX = (() => {
     function praise(level, big = false) {
         const name = big ? 'word_congratulations' : PRAISE[Math.min(level, PRAISE.length - 1)];
         effects = effects.filter(e => e.kind !== 'praise');   // one at a time
-        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: big ? W - 40 : 200 + GAME.strength(level) * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
+        const y = wordY();
+        effects.push({ kind: 'praise', name, x: W / 2, y, size: big ? W - 40 : 200 + GAME.strength(level) * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
         for (let i = 0; i < (big ? 40 : 18); i++) {
             const a = rand(0, Math.PI * 2), sp = rand(160, 300);
-            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
+            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y,
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.2) });
         }
     }
@@ -107,10 +113,11 @@ const FX = (() => {
     function banner(name) {
         if (!img[name]) { img[name] = new Image(); img[name].src = `assets/fx/${name}.png`; }
         effects = effects.filter(e => e.kind !== 'praise');
-        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: W - 60, big: true, t: 0, dur: 2.0 });
+        const y = wordY();
+        effects.push({ kind: 'praise', name, x: W / 2, y, size: W - 60, big: true, t: 0, dur: 2.0 });
         for (let i = 0; i < 30; i++) {
             const a = rand(0, Math.PI * 2), sp = rand(160, 320);
-            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
+            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y,
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.3) });
         }
     }
@@ -200,8 +207,8 @@ const FX = (() => {
             const n = Math.round(2 + tier * 0.7 * k);
             for (let i = 0; i < n; i++) {
                 const side = i % 2 ? 1 : -1;
-                effects.push({ kind: 'dust', x: x + side * rand(0.1, 0.45) * r, y: y - rand(0, 8),
-                    vx: side * rand(40, 120) * (0.6 + 0.6 * k), vy: -rand(10, 50) * k,
+                effects.push({ kind: 'dust', x: x + side * rand(0.1, 0.45) * r, y: y - down * rand(0, 8),
+                    vx: side * rand(40, 120) * (0.6 + 0.6 * k), vy: -down * rand(10, 50) * k, g: 40 * down,
                     size: rand(5, 9) + tier * 1.4, t: 0, dur: rand(0.35, 0.6) });
             }
         }
@@ -280,7 +287,7 @@ const FX = (() => {
             } else if (e.kind === 'chip') {
                 drawChip(e, dt, k);
             } else if (e.kind === 'dust') {
-                e.vx *= 1 - 3 * dt; e.vy += 40 * dt;
+                e.vx *= 1 - 3 * dt; e.vy += e.g * dt;
                 e.x += e.vx * dt; e.y += e.vy * dt;
                 ctx.save();
                 ctx.globalAlpha = 0.34 * (1 - k);
@@ -300,5 +307,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, merge, praise, zap, banner, splinters, thud };
 })();

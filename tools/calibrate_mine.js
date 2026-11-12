@@ -5,11 +5,13 @@
 // Needs Playwright and the game served locally (python3 -m http.server 8765):
 //   node tools/calibrate_mine.js [attempts per stage, default 60] [stages, e.g. 1-20 or 3,7] [base url]
 // With VERIFY=1 the bot plays with each stage's real drops instead, and reports its wins and stars.
+// With SKIN=<set id> it plays with that gem set, e.g. SKIN=cosmic: the floating set, with the jars upside down.
 const { chromium } = require('playwright');
 const ATTEMPTS = +(process.argv[2] || 60);
 const BASE = process.argv[4] || 'http://localhost:8765';
 const WORKERS = 4;
 const VERIFY = !!process.env.VERIFY;
+const SKIN = process.env.SKIN || '';
 const range = (process.argv[3] || '1-20').split(',').flatMap(s => {
     const [a, b] = s.split('-').map(Number);
     return b ? Array.from({ length: b - a + 1 }, (_, i) => a + i) : [a];
@@ -29,6 +31,8 @@ async function playStage(page, n) {
         const LIMIT = verify ? Mine.stage.drops : 400;
         const out = [];
         const bodies = () => Matter.Composite.allBodies(engine.world);
+        // how high a body reaches into the jar, from the end the gems come in at (the top; floating: the bottom)
+        const reach = b => FLOAT ? GAME_HEIGHT - b.bounds.max.y : b.bounds.min.y;
         function aim() {
             const items = bodies().filter(b => b.tier !== undefined && !b.isDropping && !b.isMerging);
             const crates = bodies().filter(b => b.crate);
@@ -39,7 +43,7 @@ async function playStage(page, n) {
                 let best = null, bestScore = Infinity;
                 for (const g of same) {
                     const dc = forCrates ? Math.min(...crates.map(c => Math.hypot(c.position.x - g.position.x, c.position.y - g.position.y))) : 0;
-                    const s = dc + g.bounds.min.y * (forCrates ? 0.3 : 1) + Math.random() * 40;
+                    const s = dc + reach(g) * (forCrates ? 0.3 : 1) + Math.random() * 40;
                     if (s < bestScore) { bestScore = s; best = g; }
                 }
                 x = best.position.x;
@@ -53,7 +57,7 @@ async function playStage(page, n) {
                     for (const b of bodies()) {
                         if (b.isStatic && !b.crate && !b.jarPart) continue;   // the walls and the floor
                         if (b.bounds.max.x < cx - r || b.bounds.min.x > cx + r) continue;
-                        top = Math.min(top, b.bounds.min.y);
+                        top = Math.min(top, reach(b));
                     }
                     const near = forCrates ? Math.min(...crates.map(c => Math.abs(c.position.x - cx))) : 999;
                     const s = top + (near < 90 ? 60 : 0) + Math.random() * 50;
@@ -90,8 +94,9 @@ const pct = (arr, q) => { const s = [...arr].sort((a, b) => a - b); return s.len
     const t0 = Date.now();
     await Promise.all(Array.from({ length: WORKERS }, async () => {
         const ctx = await browser.newContext({ viewport: { width: 412, height: 915 } });
-        await ctx.addInitScript(() => {
+        await ctx.addInitScript(skin => {
             try {
+                if (skin) { localStorage.setItem('gemJar.skin', skin); localStorage.setItem('gemJar.unlock', JSON.stringify({ opened: 10, made: [] })); }
                 sessionStorage.setItem('gemJar.session', '1');
                 if (!localStorage.getItem('gemJar.calib')) {
                     localStorage.clear();
@@ -100,7 +105,7 @@ const pct = (arr, q) => { const s = [...arr].sort((a, b) => a - b); return s.len
                 }
                 localStorage.setItem('gemJar.mine', JSON.stringify({ stars: Array(40).fill(1) }));   // every stage open
             } catch (e) {}
-        });
+        }, SKIN);
         const page = await ctx.newPage();
         page.on('pageerror', e => console.error('page error', e.message));
         while (queue.length) {

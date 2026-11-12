@@ -34,7 +34,6 @@ html, n = re.subn(r'\s*<div id="car-styles">.*?</div>', '', html, flags=re.S)
 assert n == 1
 swap('<h2>Modes</h2>', '<h2>Settings</h2>')
 swap('<h2 id="go-title">The box is full!</h2>', '<h2 id="go-title">The jar is full!</h2>')
-swap('<img src="assets/farm/11_sunflower.png" alt="" style="width: 45%;">', '<img src="assets/rocks/12_diamond.png" alt="" style="width: 45%;">')   # placeholder ad picture
 swap('    <script src="config.js"></script>', '''    <script>
         window.GAME_SETUP = {
             id: 'gemJar',
@@ -54,7 +53,7 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'crystal', name: 'Crystal Cave' },
                 { id: 'ocean', name: 'Ocean Jewels' },
                 { id: 'royal', name: 'Royal Treasury' },
-                { id: 'cosmic', name: 'Cosmic Gems' },
+                { id: 'cosmic', name: 'Cosmic Gems', float: true },   // zero gravity: dropped at the bottom, they float up
                 { id: 'volcano', name: 'Volcano Gems' },
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
