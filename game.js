@@ -100,8 +100,8 @@ const MODES = {
     'cosmic': {
         background: '#f4ecf7',
         tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
-        sprites: ['01_moon_rock', '02_meteorite', '03_stardust', '04_comet_ice', '05_moonstone', '06_nebula', '07_saturn', '08_aurora',
-            '09_sun_stone', '10_galaxy_egg', '11_black_hole', '12_star_heart'].map(n => `assets/cosmic/${n}.png`)
+        sprites: ['01_space_pebble', '02_asteroid', '03_comet', '04_moon', '05_mars', '06_earth', '07_gas_giant', '08_saturn',
+            '09_sun', '10_black_hole', '11_galaxy', '12_universe_gem'].map(n => `assets/cosmic/${n}.png`)
     },
     'volcano': {
         background: '#f4ecf7',
