@@ -359,7 +359,8 @@ const Mine = (() => {
             const got = starsFor(dropsLeft), before = starsOf(N), totalBefore = totalStars();
             if (got > before) { progress.stars[N - 1] = got; saveProgress(); }
             // gem sets that open with Gem Mine stars (GAME.skins mineStars) and just did
-            const opened = (GAME.skins || []).filter(sk => sk.mineStars && totalBefore < sk.mineStars && totalStars() >= sk.mineStars && MODES[sk.id]);
+            const allOpen = (() => { try { return !!UNLOCK.all; } catch (e) { return false; } })();   // (the unlock link)
+            const opened = allOpen ? [] : (GAME.skins || []).filter(sk => sk.mineStars && totalBefore < sk.mineStars && totalStars() >= sk.mineStars && MODES[sk.id]);
             [...box.children].forEach((st, i) => {
                 if (i < got) setTimeout(() => { st.classList.add('on'); Sound.play('star', i); Haptics.play('merge', 4 + i, 0); }, 450 + i * 380);
             });

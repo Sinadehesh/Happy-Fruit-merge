@@ -163,9 +163,19 @@ const UNLOCK_KEY = `${GAME.id}.unlock`;
 const UNLOCK = (() => { try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)) || {}; } catch (e) { return {}; } })();
 UNLOCK.opened = UNLOCK.opened | 0;                                 // how many sets after the first are open
 UNLOCK.made = Array.isArray(UNLOCK.made) ? UNLOCK.made : [];      // gems made toward the next one, per level
+// The unlock link, to try every set without playing for it: ?unlock=all opens all the gem sets in this browser
+// (UNLOCK.all), ?unlock=off closes them again; the sets earned by playing stay open and their progress is kept.
+// (The app has no address bar, so it works on the web only.)
+const UNLOCK_LINK = ['all', 'off'].includes(params.get('unlock')) ? params.get('unlock') : null;
+if (UNLOCK_LINK) {
+    UNLOCK.all = UNLOCK_LINK === 'all';
+    try { localStorage.setItem(UNLOCK_KEY, JSON.stringify(UNLOCK)); } catch (e) {}
+    params.delete('unlock');
+    try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash); } catch (e) {}
+}
 const SKINS = (GAME.skins || []).filter(sk => MODES[sk.id]);
 // (a set with `mineStars` opens with that many stars in the Gem Mine instead, mine.js)
-const skinOpen = i => SKINS[i] && SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars : i <= UNLOCK.opened;
+const skinOpen = i => UNLOCK.all ? !!SKINS[i] : SKINS[i] && SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars : i <= UNLOCK.opened;
 const SKIN = (() => {
     if (!SKINS.length) return null;
     let id = null;
@@ -1197,7 +1207,7 @@ undoBtn.addEventListener('click', () => {
 // The next locked set (if its art is in the game) opens when enough of the gems it asks for have been made:
 // GAME.unlocks[k] lists [level, how many] for the k-th set after the first. Every game counts, daily ones too.
 // The Gems screen (Settings > Gems) and the game-over panel show what to make as pictures of the gems, with counts.
-const nextSetIndex = () => (UNLOCK.opened + 1 < SKINS.length && GAME.unlocks && GAME.unlocks[UNLOCK.opened]) ? UNLOCK.opened + 1 : -1;
+const nextSetIndex = () => (!UNLOCK.all && UNLOCK.opened + 1 < SKINS.length && GAME.unlocks && GAME.unlocks[UNLOCK.opened]) ? UNLOCK.opened + 1 : -1;
 const needsFor = i => (GAME.unlocks && GAME.unlocks[i - 1]) || [];
 
 function countForNextSet(tier) {
@@ -1315,6 +1325,17 @@ function showToast(text) {
     void toastEl.offsetWidth;   // restart the animation
     toastEl.classList.add('show');
 }
+
+// the unlock link was used: show the Collection with every set open (or say they're closed again)
+if (UNLOCK_LINK && SKINS.length > 1) window.addEventListener('load', () => setTimeout(() => {
+    const tile = document.getElementById('tile-gems');
+    if (UNLOCK_LINK === 'all') {
+        if (window.Meta && Meta.menuOpen && tile) tile.click();
+        else { renderSets(); collection.dataset.from = 'settings'; collection.classList.add('show'); }
+    }
+    const say = UNLOCK_LINK === 'all' ? 'Every gem set is open' : 'Gem sets: back to the ones you earned';
+    if (window.Meta && Meta.menuOpen && Meta.showToastMenu) Meta.showToastMenu(say); else showToast(say);
+}, 300));
 
 bestEl.textContent = bestScore;
 loadGame();
