@@ -33,7 +33,9 @@ const FX = (() => {
     // springy pop: overshoots, wobbles and settles at 1
     const elastic = t => t >= 1 ? 1 : 1 - Math.pow(2, -9 * t) * Math.cos(t * 16);
 
+    let boardEl = null;
     function init(board) {
+        boardEl = board;
         canvas = document.createElement('canvas');
         canvas.className = 'fx-layer';
         board.appendChild(canvas);
@@ -186,6 +188,37 @@ const FX = (() => {
         ctx.restore();
     }
 
+    // A gem landing (game.js): a puff of dust each side of where it touched, bigger for a heavier gem and a
+    // harder landing, and for the heavy ones a short shake of the jar (not when the phone asks for less motion).
+    // (x, y) is the bottom of the gem, r its size.
+    const lessMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    let shake = null;
+    function thud(x, y, r, tier, impact) {
+        const k = Math.min(1, impact);
+        if (k < 0.25) return;
+        if (tier >= 1) {
+            const n = Math.round(2 + tier * 0.7 * k);
+            for (let i = 0; i < n; i++) {
+                const side = i % 2 ? 1 : -1;
+                effects.push({ kind: 'dust', x: x + side * rand(0.1, 0.45) * r, y: y - rand(0, 8),
+                    vx: side * rand(40, 120) * (0.6 + 0.6 * k), vy: -rand(10, 50) * k,
+                    size: rand(5, 9) + tier * 1.4, t: 0, dur: rand(0.35, 0.6) });
+            }
+        }
+        if (tier >= 3 && boardEl && !(lessMotion && lessMotion.matches)) {
+            const amp = Math.min(7, (tier - 2) * 1.2 * k);
+            const left = shake ? shake.amp * (1 - shake.t / shake.dur) : 0;
+            if (amp > left) shake = { amp, t: 0, dur: 0.14 + tier * 0.014 };
+        }
+    }
+    function shakeStep(dt) {
+        if (!shake) return;
+        shake.t += dt;
+        if (shake.t >= shake.dur) { shake = null; boardEl.style.transform = ''; return; }
+        const fade = 1 - shake.t / shake.dur, a = shake.amp * fade * fade;
+        boardEl.style.transform = `translate(${(Math.sin(shake.t * 63) * a * 0.35).toFixed(2)}px, ${(Math.sin(shake.t * 89) * a).toFixed(2)}px)`;
+    }
+
     // ---------- animation ----------
 
     function drawCombo(e, dt) {
@@ -227,6 +260,7 @@ const FX = (() => {
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
         ctx.clearRect(0, 0, W, H);
+        shakeStep(dt);
         for (const e of effects) {
             e.t += dt;
             const k = e.t / e.dur;
@@ -245,6 +279,14 @@ const FX = (() => {
                 drawBolt(e);
             } else if (e.kind === 'chip') {
                 drawChip(e, dt, k);
+            } else if (e.kind === 'dust') {
+                e.vx *= 1 - 3 * dt; e.vy += 40 * dt;
+                e.x += e.vx * dt; e.y += e.vy * dt;
+                ctx.save();
+                ctx.globalAlpha = 0.34 * (1 - k);
+                ctx.fillStyle = '#efe6ff';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (0.6 + 0.9 * k), 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
             } else if (e.kind === 'praise') {
                 // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
                 const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));
@@ -258,5 +300,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, merge, praise, zap, banner, splinters };
+    return { init, merge, praise, zap, banner, splinters, thud };
 })();

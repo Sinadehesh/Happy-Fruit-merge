@@ -1,5 +1,6 @@
 // --- VIBRATION ---
-// Small buzzes you can feel: picking up and dropping a fruit, landing, every merge (stronger for bigger
+// Small buzzes you can feel: picking up and dropping a fruit, landing (longer for a heavier gem and a harder
+// landing), every merge (stronger for bigger
 // items and longer combos), praise words, the biggest item, a new best and game over.
 // Android phones support buzz patterns (navigator.vibrate). iPhones don't let websites vibrate; on
 // iOS 18 or newer a hidden "switch" checkbox gives one light tick, and iOS may only allow it at the
@@ -58,8 +59,13 @@ const Haptics = (() => {
     // Patterns are in milliseconds: buzz, pause, buzz, ...
     const feel = {
         pickup() { buzz(10, 1); },
-        drop() { buzz(14, 1); },
-        land(tier) { buzz(Math.min(24, 10 + tier * 1.5), 0); },
+        drop(tier = 0) { buzz(10 + tier * 2, 1); },
+        // a landing: longer for a heavier gem and a harder landing; the heavy ones aren't cut short by a light one
+        land(tier, impact = 1) {
+            const k = Math.min(1, impact);
+            if (k < 0.15) return;
+            buzz(Math.min(44, (9 + tier * 2.8) * (0.5 + 0.5 * k)), tier >= 6 ? 1 : 0);
+        },
         // stronger for bigger items; from a 3-merge combo on, a second pulse that grows with the combo
         merge(tier, combo) {
             const d = Math.min(60, 18 + tier * 4);

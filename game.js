@@ -348,6 +348,46 @@ function clampX(x, tier) {
 
 // Extra solver iterations so heavy piles don't sink into each other
 const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 });
+
+// --- WEIGHT ---
+// Every gem is heavier than the one before it, and it shows. Its mass grows with its size and density (each
+// level is 1.3 to 4.4 times the one before). A dropped gem falls with a pull that grows with its level (the
+// smallest drifts down a little lighter than plain gravity, bigger ones drop harder), it bounces less the
+// heavier it is, and it lands with a thud, a buzz and a puff of dust that are deeper and stronger for heavier
+// gems and harder landings, and a shake of the jar for the heavy ones (sound.js, haptics.js, fx.js). A gem
+// already in the jar that falls into a gap lands the same way.
+const fallPull = tier => 0.8 + 0.1 * tier;                       // x gravity while a dropped gem is falling
+const bounceOf = tier => Math.max(0.04, 0.24 - 0.018 * tier);     // how much it bounces (restitution)
+const FULL_DROP_SPEED = 14;   // how fast a gem dropped from the top hits the floor of an empty jar, px per step
+const impactOf = speed => Math.min(1.2, speed / FULL_DROP_SPEED);   // 1: a drop from the top to the floor
+const KNOCK_SPEED = 3.5;      // a gem already in the jar knocking into something slower than this makes no sound
+Events.on(engine, 'beforeUpdate', () => {
+    const g = engine.gravity.y * engine.gravity.scale;
+    for (const b of Composite.allBodies(engine.world)) {
+        if (b.isDropping && b.tier !== undefined) b.force.y += b.mass * g * (fallPull(b.tier) - 1);
+    }
+});
+// how fast two bodies meet, along the line between them
+function meetSpeed(pair) {
+    const n = pair.collision.normal, a = pair.bodyA.velocity, b = pair.bodyB.velocity;
+    return Math.abs((a.x - b.x) * n.x + (a.y - b.y) * n.y);
+}
+// a gem landing: the sound, buzz and dust follow its level (its weight) and how hard it hit
+function thud(gem, speed, scale = 1) {
+    const impact = impactOf(speed) * scale;
+    gem.lastThud = performance.now();
+    Sound.play('land', gem.tier, impact);
+    Haptics.play('land', gem.tier, impact);
+    FX.thud(gem.position.x, gem.bounds.max.y, TIERS[gem.tier], gem.tier, impact);
+}
+// a gem already in the jar knocking hard into something (a big gem falling into a gap); the heavier of two
+// gems makes the sound, and each gem at most every 0.35 s, so a settling pile stays quiet
+function knock(a, b, speed) {
+    if (speed < KNOCK_SPEED || a.isGrowing || b.isGrowing) return;
+    const gem = [a, b].filter(x => x.tier !== undefined && !x.isMerging).sort((x, y) => y.tier - x.tier)[0];
+    if (!gem || performance.now() - (gem.lastThud || 0) < 350) return;
+    thud(gem, speed, 0.8);
+}
 const render = Render.create({
     element: board,
     engine: engine,
@@ -500,8 +540,8 @@ playArea.addEventListener('pointercancel', (e) => {
 function dropFruit() {
     if (MINE && !Mine.canDrop()) return;
     emitGame('drop', currentTier, dropX);
-    Sound.play('drop');
-    Haptics.play('drop');
+    Sound.play('drop', currentTier);   // (higher and lighter for a small gem, lower for a heavy one)
+    Haptics.play('drop', currentTier);
     if (UNDO_HERE) lastDrop = snapshot();   // the Undo booster can take this drop back
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
@@ -524,10 +564,9 @@ function dropFruit() {
 function isLanded(body) {
     return body === ground || body.crate || body.jarPart || (body.tier !== undefined && !body.isDropping);
 }
-function landed(body) {
+function landed(body, speed) {
     body.isDropping = false;
-    Sound.play('land', body.tier);
-    Haptics.play('land', body.tier);
+    thud(body, speed);
 }
 
 function handleCollisions(event) {
@@ -538,9 +577,11 @@ function handleCollisions(event) {
         const bodyA = pairs[i].bodyA;
         const bodyB = pairs[i].bodyB;
 
-        if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA);
-        if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB);
+        const speed = meetSpeed(pairs[i]);
+        if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA, speed);
+        if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB, speed);
         if (bodyA.isDropping || bodyB.isDropping) continue;
+        if (event.name === 'collisionStart') knock(bodyA, bodyB, speed);
 
         if (bodyA.tier === undefined || bodyB.tier === undefined) continue;
         if (bodyA.tier !== bodyB.tier || bodyA.tier >= TIERS.length - 1) continue;
@@ -591,7 +632,7 @@ function spawnItem(x, y, tier, animateGrowth) {
     const outline = SHAPES[SPRITES[tier]].map(([px, py]) => ({ x: px, y: py }));
     const centre = Vertices.centre(outline);
     const body = Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
-        restitution: 0.15,
+        restitution: bounceOf(tier),   // heavier gems bounce less (see WEIGHT)
         friction: 0.5,
         density: 0.001 * (tier + 1),
         slop: 0.01,

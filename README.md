@@ -39,7 +39,7 @@ Any static server works, e.g. `python3 -m http.server` and open http://localhost
 Every merge adds points (bigger items are worth more). Your best score is saved in the browser (separately for each mode) and shown next to the current score.
 
 ## Ads
-`ads.js` shows an ad break every 25 drops (or at the next drop after 2 minutes) and again when you press **Play Again**. Physics is paused while it is on screen. Change `AD_EVERY_DROPS`, `AD_EVERY_MS` and `AD_CLOSE_DELAY_S` at the top of `ads.js`.
+`ads.js` shows an ad break only between games, when you press **Play Again** (at most once a minute), never in the middle of a game. Change `AD_CLOSE_DELAY_S` and `AD_MIN_GAP_MS` at the top of `ads.js`.
 
 Until an ad network is connected it shows a placeholder ad. To show real ads on the web, sign up for Google AdSense, apply for [H5 Games Ads](https://developers.google.com/ad-placement), and add their snippet to `<head>` in `index.html`:
 
@@ -114,8 +114,8 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 
 - **Google Play:** upload `gems/GemJar.aab` (App Bundle, https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.aab).
 - **Install directly:** `gems/GemJar.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.apk).
-- The files there are version 1.2 (code 3): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
-- **Test build:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk) is the same 1.1 with Google's test ads (marked "Test Ad"), for trying the ads on your own phone without touching real ones; it is never uploaded to Google Play.
+- The files there are version 1.3 (code 4): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
+- **Test build:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk) is the same version with Google's test ads (marked "Test Ad"), for trying the ads on your own phone without touching real ones; it is never uploaded to Google Play.
 - Package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
 - **Store listing** (name, short and full description, within Play's limits): `android/store/listing.md`. The 8 phone screenshots (1080 x 1920) are in `android/store/screenshots/`, made by `python3 tools/make_store_screens.py <TitanOne.ttf>` from real screens of the game that `tools/store_capture.js` takes (`android/store/captures/`): a headline, the screen, and gems from the sets around it. The game's web page is https://www.sinadehesh.com/apps/gemjar/ (`site/apps/gemjar/` in the Flora repository).
 - **Feature graphic** for the Play listing (1024 x 500): `android/store/feature_graphic.png`, made by `python3 tools/make_feature_graphic.py` from the jar picture in `assets/fixes` and the GEM JAR logo. The app icon for the listing is `android/store/icon_512.png`.
@@ -124,14 +124,14 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 
 ### How the app makes money
 
-- **Banner** under the game: the large adaptive banner on tall phones, the regular one on short phones so the jar stays big.
+- **Banner** on the home menu and the Gem Mine map only, never while a game is played (it is hidden in every game and on the game-over panel, and the jar gets the room): the large adaptive banner on tall phones, the regular one on short phones.
 - **Full-screen ad between games** (on Play Again), at most one a minute, never in the middle of a game.
 - **Keep Going:** when the jar fills up, the player can choose to watch a rewarded ad to clear the top of the jar and carry on with the same game and score, twice a game at most (the second is marked as the last chance).
 - **More ads the player chooses** (all rewarded, never forced): a booster (Zap, Star or Undo) when out of them, 15 more seconds in Gem Rush, 5 more drops and a Zap before a boss in the Gem Mine, doubling a level-up's or a quest's rewards, swapping a quest, up to 5 extra spins of the Lucky Wheel a day, doubling the Daily Gift or keeping its streak after one missed day, and 2x XP for 10 minutes. One ad offer at a time on the game-over panel.
 - **No Ads** ($5.99, a one-time Google Play purchase, product ID `remove_ads`): switches the banner and full-screen ads off for good and comes back on a new phone or after reinstalling. Keep Going stays on offer, since the player chooses to watch it. The price is set in Play Console (Monetize, Products, In-app products); the button shows Google Play's price in the player's currency.
 - **Consent:** Google's consent message (UMP) is shown where the law asks for it (EU, UK, some US states). Settings then has a Privacy button to change the choice.
 - The game is fair: difficulty never depends on ads or on the player.
-- On the website none of this applies: the web page keeps its placeholder ad breaks (between games at most once a minute, like the app).
+- On the website none of this applies: the web page keeps its placeholder ad breaks (between games at most once a minute, never during one, like the app).
 
 ### Building
 

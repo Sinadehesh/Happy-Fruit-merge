@@ -81,6 +81,8 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
     private WebView web;
     private FrameLayout bannerSlot;
     private AdView banner;
+    private volatile boolean bannerWanted;   // the page asks for the banner only off the board (menu, map)
+    private boolean activityResumed;
     private InterstitialAd interstitial;
     private boolean loadingInterstitial;
     private volatile RewardedAd rewarded;
@@ -99,7 +101,8 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         prefs = getSharedPreferences("gemjar", MODE_PRIVATE);
 
-        // the game on top, the banner below it; all kept clear of a camera notch
+        // the game on top, the banner below it (only on the menu and the map, never during a game);
+        // all kept clear of a camera notch
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor(BG));
         root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
@@ -123,6 +126,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         column.addView(web, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         bannerSlot = new FrameLayout(this);
         bannerSlot.setBackgroundColor(Color.parseColor(BG));
+        bannerSlot.setVisibility(View.GONE);   // until the page asks for it
         column.addView(bannerSlot, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         setContentView(root);
@@ -242,6 +246,12 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         }
 
         @JavascriptInterface public boolean testAds() { return BuildConfig.TEST_ADS; }
+
+        /** The page shows the banner only off the board (the home menu, the Gem Mine map), never during a game. */
+        @JavascriptInterface public void setBannerVisible(boolean on) {
+            bannerWanted = on;
+            runOnUiThread(new Runnable() { @Override public void run() { applyBanner(); } });
+        }
     }
 
     // ---------- ad consent, then ads ----------
@@ -280,6 +290,16 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
                                          : AdSize.getPortraitAnchoredAdaptiveBannerAdSize(this, widthDp));
         bannerSlot.addView(banner, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL));
         banner.loadAd(new AdRequest.Builder().build());
+        applyBanner();
+    }
+
+    // The banner shows only where the page asks for it (off the board) and while the app is in front; while it
+    // is hidden it is paused, so it doesn't refresh. Hiding it gives the game the whole screen.
+    private void applyBanner() {
+        boolean show = bannerWanted && banner != null && !adFree();
+        bannerSlot.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (banner == null) return;
+        if (show && activityResumed) banner.resume(); else banner.pause();
     }
 
     private void loadInterstitial() {
@@ -352,6 +372,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
         runOnUiThread(() -> {
             if (value) {   // bought: every ad goes away
                 if (banner != null) { banner.destroy(); bannerSlot.removeAllViews(); banner = null; }
+                applyBanner();
                 interstitial = null;
             } else if (adsStarted.get()) {   // refunded: the banner and full-screen ads come back
                 loadBanner();
@@ -463,6 +484,7 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
     // Leaving the app pauses the page: the music stops and the game saves (it also saves every second)
     @Override
     protected void onPause() {
+        activityResumed = false;
         if (banner != null) banner.pause();
         web.onPause();
         super.onPause();
@@ -472,7 +494,8 @@ public class MainActivity extends Activity implements PurchasesUpdatedListener {
     protected void onResume() {
         super.onResume();
         web.onResume();
-        if (banner != null) banner.resume();
+        activityResumed = true;
+        applyBanner();
         hideSystemBars();
         if (billing != null && billing.isReady()) checkOwnedPurchases();   // e.g. a purchase finished while away
     }
