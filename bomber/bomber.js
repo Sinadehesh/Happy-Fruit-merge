@@ -1021,7 +1021,8 @@ function buildHorde(lv) {
     });
     const fresh = Object.values(ZOMBIES).find(t => t.unlock === lv && lv > 1 && !t.boss);
     if (fresh) out.forEach(w => { w[Math.floor(w.length / 2)] = fresh.kind; });
-    if (lv % 5 === 0) for (let i = 0; i < 1 + Math.floor(lv / 60); i++) out[nw - 1].push('boss');
+    // the Zombie Kings lead the final wave (as its banner says); the faster zombies overtake them
+    if (lv % 5 === 0) for (let i = 0; i < 1 + Math.floor(lv / 60); i++) out[nw - 1].unshift('boss');
     return out;
 }
 
