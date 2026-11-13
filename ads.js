@@ -1,84 +1,35 @@
-// --- ADS: repeating interstitial ad breaks ---
+// --- ADS ---
 //
-// An ad break shows every AD_EVERY_DROPS drops, or at the next drop once
-// AD_EVERY_MS has passed since the last one, and again on "Play Again".
+// Only in the Android app. The web version (the game in a browser) shows no ads at all.
 //
-// If Google's H5 Games Ads (adBreak) is loaded on the page, real ads are shown.
-// Otherwise a placeholder ad with a countdown is shown, so the flow can be
-// tested before an ad account is set up. See README.md -> Ads.
-//
-// In the Android app (window.AndroidApp, from MainActivity) the ads are real AdMob ads shown
-// by the app: a banner under the game, a full-screen ad only between games (on "Play Again"),
-// never in the middle of one, as AdMob's rules ask, and when the jar fills up an offer to watch
-// a rewarded ad to keep going. Buying "No Ads" switches off the banner and full-screen ads; the
-// keep-going offer stays, since the player chooses to watch it.
-
-const AD_EVERY_DROPS = 25;
-const AD_EVERY_MS = 2 * 60 * 1000;
-const AD_CLOSE_DELAY_S = 5;
-const AD_MIN_GAP_MS = 60 * 1000;   // between-games ads at most once a minute (the app's own rule, kept on the web too)
+// In the Android app (window.AndroidApp, from MainActivity) the ads are real AdMob ads shown by the app, never
+// while a game is being played: a banner on the home menu and the Gem Mine map, a full-screen ad only between
+// games (on "Play Again", on the way home after a game, between Gem Mine stages; the app keeps them at most once
+// a minute), and ads the player chooses to watch for a reward (to keep going when the jar fills up, a booster,
+// a spin...). Buying "No Ads" switches off the banner and full-screen ads; the reward ads stay, since the
+// player chooses to watch them.
 
 const App = window.AndroidApp || null;
 
 const Ads = (() => {
-    let dropsSinceAd = 0;
-    let lastAdAt = Date.now();
     let showing = false;
     let hooks = { onPause() {}, onResume() {} };
 
-    const overlay = document.getElementById('ad-overlay');
-    const closeBtn = document.getElementById('ad-close');
-
     function finish(onClose) {
         showing = false;
-        dropsSinceAd = 0;
-        lastAdAt = Date.now();
-        overlay.style.display = 'none';
         hooks.onResume();
         if (onClose) onClose();
     }
 
-    function showPlaceholder(onClose) {
-        overlay.style.display = 'flex';
-        let left = AD_CLOSE_DELAY_S;
-        closeBtn.disabled = true;
-        closeBtn.textContent = `Close in ${left}`;
-        const timer = setInterval(() => {
-            left--;
-            if (left > 0) {
-                closeBtn.textContent = `Close in ${left}`;
-            } else {
-                clearInterval(timer);
-                closeBtn.disabled = false;
-                closeBtn.textContent = 'Close ✕';
-            }
-        }, 1000);
-        closeBtn.onclick = () => { if (!closeBtn.disabled) finish(onClose); };
-    }
-
+    // between games: the app shows a real full-screen ad, then tells us it's over (or right away if there's
+    // none); the web goes straight on
     function showInterstitial(onClose) {
-        if (GAME.ads === false || (App && App.isAdFree())) { if (onClose) onClose(); return; }
-        // the app keeps its own gap between full-screen ads; on the web, the same once-a-minute rule
-        if (!App && Date.now() - lastAdAt < AD_MIN_GAP_MS) { if (onClose) onClose(); return; }
+        if (!App || GAME.ads === false || App.isAdFree()) { if (onClose) onClose(); return; }
         if (showing) return;
         showing = true;
         hooks.onPause();
-
-        if (App) {   // the app shows a real full-screen ad, then tells us it's over (or right away if there's none)
-            window.onNativeAdDone = () => { window.onNativeAdDone = null; finish(onClose); };
-            App.showFullscreenAd();
-            return;
-        }
-
-        if (typeof window.adBreak === 'function') {
-            window.adBreak({
-                type: 'next',
-                name: 'ad-break',
-                adBreakDone: () => finish(onClose)
-            });
-        } else {
-            showPlaceholder(onClose);
-        }
+        window.onNativeAdDone = () => { window.onNativeAdDone = null; finish(onClose); };
+        App.showFullscreenAd();
     }
 
     return {
@@ -100,14 +51,7 @@ const Ads = (() => {
             };
             App.showRewardedAd();
         },
-        onDrop() {
-            if (GAME.ads === false || App) return;   // the app never shows ads in the middle of a game
-            dropsSinceAd++;
-            if (dropsSinceAd >= AD_EVERY_DROPS || Date.now() - lastAdAt >= AD_EVERY_MS) {
-                // Let the item that was just dropped appear before the break
-                setTimeout(() => showInterstitial(), 600);
-            }
-        }
+        onDrop() {}   // (no ad breaks in the middle of a game, ever)
     };
 })();
 
@@ -129,4 +73,24 @@ if (App) {
     window.onAdFreeChanged = refresh;
     document.getElementById('btn-settings').addEventListener('click', refresh);
     refresh();
+
+    // the banner: only off the board (the home menu, the Gem Mine map), never while a game is played
+    if (App.setBannerVisible) window.addEventListener('load', () => {
+        let shown = null;
+        const offBoard = () => {
+            try {
+                if (window.Meta && Meta.menuOpen) return true;
+                const map = document.getElementById('mine-map');
+                return !!map && getComputedStyle(map).display !== 'none';
+            } catch (e) { return false; }
+        };
+        const check = () => {
+            const on = offBoard();
+            if (on === shown) return;
+            shown = on;
+            try { App.setBannerVisible(on); } catch (e) {}
+        };
+        check();
+        setInterval(check, 200);
+    });
 }

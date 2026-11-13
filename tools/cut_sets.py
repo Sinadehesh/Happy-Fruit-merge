@@ -29,10 +29,12 @@ SETS = {
                   take=[('ocean/source_sheet.webp', 3, 4, ALL)], glow=[12]),
     'royal': dict(names='jade carnelian citrine aquamarine amethyst_heart pink_sapphire emerald tanzanite ruby black_opal star_sapphire royal_diamond',
                   take=[('royal/source_sheet.webp', 3, 4, ALL)], glow=[]),
-    # gem 5 was made again (assets/fixes, the first of its 4 versions): it looked like gem 4
-    'cosmic': dict(names='moon_rock meteorite stardust comet_ice moonstone nebula saturn aurora sun_stone galaxy_egg black_hole star_heart',
-                   take=[('cosmic/source_sheet.webp', 3, 4, [1, 2, 3, 4]), ('fixes/fix2_cosmic_crescent.webp', 2, 2, [1]),
-                         ('cosmic/source_sheet.webp', 3, 4, [6, 7, 8, 9, 10, 11, 12])], glow=[12]),
+    # made again as a journey through space (the first set: cosmic/first_try): the pebble, the asteroid and the comet
+    # are the best of the variants sheet (its 1st, 3rd and 6th), the moon and everything after it from the main sheet;
+    # the sun and the galaxy keep their soft glow
+    'cosmic': dict(names='space_pebble asteroid comet moon mars earth gas_giant saturn sun black_hole galaxy universe_gem',
+                   take=[('cosmic/source_sheet_variants.webp', 3, 4, [1, 3, 6]), ('cosmic/source_sheet.webp', 3, 4, [4, 5, 6, 7, 8, 9, 10, 11, 12])],
+                   glow=[9, 11], outline=[1, 2, 3]),
     # gem 11 was made again (the second of its 4 versions, the most gold): it looked like gem 7
     'volcano': dict(names='pumice obsidian sulfur garnet blue_fire peridot fire_opal magma_glass sunstone molten_gold phoenix_egg dragons_eye',
                     take=[('volcano/source_sheet.webp', 3, 4, list(range(1, 11))), ('fixes/fix3_volcano_phoenix_egg.webp', 2, 2, [2]),

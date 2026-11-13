@@ -63,6 +63,37 @@ const Sound = (() => {
         src.connect(g); g.connect(out);
         src.start(ac.currentTime + when);
     }
+    // A deep body under a landing: a tone that falls in pitch as it fades, through a soft low-pass. Phone
+    // speakers can't play the lowest part, so it is a triangle wave: its overtones carry the weight up to
+    // where a small speaker plays it.
+    function thump(freq, dur, gain) {
+        const t = ac.currentTime, o = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain();
+        o.type = 'triangle';
+        o.frequency.setValueAtTime(freq, t);
+        o.frequency.exponentialRampToValueAtTime(Math.max(28, freq * 0.45), t + dur);
+        f.type = 'lowpass'; f.frequency.value = freq * 3.5; f.Q.value = 0.7;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(f); f.connect(g); g.connect(sfxBus);
+        o.start(t); o.stop(t + dur + 0.03);
+    }
+    // the grit of stone on stone: a short burst of noise, darker and longer for heavier gems
+    let noise = null;
+    function grit(cutoff, dur, gain) {
+        if (!noise) {
+            noise = ac.createBuffer(1, Math.round(ac.sampleRate * 0.5), ac.sampleRate);
+            const d = noise.getChannelData(0);
+            for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        }
+        const t = ac.currentTime, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        src.buffer = noise;
+        f.type = 'lowpass'; f.frequency.value = cutoff; f.Q.value = 0.9;
+        g.gain.setValueAtTime(gain, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(g); g.connect(sfxBus);
+        src.start(t, Math.random() * 0.4); src.stop(t + dur + 0.02);
+    }
     const pick = (...names) => names[Math.floor(Math.random() * names.length)];
     const jitter = (r, amount = 0.04) => r * (1 + (Math.random() * 2 - 1) * amount);   // so repeats don't sound identical
     const semitones = n => Math.pow(2, n / 12);
@@ -116,10 +147,16 @@ const Sound = (() => {
     // ---------- game sounds ----------
 
     const sfx = {
-        // releasing a fruit
-        drop() { sample('drop', { gain: 0.35, rate: jitter(1) }); },
-        // landing on the pile: soft thud, bigger items a little deeper
-        land(tier) { sample('land', { gain: 0.3, rate: jitter(Math.max(0.6, 1.15 - tier * 0.05)) }); },
+        // letting a gem go: a light high click for a small gem, a lower one for a heavier gem
+        drop(tier = 0) { sample('drop', { gain: 0.26 + tier * 0.03, rate: jitter(Math.max(0.7, 1.32 - tier * 0.07)) }); },
+        // landing: every level up is deeper, longer and louder (it is heavier), and a harder landing is louder.
+        // impact is 1 for a gem dropped from the top onto the floor, less for a short fall or a gentle touch.
+        land(tier, impact = 1) {
+            const k = Math.max(0.12, Math.min(1.2, impact));
+            sample('land', { gain: (0.16 + tier * 0.045) * k, rate: jitter(Math.max(0.5, 1.42 - tier * 0.08), 0.03) });
+            thump(200 - tier * 12, 0.06 + tier * 0.022, (0.05 + tier * 0.032) * k);
+            if (tier >= 2) grit(Math.max(700, 2600 - tier * 170), 0.035 + tier * 0.006, (0.025 + tier * 0.011) * k);
+        },
         // merging: a mouth pop plus a bubble, lower for bigger items; big ones get a deep bubble
         pop(tier) {
             const r = Math.max(0.6, 1.25 - tier * 0.06);

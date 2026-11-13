@@ -4,6 +4,39 @@
 
 const FX = (() => {
     const W = 450, H = 640;   // same logical size as the board
+    // the way gems fall (1: down; -1: up, a floating set): the words pop in the empty part of the jar and the
+    // dust puffs away from where a gem touched
+    let down = 1;
+    const wordY = () => down > 0 ? 270 : H - 270;
+    function flip(on) { down = on ? -1 : 1; }
+    // threads between gems that pull each other (game.js PULL): a function giving [x1, y1, r1, x2, y2, r2, strength]
+    let threadsOf = null;
+    function threads(fn) { threadsOf = fn; }
+    function drawThreads(t) {
+        let list;
+        try { list = threadsOf(); } catch (e) { return; }
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (const [x1, y1, r1, x2, y2, r2, s] of list) {
+            const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+            const gap = d - (r1 + r2) * 0.92;
+            if (s < 0.05 || gap < 4) continue;
+            const ux = dx / d, uy = dy / d;
+            const ax = x1 + ux * r1 * 0.92, ay = y1 + uy * r1 * 0.92, bx = x2 - ux * r2 * 0.92, by = y2 - uy * r2 * 0.92;
+            const mx = (ax + bx) / 2, my = (ay + by) / 2, a = Math.min(0.9, 0.4 + 0.6 * s);
+            // a soft glow, then dashes flowing from both gems toward the middle
+            ctx.setLineDash([]);
+            ctx.strokeStyle = `rgba(196, 170, 255, ${a * 0.4})`;
+            ctx.lineWidth = 7 + 5 * s;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+            ctx.setLineDash([7, 6]);
+            ctx.lineDashOffset = -t * 40;
+            ctx.strokeStyle = `rgba(250, 244, 255, ${a})`;
+            ctx.lineWidth = 2.5 + 2 * s;
+            ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(mx, my); ctx.moveTo(bx, by); ctx.lineTo(mx, my); ctx.stroke();
+        }
+        ctx.restore();
+    }
 
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
@@ -33,7 +66,9 @@ const FX = (() => {
     // springy pop: overshoots, wobbles and settles at 1
     const elastic = t => t >= 1 ? 1 : 1 - Math.pow(2, -9 * t) * Math.cos(t * 16);
 
+    let boardEl = null;
     function init(board) {
+        boardEl = board;
         canvas = document.createElement('canvas');
         canvas.className = 'fx-layer';
         board.appendChild(canvas);
@@ -83,7 +118,7 @@ const FX = (() => {
         if (combo >= 2) {
             // one COMBO label at a time: the one before fades out fast
             effects.forEach(e => { if (e.kind === 'combo') e.t = Math.max(e.t, e.dur * 0.88); });
-            const ly = Math.max(70, y - r - 28);
+            const ly = down > 0 ? Math.max(70, y - r - 28) : Math.min(H - 70, y + r + 28);
             effects.push({ kind: 'combo', x: Math.max(120, Math.min(W - 120, x)), y: ly, count: combo, t: 0, dur: 1.1, off: 0 });
         }
     }
@@ -93,10 +128,11 @@ const FX = (() => {
     function praise(level, big = false) {
         const name = big ? 'word_congratulations' : PRAISE[Math.min(level, PRAISE.length - 1)];
         effects = effects.filter(e => e.kind !== 'praise');   // one at a time
-        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: big ? W - 40 : 200 + GAME.strength(level) * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
+        const y = wordY();
+        effects.push({ kind: 'praise', name, x: W / 2, y, size: big ? W - 40 : 200 + GAME.strength(level) * 45, big, t: 0, dur: big ? 2.2 : 1.5 });
         for (let i = 0; i < (big ? 40 : 18); i++) {
             const a = rand(0, Math.PI * 2), sp = rand(160, 300);
-            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
+            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y,
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.2) });
         }
     }
@@ -105,10 +141,11 @@ const FX = (() => {
     function banner(name) {
         if (!img[name]) { img[name] = new Image(); img[name].src = `assets/fx/${name}.png`; }
         effects = effects.filter(e => e.kind !== 'praise');
-        effects.push({ kind: 'praise', name, x: W / 2, y: 270, size: W - 60, big: true, t: 0, dur: 2.0 });
+        const y = wordY();
+        effects.push({ kind: 'praise', name, x: W / 2, y, size: W - 60, big: true, t: 0, dur: 2.0 });
         for (let i = 0; i < 30; i++) {
             const a = rand(0, Math.PI * 2), sp = rand(160, 320);
-            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y: 270,
+            effects.push({ kind: 'piece', name: ['sparkle', 'star', 'heart'][i % 3], x: W / 2, y,
                 vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 80, rot: rand(0, 6.3), vr: rand(-6, 6), size: rand(18, 30), t: 0, dur: rand(0.8, 1.3) });
         }
     }
@@ -186,6 +223,37 @@ const FX = (() => {
         ctx.restore();
     }
 
+    // A gem landing (game.js): a puff of dust each side of where it touched, bigger for a heavier gem and a
+    // harder landing, and for the heavy ones a short shake of the jar (not when the phone asks for less motion).
+    // (x, y) is the bottom of the gem, r its size.
+    const lessMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    let shake = null;
+    function thud(x, y, r, tier, impact) {
+        const k = Math.min(1, impact);
+        if (k < 0.25) return;
+        if (tier >= 1) {
+            const n = Math.round(2 + tier * 0.7 * k);
+            for (let i = 0; i < n; i++) {
+                const side = i % 2 ? 1 : -1;
+                effects.push({ kind: 'dust', x: x + side * rand(0.1, 0.45) * r, y: y - down * rand(0, 8),
+                    vx: side * rand(40, 120) * (0.6 + 0.6 * k), vy: -down * rand(10, 50) * k, g: 40 * down,
+                    size: rand(5, 9) + tier * 1.4, t: 0, dur: rand(0.35, 0.6) });
+            }
+        }
+        if (tier >= 3 && boardEl && !(lessMotion && lessMotion.matches)) {
+            const amp = Math.min(7, (tier - 2) * 1.2 * k);
+            const left = shake ? shake.amp * (1 - shake.t / shake.dur) : 0;
+            if (amp > left) shake = { amp, t: 0, dur: 0.14 + tier * 0.014 };
+        }
+    }
+    function shakeStep(dt) {
+        if (!shake) return;
+        shake.t += dt;
+        if (shake.t >= shake.dur) { shake = null; boardEl.style.transform = ''; return; }
+        const fade = 1 - shake.t / shake.dur, a = shake.amp * fade * fade;
+        boardEl.style.transform = `translate(${(Math.sin(shake.t * 63) * a * 0.35).toFixed(2)}px, ${(Math.sin(shake.t * 89) * a).toFixed(2)}px)`;
+    }
+
     // ---------- animation ----------
 
     function drawCombo(e, dt) {
@@ -227,6 +295,8 @@ const FX = (() => {
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
         ctx.clearRect(0, 0, W, H);
+        shakeStep(dt);
+        if (threadsOf) drawThreads(now / 1000);
         for (const e of effects) {
             e.t += dt;
             const k = e.t / e.dur;
@@ -245,6 +315,14 @@ const FX = (() => {
                 drawBolt(e);
             } else if (e.kind === 'chip') {
                 drawChip(e, dt, k);
+            } else if (e.kind === 'dust') {
+                e.vx *= 1 - 3 * dt; e.vy += e.g * dt;
+                e.x += e.vx * dt; e.y += e.vy * dt;
+                ctx.save();
+                ctx.globalAlpha = 0.34 * (1 - k);
+                ctx.fillStyle = '#efe6ff';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (0.6 + 0.9 * k), 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
             } else if (e.kind === 'praise') {
                 // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
                 const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));
@@ -258,5 +336,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, merge, praise, zap, banner, splinters };
+    return { init, flip, threads, merge, praise, zap, banner, splinters, thud };
 })();

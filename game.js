@@ -100,8 +100,8 @@ const MODES = {
     'cosmic': {
         background: '#f4ecf7',
         tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
-        sprites: ['01_moon_rock', '02_meteorite', '03_stardust', '04_comet_ice', '05_moonstone', '06_nebula', '07_saturn', '08_aurora',
-            '09_sun_stone', '10_galaxy_egg', '11_black_hole', '12_star_heart'].map(n => `assets/cosmic/${n}.png`)
+        sprites: ['01_space_pebble', '02_asteroid', '03_comet', '04_moon', '05_mars', '06_earth', '07_gas_giant', '08_saturn',
+            '09_sun', '10_black_hole', '11_galaxy', '12_universe_gem'].map(n => `assets/cosmic/${n}.png`)
     },
     'volcano': {
         background: '#f4ecf7',
@@ -163,9 +163,19 @@ const UNLOCK_KEY = `${GAME.id}.unlock`;
 const UNLOCK = (() => { try { return JSON.parse(localStorage.getItem(UNLOCK_KEY)) || {}; } catch (e) { return {}; } })();
 UNLOCK.opened = UNLOCK.opened | 0;                                 // how many sets after the first are open
 UNLOCK.made = Array.isArray(UNLOCK.made) ? UNLOCK.made : [];      // gems made toward the next one, per level
+// The unlock link, to try every set without playing for it: ?unlock=all opens all the gem sets in this browser
+// (UNLOCK.all), ?unlock=off closes them again; the sets earned by playing stay open and their progress is kept.
+// (The app has no address bar, so it works on the web only.)
+const UNLOCK_LINK = ['all', 'off'].includes(params.get('unlock')) ? params.get('unlock') : null;
+if (UNLOCK_LINK) {
+    UNLOCK.all = UNLOCK_LINK === 'all';
+    try { localStorage.setItem(UNLOCK_KEY, JSON.stringify(UNLOCK)); } catch (e) {}
+    params.delete('unlock');
+    try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash); } catch (e) {}
+}
 const SKINS = (GAME.skins || []).filter(sk => MODES[sk.id]);
 // (a set with `mineStars` opens with that many stars in the Gem Mine instead, mine.js)
-const skinOpen = i => SKINS[i] && SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars : i <= UNLOCK.opened;
+const skinOpen = i => UNLOCK.all ? !!SKINS[i] : SKINS[i] && SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars : i <= UNLOCK.opened;
 const SKIN = (() => {
     if (!SKINS.length) return null;
     let id = null;
@@ -173,6 +183,13 @@ const SKIN = (() => {
     return SKINS.find((sk, i) => sk.id === id && skinOpen(i)) || SKINS[0];
 })();
 const SPRITES = MODES[SKIN ? SKIN.id : MODE].sprites;
+// A floating set (GAME.skins float: the Cosmic Gems) turns gravity around: gems are let go at the bottom of the
+// jar and float up, the higher the level the faster and harder they rise (the weight below, the other way up),
+// the jar fills from the top down and the line is near the bottom. In every mode (the Gem Mine's jars are turned
+// upside down too). The physics is the plain game's mirror image, so it is just as hard.
+const FLOAT = !!(SKIN && SKIN.float);
+const DOWN = FLOAT ? -1 : 1;                        // the way gems fall: down (1) or up (-1)
+const flipY = y => FLOAT ? GAME_HEIGHT - y : y;     // a height in a plain jar, measured from its top, in this jar
 // Daily Challenge (GAME.daily, opened with ?daily): one special game a day, see DAILY CHALLENGE below
 const DAILY = !!GAME.daily && params.has('daily');
 // Gem Rush (GAME.rush, opened with ?rush): a 90-second race for points (the clock is in meta.js); not saved
@@ -262,6 +279,7 @@ const bestEl = document.getElementById('best-val');
 const nextImg = document.getElementById('next-img');
 const dropGuide = document.getElementById('drop-guide');
 const aimLine = document.getElementById('aim-line');
+board.classList.toggle('float', FLOAT);   // (the line, the guide and messages sit the other way up: index.html)
 
 function randomDropTier() {
     return Math.floor(dropRandom() * DROP_TIERS);
@@ -325,7 +343,7 @@ function updateUI() {
     nextImg.src = SPRITES[nextTier];
     if (MINE) next2Img.src = SPRITES[afterTier];
 
-    // The fruit you're about to drop hangs at the top, following the pointer
+    // The fruit you're about to drop hangs at the top (a floating set: at the bottom), following the pointer
     const scale = board.clientWidth / GAME_WIDTH;
     const r = TIERS[currentTier] * SPRITE_FIT;
     dropGuide.style.backgroundImage = `url('${SPRITES[currentTier]}')`;
@@ -333,11 +351,13 @@ function updateUI() {
     dropGuide.style.top = `${(spawnY(currentTier) - r) * scale}px`;
     dropGuide.style.left = `${dropX * scale}px`;
     aimLine.style.left = `${dropX * scale}px`;
-    aimLine.style.top = `${(spawnY(currentTier) + r) * scale}px`;
+    // the guide line: from the gem to the far end of the jar
+    if (FLOAT) aimLine.style.height = `${Math.max(0, spawnY(currentTier) - r) * scale}px`;
+    else aimLine.style.top = `${(spawnY(currentTier) + r) * scale}px`;
 }
 
 function spawnY(tier) {
-    return TIERS[tier] + 10;
+    return flipY(TIERS[tier] + 10);
 }
 
 function clampX(x, tier) {
@@ -348,6 +368,81 @@ function clampX(x, tier) {
 
 // Extra solver iterations so heavy piles don't sink into each other
 const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 });
+engine.gravity.y = DOWN;   // (floating sets: up)
+
+// --- WEIGHT ---
+// Every gem is heavier than the one before it, and it shows. Its mass grows with its size and density (each
+// level is 1.3 to 4.4 times the one before). A dropped gem falls with a pull that grows with its level (the
+// smallest drifts down a little lighter than plain gravity, bigger ones drop harder), it bounces less the
+// heavier it is, and it lands with a thud, a buzz and a puff of dust that are deeper and stronger for heavier
+// gems and harder landings, and a shake of the jar for the heavy ones (sound.js, haptics.js, fx.js). A gem
+// already in the jar that falls into a gap lands the same way. In a floating set all of it works upward: the
+// pull follows gravity, so the higher the level, the harder a gem shoots up.
+const fallPull = tier => 0.8 + 0.1 * tier;                       // x gravity while a dropped gem is falling
+const bounceOf = tier => Math.max(0.04, 0.24 - 0.018 * tier);     // how much it bounces (restitution)
+const FULL_DROP_SPEED = 14;   // how fast a gem dropped from the top hits the floor of an empty jar, px per step
+const impactOf = speed => Math.min(1.2, speed / FULL_DROP_SPEED);   // 1: a drop from the top to the floor
+const KNOCK_SPEED = 3.5;      // a gem already in the jar knocking into something slower than this makes no sound
+Events.on(engine, 'beforeUpdate', () => {
+    const g = engine.gravity.y * engine.gravity.scale;
+    for (const b of Composite.allBodies(engine.world)) {
+        if (b.isDropping && b.tier !== undefined) b.force.y += b.mass * g * (fallPull(b.tier) - 1);
+    }
+});
+
+// --- PULL --- (a set with pull: true in GAME.skins, the Cosmic Gems)
+// Gems of the same level pull each other in, like planets, so alike gems near each other drift together, meet
+// and merge. The higher the level, the stronger the pull. It falls off with the distance between them (as
+// gravity does, 1 / distance squared) and reaches PULL_RANGE; gems of different levels don't pull each other.
+// Each pair pulls both ways with the same force, so the jar as a whole doesn't move. Faint threads show the
+// pairs that pull (fx.js).
+const PULL = !!(SKIN && SKIN.pull);
+const PULL_RANGE = 3.5;                       // how far the pull reaches, in touching distances (the two radii added)
+const pullOf = tier => 0.5 + 0.08 * tier;     // x a gem's weight when the two touch, growing with the level
+const PULL_MAX = 0.9;                         // never more than this x its weight, so a gem never flies up to another
+let pullLinks = [];                           // the pairs pulling right now: [gem, gem, strength 0-1]
+if (PULL) Events.on(engine, 'beforeUpdate', () => {
+    pullLinks = [];
+    if (isGameOver) return;
+    const w = engine.gravity.scale;           // a gem's weight is its mass x this
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    for (let i = 0; i < gems.length; i++) {
+        const a = gems[i];
+        for (let j = i + 1; j < gems.length; j++) {
+            const b = gems[j];
+            if (a.tier !== b.tier) continue;
+            const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y;
+            const d = Math.hypot(dx, dy) || 1, touch = a.currentRadius + b.currentRadius;
+            if (d > touch * PULL_RANGE) continue;
+            const k = Math.min(PULL_MAX, pullOf(a.tier) * (touch / d) ** 2);
+            const f = k * w * Math.min(a.mass, b.mass);
+            a.force.x += f * dx / d; a.force.y += f * dy / d;
+            b.force.x -= f * dx / d; b.force.y -= f * dy / d;
+            pullLinks.push([a, b, k / PULL_MAX]);
+        }
+    }
+});
+// how fast two bodies meet, along the line between them
+function meetSpeed(pair) {
+    const n = pair.collision.normal, a = pair.bodyA.velocity, b = pair.bodyB.velocity;
+    return Math.abs((a.x - b.x) * n.x + (a.y - b.y) * n.y);
+}
+// a gem landing: the sound, buzz and dust follow its level (its weight) and how hard it hit
+function thud(gem, speed, scale = 1) {
+    const impact = impactOf(speed) * scale;
+    gem.lastThud = performance.now();
+    Sound.play('land', gem.tier, impact);
+    Haptics.play('land', gem.tier, impact);
+    FX.thud(gem.position.x, FLOAT ? gem.bounds.min.y : gem.bounds.max.y, TIERS[gem.tier], gem.tier, impact);
+}
+// a gem already in the jar knocking hard into something (a big gem falling into a gap); the heavier of two
+// gems makes the sound, and each gem at most every 0.35 s, so a settling pile stays quiet
+function knock(a, b, speed) {
+    if (speed < KNOCK_SPEED || a.isGrowing || b.isGrowing) return;
+    const gem = [a, b].filter(x => x.tier !== undefined && !x.isMerging).sort((x, y) => y.tier - x.tier)[0];
+    if (!gem || performance.now() - (gem.lastThud || 0) < 350) return;
+    thud(gem, speed, 0.8);
+}
 const render = Render.create({
     element: board,
     engine: engine,
@@ -359,7 +454,7 @@ const runner = Runner.create();
 Runner.run(runner, engine);
 
 const wallOptions = { isStatic: true, render: { fillStyle: '#34495e' } };
-const ground = Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT + 25, GAME_WIDTH, 50, wallOptions);
+const ground = Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);   // (floating: the ceiling)
 const leftWall = Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 const rightWall = Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 Composite.add(engine.world, [ground, leftWall, rightWall]);
@@ -397,9 +492,9 @@ Events.on(engine, 'beforeUpdate', () => {
         }
 
         // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
-        // entirely above it (its lowest point is above the line)
+        // entirely above it (its lowest point is above the line; floating: entirely below it)
         if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping) {
-            if (body.bounds.max.y < DANGER_Y) {
+            if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
                 }
@@ -434,7 +529,7 @@ function gameOver(reason) {
     // in the app: the player may watch an ad to keep going (clearing the top of the jar), MAX_REVIVES times a game
     const canRevive = reason === 'full' && revives < MAX_REVIVES && Ads.canRevive();
     document.getElementById('revive').style.display = canRevive ? 'block' : 'none';
-    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + 'atch a short ad to clear the top of the jar';
+    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + `atch a short ad to clear the ${FLOAT ? 'bottom' : 'top'} of the jar`;
     showNextSetProgress();
     if (reason === 'full' || reason === 'time') {
         Sound.play('gameOver');
@@ -500,12 +595,13 @@ playArea.addEventListener('pointercancel', (e) => {
 function dropFruit() {
     if (MINE && !Mine.canDrop()) return;
     emitGame('drop', currentTier, dropX);
-    Sound.play('drop');
-    Haptics.play('drop');
+    Sound.play('drop', currentTier);   // (higher and lighter for a small gem, lower for a heavy one)
+    Haptics.play('drop', currentTier);
     if (UNDO_HERE) lastDrop = snapshot();   // the Undo booster can take this drop back
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
+    if (FLOAT) floatHint();
 
     currentTier = nextTier;
     if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
@@ -517,6 +613,16 @@ function dropFruit() {
     if (!MINE) Ads.onDrop();   // (never an ad in the middle of a stage)
 }
 
+// the first 3 games with a floating set say what's going on, at the first drop
+let floatHinted = false;
+function floatHint() {
+    if (floatHinted) return;
+    floatHinted = true;
+    let told = 0;
+    try { told = +localStorage.getItem(`${GAME.id}.floatTold`) || 0; localStorage.setItem(`${GAME.id}.floatTold`, told + 1); } catch (e) {}
+    if (told < 3) showToast('Zero gravity: these gems float up!');
+}
+
 // --- MERGING ---
 
 // A dropped item lands when it touches the floor, an item that has already landed, or (in the Gem Mine)
@@ -524,10 +630,9 @@ function dropFruit() {
 function isLanded(body) {
     return body === ground || body.crate || body.jarPart || (body.tier !== undefined && !body.isDropping);
 }
-function landed(body) {
+function landed(body, speed) {
     body.isDropping = false;
-    Sound.play('land', body.tier);
-    Haptics.play('land', body.tier);
+    thud(body, speed);
 }
 
 function handleCollisions(event) {
@@ -538,9 +643,11 @@ function handleCollisions(event) {
         const bodyA = pairs[i].bodyA;
         const bodyB = pairs[i].bodyB;
 
-        if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA);
-        if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB);
+        const speed = meetSpeed(pairs[i]);
+        if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA, speed);
+        if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB, speed);
         if (bodyA.isDropping || bodyB.isDropping) continue;
+        if (event.name === 'collisionStart') knock(bodyA, bodyB, speed);
 
         if (bodyA.tier === undefined || bodyB.tier === undefined) continue;
         if (bodyA.tier !== bodyB.tier || bodyA.tier >= TIERS.length - 1) continue;
@@ -591,7 +698,7 @@ function spawnItem(x, y, tier, animateGrowth) {
     const outline = SHAPES[SPRITES[tier]].map(([px, py]) => ({ x: px, y: py }));
     const centre = Vertices.centre(outline);
     const body = Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
-        restitution: 0.15,
+        restitution: bounceOf(tier),   // heavier gems bounce less (see WEIGHT)
         friction: 0.5,
         density: 0.001 * (tier + 1),
         slop: 0.01,
@@ -602,7 +709,7 @@ function spawnItem(x, y, tier, animateGrowth) {
     body.render.sprite.xOffset = centre.x / SPRITE_SIZE;
     body.render.sprite.yOffset = centre.y / SPRITE_SIZE;
 
-    if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 }); // slight downward push (dev plan §4)
+    if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 * DOWN }); // slight push the way gems fall (dev plan §4)
     body.isDropping = !animateGrowth; // merge results are already in the pile
     body.isGrowing = animateGrowth;
     body.currentRadius = startRadius;
@@ -634,8 +741,9 @@ document.getElementById('btn-revive').addEventListener('click', () => {
 function revive() {
     revives++;
     lastDrop = null;   // (nothing to undo: the drop that filled the jar is gone)
-    const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar
-    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && b.bounds.min.y < clearAbove).forEach(b => {
+    const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar (floating: the bottom part)
+    const inThere = b => FLOAT ? b.bounds.max.y > GAME_HEIGHT - clearAbove : b.bounds.min.y < clearAbove;
+    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && inThere(b)).forEach(b => {
         if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
         FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
         Composite.remove(engine.world, b);
@@ -663,7 +771,7 @@ function saveGame() {
     const items = Composite.allBodies(engine.world)
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
-    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items };
+    const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items, float: FLOAT };
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
@@ -680,10 +788,12 @@ function loadGame() {
     if (!data || data.v !== 1 || !Array.isArray(data.items)) return;
     if (DAILY && data.date !== TODAY) return;   // yesterday's daily game: today's starts fresh
     const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
+    // saved with a set that falls the other way (the set was changed): the pile is turned upside down
+    const turn = !!data.float !== FLOAT;
     for (const [tier, x, y, angle] of data.items) {
         if (!okTier(tier)) continue;
-        const body = spawnItem(x, y, tier, false);
-        Body.setAngle(body, angle || 0);
+        const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
+        Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
     }
     score = shownScore = Math.max(0, data.score | 0);
@@ -767,6 +877,18 @@ vibeBtn.addEventListener('click', () => { Haptics.setOn(!Haptics.isOn()); Haptic
 audioButtons();
 vibeButton();
 FX.init(board);
+FX.flip(FLOAT);
+// the threads between gems that pull each other (PULL), from edge to edge, where no other gem is in the way
+if (PULL) FX.threads(() => {
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined);
+    const clear = (a, b) => gems.every(c => {
+        if (c === a || c === b) return true;
+        const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y, L = dx * dx + dy * dy || 1;
+        const t = Math.max(0, Math.min(1, ((c.position.x - a.position.x) * dx + (c.position.y - a.position.y) * dy) / L));
+        return Math.hypot(a.position.x + t * dx - c.position.x, a.position.y + t * dy - c.position.y) > c.currentRadius * 0.8;
+    });
+    return pullLinks.filter(([a, b]) => clear(a, b)).map(([a, b, s]) => [a.position.x, a.position.y, a.currentRadius, b.position.x, b.position.y, b.currentRadius, s]);
+});
 
 // --- DAILY CHALLENGE ---
 // One special game a day (GAME.daily; the Daily button opens it): the same drops and the same goal for
@@ -1085,7 +1207,7 @@ undoBtn.addEventListener('click', () => {
 // The next locked set (if its art is in the game) opens when enough of the gems it asks for have been made:
 // GAME.unlocks[k] lists [level, how many] for the k-th set after the first. Every game counts, daily ones too.
 // The Gems screen (Settings > Gems) and the game-over panel show what to make as pictures of the gems, with counts.
-const nextSetIndex = () => (UNLOCK.opened + 1 < SKINS.length && GAME.unlocks && GAME.unlocks[UNLOCK.opened]) ? UNLOCK.opened + 1 : -1;
+const nextSetIndex = () => (!UNLOCK.all && UNLOCK.opened + 1 < SKINS.length && GAME.unlocks && GAME.unlocks[UNLOCK.opened]) ? UNLOCK.opened + 1 : -1;
 const needsFor = i => (GAME.unlocks && GAME.unlocks[i - 1]) || [];
 
 function countForNextSet(tier) {
@@ -1146,6 +1268,13 @@ function renderSets() {
         gems.className = 'set-gems';
         MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
         card.append(head, gems);
+        const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in'].filter(Boolean);
+        if (notes.length) {
+            const note = document.createElement('div');
+            note.className = 'set-note';
+            note.textContent = notes.join(', ');
+            card.append(note);
+        }
         if (!open) card.append(needChips(i, i === next));
         if (open && !inUse) {
             const use = document.createElement('button');
@@ -1196,6 +1325,17 @@ function showToast(text) {
     void toastEl.offsetWidth;   // restart the animation
     toastEl.classList.add('show');
 }
+
+// the unlock link was used: show the Collection with every set open (or say they're closed again)
+if (UNLOCK_LINK && SKINS.length > 1) window.addEventListener('load', () => setTimeout(() => {
+    const tile = document.getElementById('tile-gems');
+    if (UNLOCK_LINK === 'all') {
+        if (window.Meta && Meta.menuOpen && tile) tile.click();
+        else { renderSets(); collection.dataset.from = 'settings'; collection.classList.add('show'); }
+    }
+    const say = UNLOCK_LINK === 'all' ? 'Every gem set is open' : 'Gem sets: back to the ones you earned';
+    if (window.Meta && Meta.menuOpen && Meta.showToastMenu) Meta.showToastMenu(say); else showToast(say);
+}, 300));
 
 bestEl.textContent = bestScore;
 loadGame();

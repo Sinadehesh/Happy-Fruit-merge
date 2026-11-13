@@ -103,6 +103,14 @@
             border-left: 2px dashed rgba(255, 255, 255, 0.35); transform: translateX(-1px);
         }
         #aim-line.show { display: block; }
+        /* a floating set (game.js FLOAT, the Cosmic Gems): gems are let go at the bottom and float up, so the line
+           is near the bottom ((640 - DANGER_Y) / 640), the held gem grows upward, its guide line goes up, and
+           messages sit lower, in the empty part of the jar */
+        #board.float .danger-line { top: 76.5625%; }
+        #board.float #drop-guide { transform-origin: 50% 92%; }
+        #board.float #aim-line { top: 0; bottom: auto; }
+        #board.float #toast { top: 69%; }
+        #board.float #tut-bubble { top: 54%; }
         /* combo effects layer (fx.js) */
         .fx-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; }
         /* "+30" popping up where a merge happens */
@@ -211,6 +219,7 @@
         .set-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; text-align: left; }
         .set-head b { font-size: 17px; white-space: nowrap; }
         .set-head span { font-size: 12px; font-weight: 700; color: #8a5a35; text-align: right; }
+        .set-note { margin-top: 6px; font-size: 12px; font-weight: 800; color: #6a4bb8; text-align: left; }
         .set-card.in-use .set-head span { color: #4e9a1e; }
         .set-gems { display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px; }
         .set-gems img { width: 100%; aspect-ratio: 1; object-fit: contain; }
@@ -234,20 +243,6 @@
         #go-best svg { width: 30px; height: 24px; }
         #go-new { display: none; color: #e84393; font-weight: 800; margin-top: 4px; }
 
-        #ad-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 300;
-        }
-        #ad-box {
-            width: min(90vw, 360px); aspect-ratio: 3/4; background: linear-gradient(160deg, #f9e79f, #f5b041);
-            border-radius: 12px; display: flex; flex-direction: column; justify-content: center;
-            align-items: center; color: #2c3e50; text-align: center; padding: 20px; box-sizing: border-box;
-        }
-        #ad-close {
-            margin-top: 14px; background: #7f8c8d; color: white; border: none; padding: 10px 22px;
-            border-radius: 20px; font-size: 15px; font-weight: bold;
-        }
-        #ad-close:enabled { background: #e74c3c; cursor: pointer; }
 
         /* ---------- metagame (meta.js): levels, menu, quests, Gem Rush, tutorial ----------
            Proportions follow the golden ratio (phi = 1.618): the menu is split 38.2 / 61.8 between the logo and
@@ -926,16 +921,6 @@
         </div>
     </div>
 
-    <!-- Ad break. Replaced by a real ad when an ad network is configured (see ads.js / README) -->
-    <div id="ad-overlay">
-        <div style="font-size: 12px; opacity: 0.7; margin-bottom: 6px;">Advertisement</div>
-        <div id="ad-box">
-            <img src="assets/rocks/12_diamond.png" alt="" style="width: 45%;">
-            <h2 style="margin: 10px 0 4px;">Your ad here</h2>
-            <div style="font-size: 14px;">Ad placeholder until an ad network is connected.</div>
-        </div>
-        <button id="ad-close" disabled>Close in 5</button>
-    </div>
 
     <script>
         window.GAME_SETUP = {
@@ -956,7 +941,8 @@
                 { id: 'crystal', name: 'Crystal Cave' },
                 { id: 'ocean', name: 'Ocean Jewels' },
                 { id: 'royal', name: 'Royal Treasury' },
-                { id: 'cosmic', name: 'Cosmic Gems' },
+                // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
+                { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
                 { id: 'volcano', name: 'Volcano Gems' },
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears

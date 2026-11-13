@@ -544,6 +544,38 @@ STYLE: ultra-saturated candy style like a premium candy match-3 game: glossy, ju
 AVOID: any text, letters, titles or logos, watermarks, people, hands, faces, dull colors, anything in the left third.
 ```
 
+### Fix 7. Cosmic Gems, the whole set again: a journey through space
+
+The first Cosmic set had no order you could follow (a crystal, an egg, a gummy...). This one goes from the smallest thing in space to the biggest, so every merge makes sense: two moons make a planet, two suns make a black hole, two galaxies make the universe. Saturn stays: if the image tool takes a picture, attach the current one (https://sinadehesh.github.io/Happy-Fruit-merge/assets/cosmic/07_saturn.png) as the style to match.
+
+```
+A sprite sheet of 12 candy-style space objects for a mobile merge game: the "Cosmic Gems" collection, a journey from a tiny space pebble to the whole universe.
+
+IF A PICTURE IS ATTACHED: it is item 8, Saturn. Draw Saturn the same, and draw every other item in exactly the same style as it.
+
+IMPORTANT: The items grow in a logical order, from the smallest thing in space to the biggest, each one bigger and grander than the one before. Every item has a different main color and a clearly different look, so no two items can be mixed up, even when they are small. The moon, the planets and the stars are round balls. Only item 12 is a faceted cut gem.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy and jelly: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, a thick glossy candy coating, sugar-glass shine and big bright white specular highlights. Each item is a rich, beautiful little world full of detail: soft cloud bands, small round craters, glowing swirls and tiny white stars painted inside it, with a bright rim light along one edge. Colors are maximum saturation, bright and electric, with no dull, grey, brown or muddy tones. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Fat, chunky, rounded shapes with no long thin spikes, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (they will be stacked like balls in a jar).
+
+ITEMS, from the smallest to the biggest, left to right, top to bottom:
+1. Space pebble: a small smooth rounded pebble of soft lavender space rock with two or three tiny round craters
+2. Asteroid: a chunky, lumpy, potato-shaped asteroid in glossy tangerine orange with darker orange craters
+3. Comet: a round icy-cyan comet head with a short, fat, rounded tail swept to one side, frosty white sparkles inside it
+4. Moon: a round pearly-white full moon with soft lilac craters
+5. Mars: a round ruby-red planet with darker red canyon lines and a small white ice cap on top
+6. Earth: a round planet with deep blue oceans, bright green continents and white swirling clouds
+7. Gas giant: a big round candy-pink planet with soft swirling bands in pink and peach and one round storm spot
+8. Saturn: a round coral-orange planet with a wide, chunky, glossy cream-colored ring tilted around it
+9. The Sun: a round blazing golden-yellow star with a bubbling glossy surface and short, fat, rounded flares around its edge
+10. Black hole: a perfectly round glossy black ball with a thick swirl of electric purple and blue light spiraling into its center, seen from the front
+11. Galaxy: a round spiral galaxy, a deep navy-blue disc with bright golden-white spiral arms full of tiny stars and a glowing pink center
+12. The Universe gem: the only faceted gem, a big chunky round-cut diamond with a whole tiny galaxy sparkling inside it, rainbow-white facets, and the only item with a small soft glow (the final, priceless item)
+
+AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, a black or starry background, stars, sparkles or dust floating around or touching the items (sparkles only inside them), glowing halos around items 1 to 11, long comet tails, thin rings, a realistic photo or NASA look, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
 ## Blast animation (merge burst, frame by frame)
 
 An 8-frame animation of one candy burst, played in order when two items merge.

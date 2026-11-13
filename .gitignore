@@ -11,3 +11,4 @@ android/local.properties
 
 # Python's compiled files (from the tools)
 __pycache__/
+tools/ads/work/

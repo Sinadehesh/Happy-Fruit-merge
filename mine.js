@@ -21,6 +21,11 @@ const Mine = (() => {
     const S = 60;            // crate size
     const BEAM = 16;         // beam thickness
     const FLOOR = 640;
+    // a floating set (game.js FLOAT: the Cosmic Gems): gems fall up, so the jar is built upside down; the
+    // stages are drawn for a plain jar, so their heights are turned over (and their tips' words with them)
+    const floating = () => { try { return FLOAT; } catch (e) { return false; } };
+    const fy = y => floating() ? FLOOR - y : y;
+    const turnWords = text => !text || !floating() ? text : text.replace('under it', 'above it').replace('the bottom of the jar', 'the top of the jar');
 
     // ---------- building blocks for the stages ----------
     const box = (x, level = 0, hp = 1) => ({ crate: hp, x, y: FLOOR - S / 2 - level * S, a: 0 });
@@ -214,9 +219,9 @@ const Mine = (() => {
     function placeLayout() {
         crateList = [];
         for (const it of stage.layout || []) {
-            if (it.crate) addCrate(it.x, it.y, it.crate, it.a);
+            if (it.crate) addCrate(it.x, fy(it.y), it.crate, floating() ? -it.a : it.a);
             else if (it.gem !== undefined) {
-                const g = spawnItem(it.x, it.y, it.gem, false);
+                const g = spawnItem(it.x, fy(it.y), it.gem, false);
                 g.isDropping = false;   // already resting in the jar
                 g.seeded = true;        // a gem the stage gave: what it makes doesn't count for gem sets or quests
             }
@@ -226,7 +231,10 @@ const Mine = (() => {
     function setupWorld() {
         if (!stage) return;
         const jar = JARS[stage.jar] || JARS.plain;
-        Matter.Composite.add(engine.world, [...(jar.beams || []).map(beamBody), ...(jar.pegs || []).map(pegBody)]);
+        Matter.Composite.add(engine.world, [
+            ...(jar.beams || []).map(([x1, y1, x2, y2]) => beamBody([x1, fy(y1), x2, fy(y2)])),
+            ...(jar.pegs || []).map(([x, y]) => pegBody([x, fy(y)]))
+        ]);
         placeLayout();
         [ART.crate, ART.strong, ART.cracked].forEach(src => { const im = new Image(); im.src = src; });
     }
@@ -351,7 +359,8 @@ const Mine = (() => {
             const got = starsFor(dropsLeft), before = starsOf(N), totalBefore = totalStars();
             if (got > before) { progress.stars[N - 1] = got; saveProgress(); }
             // gem sets that open with Gem Mine stars (GAME.skins mineStars) and just did
-            const opened = (GAME.skins || []).filter(sk => sk.mineStars && totalBefore < sk.mineStars && totalStars() >= sk.mineStars && MODES[sk.id]);
+            const allOpen = (() => { try { return !!UNLOCK.all; } catch (e) { return false; } })();   // (the unlock link)
+            const opened = allOpen ? [] : (GAME.skins || []).filter(sk => sk.mineStars && totalBefore < sk.mineStars && totalStars() >= sk.mineStars && MODES[sk.id]);
             [...box.children].forEach((st, i) => {
                 if (i < got) setTimeout(() => { st.classList.add('on'); Sound.play('star', i); Haptics.play('merge', 4 + i, 0); }, 450 + i * 380);
             });
@@ -434,7 +443,7 @@ const Mine = (() => {
         exit.onclick = () => toMap();
         progressUI();
         dropsUI();
-        setTimeout(() => showTip(stage.tip || goalLine()), 500);
+        setTimeout(() => showTip(turnWords(stage.tip) || goalLine()), 500);
         onGame('drop', () => { if ($('tut-bubble').style.display === 'block' && dropsLeft < stage.drops - 1) $('tut-bubble').style.display = 'none'; });
         // Keep Going (the jar was full, the player watched an ad): the same try goes on
         onGame('revive', () => { ended = false; idle = 0; winIn = -1; checkGoals(); });
@@ -598,7 +607,7 @@ const Mine = (() => {
             goal.append(s);
         });
         $('sc-info').textContent = `${st.drops} drops · ${(JARS[st.jar] || JARS.plain).name}`;
-        $('sc-tip').textContent = st.tip || '';
+        $('sc-tip').textContent = turnWords(st.tip) || '';
         const reward = $('sc-reward');
         reward.innerHTML = '';
         reward.style.display = 'none';
