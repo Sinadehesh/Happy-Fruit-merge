@@ -177,6 +177,7 @@ Art lives in `assets/bomber/`: bombs, all 12 zombies (`zombies/` for the first 4
 - **Signing:** `BOMBER_KEYSTORE` and `BOMBER_KEYSTORE_PASS` (key alias `BOMBER_KEY_ALIAS`, default `zombiebomber`), or Gem Jar's `GEMJAR_KEYSTORE` and `GEMJAR_KEYSTORE_PASS` to use the same upload key for both apps, which Google Play allows. Every update must be signed with the same key and have a higher version code.
 - Android source: `android/bomber` (manifest, theme, `MainActivity.java`: the game window, ads, consent and billing; `ReminderReceiver.java`: the daily-reward reminder). The game talks to it through `window.AndroidApp`; `bomber/ads.js` decides when each ad may show, and `bomber/meta.js` what each purchase gives.
 - **Privacy policy** (for the Play listing and AdMob): `bomber/privacy.html`, https://sinadehesh.github.io/Happy-Fruit-merge/bomber/privacy.html.
+- **Store listing:** `android/store/bomber/listing.md` has the name, short and full description (within Play's limits, no "free", "best" or "#1"), and the other fields; the graphics are next to it: the icon, the feature graphic (1024 x 500) and 8 phone screenshots (1080 x 1920, a headline over a real screen of the game). Play takes the promo video as a YouTube link.
 - **app-ads.txt:** the one Gem Jar uses (https://www.sinadehesh.com/app-ads.txt) covers this app too, since both are in the same AdMob account. Set the Play listing's website to https://www.sinadehesh.com so AdMob can find it.
 
 ### How the app makes money
