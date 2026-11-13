@@ -180,6 +180,15 @@ Art lives in `assets/bomber/`: bombs, all 12 zombies (`zombies/` for the first 4
 - **Store listing:** `android/store/bomber/listing.md` has the name, short and full description (within Play's limits, no "free", "best" or "#1"), and the other fields; the graphics are next to it: the icon, the feature graphic (1024 x 500) and 8 phone screenshots (1080 x 1920, a headline over a real screen of the game). Play takes the promo video as a YouTube link.
 - **app-ads.txt:** the one Gem Jar uses (https://www.sinadehesh.com/app-ads.txt) covers this app too, since both are in the same AdMob account. Set the Play listing's website to https://www.sinadehesh.com so AdMob can find it.
 
+### Videos and store graphics (`tools/bomber_media/`)
+
+Made from the real game with Playwright and ffmpeg. Matter.js and the font come from the copies the Android build packs (run `tools/build_bomber_android.py` once), so nothing is fetched from the internet. Everything lands in `android/build-bomber/media/` (not in git), except the store graphics.
+
+- `node tools/bomber_media/film.js final` films a level 150 fight frame by frame at 60 fps: 1080 x 1920, about 19 s, with the game's own sound at -14 LUFS (`zombie-bomber-gameplay.mp4`). A scripted player drags bombs onto the horde, merges, calls Air Strikes and drops the Mega Nuke on the Zombie Kings; a white circle shows each touch. The clock and the random numbers are fixed, so `film.js preview` (stills 4 times a second and a log of every throw) shows exactly what the final film will be.
+- `node tools/bomber_media/brand.js`, then `node tools/bomber_media/cuts.js`: a 15 s ad (three stretches of the film and an end card with "PLAY FREE": for ads) and a 16:9 version (the film in the middle, the logo and what's in the game beside it, no call to action: for the store page and YouTube).
+- `node tools/bomber_media/store.js`: the 8 screenshots and the feature graphic in `android/store/bomber/`.
+- The fight is staged: it starts at wave 4 of 5 and the final wave comes in early. After changing the game, look at a preview first: the player adapts, but the beats move, and the cut points in `cuts.js` may need moving with them.
+
 ### How the app makes money
 
 The rule: as many ads as players are happy to watch, and as few as possible they have to.
