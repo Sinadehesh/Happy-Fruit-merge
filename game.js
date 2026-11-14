@@ -196,6 +196,19 @@ const DAILY = !!GAME.daily && params.has('daily');
 const RUSH = !!GAME.rush && params.has('rush') && !DAILY;
 // Gem Mine (GAME.mine, opened with ?mine=N): stage N, with its goal, drops, crates and jar shape (mine.js). Not saved.
 const MINE = Mine.N;
+// A water set (GAME.skins water: the Ocean Jewels): the jar is full of water and every gem floats or sinks by its
+// level, see WATER below. Not in the Gem Mine, whose stages are built for gems that fall to the floor.
+// (water: true, or an object that changes some of these numbers)
+const WATER = SKIN && SKIN.water && !FLOAT && !MINE ? Object.assign({
+    y: 195,            // where the water's surface is (the line is at DANGER_Y)
+    floaters: 3,       // how many of the lowest levels float
+    light: -0.75,      // what the lowest level weighs under water, x its weight in the air (below 0: it floats)
+    lightTop: -0.2,    // ... and the highest level that still floats
+    heavy: 0.5,        // ... the first level that sinks
+    heavyTop: 1,       // ... and the highest level of all
+    drag: 0.016,       // how much the water slows a gem (added to its air friction), and
+    dragFast: 0.003    // ... how much more for every px a step it moves, so a gem that plunges in is braked hard
+}, SKIN.water === true ? null : SKIN.water) : null;
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
 // (Not in the Daily Challenge, which is the same game for everyone, nor in Gem Rush or the Gem Mine.)
@@ -280,6 +293,7 @@ const nextImg = document.getElementById('next-img');
 const dropGuide = document.getElementById('drop-guide');
 const aimLine = document.getElementById('aim-line');
 board.classList.toggle('float', FLOAT);   // (the line, the guide and messages sit the other way up: index.html)
+if (WATER) { board.classList.add('water'); board.style.setProperty('--water', `${WATER.y / GAME_HEIGHT * 100}%`); }   // (the water's tint)
 
 function randomDropTier() {
     return Math.floor(dropRandom() * DROP_TIERS);
@@ -389,6 +403,47 @@ Events.on(engine, 'beforeUpdate', () => {
         if (b.isDropping && b.tier !== undefined) b.force.y += b.mass * g * (fallPull(b.tier) - 1);
     }
 });
+
+// --- WATER --- (a set with water in GAME.skins, the Ocean Jewels)
+// The jar is full of water up to WATER.y, and under water a gem weighs what its level says. The lowest levels are
+// lighter than water: they come up and float at the surface, the lower the level the higher it rides. Every
+// level after them sinks, the higher the level the faster, and the heavier it lies on the pile at the bottom.
+// The water slows everything in it. A gem that drops in makes a splash and counts as landed from then on (it
+// may merge), wherever it floats or sinks to. The rest of the game is the same: the jar is full when a gem
+// rests above the line, which is over the water.
+const underWater = tier => {   // its weight under water, x its weight in the air
+    const F = WATER.floaters, last = TIERS.length - 1;
+    return tier < F ? WATER.light + (WATER.lightTop - WATER.light) * (F > 1 ? tier / (F - 1) : 0)
+        : WATER.heavy + (WATER.heavyTop - WATER.heavy) * (last > F ? (tier - F) / (last - F) : 0);
+};
+if (WATER) Events.on(engine, 'beforeUpdate', () => {
+    const g = engine.gravity.y * engine.gravity.scale;
+    for (const b of Composite.allBodies(engine.world)) {
+        if (b.tier === undefined) continue;
+        // how much of it is under water, 0 to 1
+        const s = Math.max(0, Math.min(1, (b.bounds.max.y - WATER.y) / (b.bounds.max.y - b.bounds.min.y)));
+        if (b.wet === undefined) b.wet = s >= 0.5;                      // (a gem that starts in the water: no splash)
+        else if (!b.wet && s >= 0.5) { b.wet = true; splash(b); }
+        else if (b.wet && s <= 0.1) b.wet = false;
+        b.force.y += b.mass * g * s * (underWater(b.tier) - 1);          // (gravity pulls with 1 already)
+        b.frictionAir = 0.01 + s * (WATER.drag + WATER.dragFast * b.speed);
+        // a gem going down fast leaves a few bubbles behind
+        if (s === 1 && b.velocity.y > 1.6 && Math.random() < 0.05 + 0.012 * b.velocity.y) {
+            FX.bubble(b.position.x + (Math.random() - 0.5) * b.currentRadius * 1.2, b.bounds.min.y + 4, 1.5 + Math.random() * 2.5);
+        }
+    }
+});
+// a gem goes into the water: it has landed, with a splash that is bigger for a heavier gem and a harder fall
+function splash(gem) {
+    const speed = Math.abs(gem.velocity.y);
+    gem.isDropping = false;
+    if (speed < 1.5) return;   // (a floating gem dipping back under makes none)
+    const impact = impactOf(speed);
+    gem.lastThud = performance.now();
+    Sound.play('splash', gem.tier, impact);
+    Haptics.play('land', gem.tier, impact * 0.6);
+    FX.splash(gem.position.x, TIERS[gem.tier], gem.tier, impact);
+}
 
 // --- PULL --- (a set with pull: true in GAME.skins, the Cosmic Gems)
 // Gems of the same level pull each other in, like planets, so alike gems near each other drift together, meet
@@ -601,7 +656,7 @@ function dropFruit() {
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
-    if (FLOAT) floatHint();
+    if (FLOAT || WATER) floatHint();
 
     currentTier = nextTier;
     if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
@@ -613,14 +668,15 @@ function dropFruit() {
     if (!MINE) Ads.onDrop();   // (never an ad in the middle of a stage)
 }
 
-// the first 3 games with a floating set say what's going on, at the first drop
+// the first 3 games with a floating set, or one under water, say what's going on, at the first drop
 let floatHinted = false;
 function floatHint() {
     if (floatHinted) return;
     floatHinted = true;
+    const key = `${GAME.id}.${WATER ? 'waterTold' : 'floatTold'}`;
     let told = 0;
-    try { told = +localStorage.getItem(`${GAME.id}.floatTold`) || 0; localStorage.setItem(`${GAME.id}.floatTold`, told + 1); } catch (e) {}
-    if (told < 3) showToast('Zero gravity: these gems float up!');
+    try { told = +localStorage.getItem(key) || 0; localStorage.setItem(key, told + 1); } catch (e) {}
+    if (told < 3) showToast(WATER ? 'Under water: small gems float, big ones sink!' : 'Zero gravity: these gems float up!');
 }
 
 // --- MERGING ---
@@ -878,6 +934,7 @@ audioButtons();
 vibeButton();
 FX.init(board);
 FX.flip(FLOAT);
+if (WATER) FX.water(WATER.y);   // (the surface, splashes and bubbles)
 // the threads between gems that pull each other (PULL), from edge to edge, where no other gem is in the way
 if (PULL) FX.threads(() => {
     const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined);
@@ -1268,7 +1325,8 @@ function renderSets() {
         gems.className = 'set-gems';
         MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
         card.append(head, gems);
-        const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in'].filter(Boolean);
+        const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in',
+            sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink'].filter(Boolean);
         if (notes.length) {
             const note = document.createElement('div');
             note.className = 'set-note';

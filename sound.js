@@ -80,19 +80,47 @@ const Sound = (() => {
     }
     // the grit of stone on stone: a short burst of noise, darker and longer for heavier gems
     let noise = null;
-    function grit(cutoff, dur, gain) {
+    function noiseBuffer() {
         if (!noise) {
             noise = ac.createBuffer(1, Math.round(ac.sampleRate * 0.5), ac.sampleRate);
             const d = noise.getChannelData(0);
             for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
         }
+        return noise;
+    }
+    function grit(cutoff, dur, gain) {
         const t = ac.currentTime, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
-        src.buffer = noise;
+        src.buffer = noiseBuffer();
         f.type = 'lowpass'; f.frequency.value = cutoff; f.Q.value = 0.9;
         g.gain.setValueAtTime(gain, t);
         g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
         src.connect(f); f.connect(g); g.connect(sfxBus);
         src.start(t, Math.random() * 0.4); src.stop(t + dur + 0.02);
+    }
+    // Water (game.js WATER). wash: the rush of a splash, a burst of noise through a band that falls in pitch;
+    // bloop: the round little note of the air a gem takes under with it, rising as it fades.
+    function wash(freq, dur, gain) {
+        const t = ac.currentTime, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        src.buffer = noiseBuffer();
+        f.type = 'bandpass'; f.Q.value = 0.8;
+        f.frequency.setValueAtTime(freq, t);
+        f.frequency.exponentialRampToValueAtTime(freq * 0.35, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(g); g.connect(sfxBus);
+        src.start(t, Math.random() * 0.25); src.stop(t + dur + 0.02);
+    }
+    function bloop(freq, dur, gain, when = 0) {
+        const t = ac.currentTime + when, o = ac.createOscillator(), g = ac.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(freq, t);
+        o.frequency.exponentialRampToValueAtTime(freq * 1.9, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(sfxBus);
+        o.start(t); o.stop(t + dur + 0.03);
     }
     const pick = (...names) => names[Math.floor(Math.random() * names.length)];
     const jitter = (r, amount = 0.04) => r * (1 + (Math.random() * 2 - 1) * amount);   // so repeats don't sound identical
@@ -156,6 +184,13 @@ const Sound = (() => {
             sample('land', { gain: (0.16 + tier * 0.045) * k, rate: jitter(Math.max(0.5, 1.42 - tier * 0.08), 0.03) });
             thump(200 - tier * 12, 0.06 + tier * 0.022, (0.05 + tier * 0.032) * k);
             if (tier >= 2) grit(Math.max(700, 2600 - tier * 170), 0.035 + tier * 0.006, (0.025 + tier * 0.011) * k);
+        },
+        // into the water: a splash and a bloop or two, deeper, longer and louder for a heavier gem and a harder fall
+        splash(tier, impact = 1) {
+            const k = Math.max(0.15, Math.min(1.2, impact));
+            wash(Math.max(900, 3400 - tier * 230), 0.17 + tier * 0.024, (0.09 + tier * 0.016) * k);
+            bloop(Math.max(130, 430 - tier * 27), 0.08 + tier * 0.009, (0.07 + tier * 0.013) * k, 0.03);
+            if (tier >= 2) bloop(Math.max(170, 560 - tier * 30), 0.06 + tier * 0.006, (0.04 + tier * 0.007) * k, 0.11 + Math.random() * 0.05);
         },
         // merging: a mouth pop plus a bubble, lower for bigger items; big ones get a deep bubble
         pop(tier) {

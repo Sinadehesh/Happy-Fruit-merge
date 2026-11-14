@@ -38,6 +38,60 @@ const FX = (() => {
         ctx.restore();
     }
 
+    // water (game.js WATER): the surface with its slow waves and the ripples of splashes, the drops a splash
+    // throws up and the bubbles that rise from it
+    let sea = null;   // { y: the surface, ripples: [{ x, t, amp }] }
+    function water(y) { sea = { y, ripples: [] }; }
+    function surfaceAt(x, t) {
+        let y = sea.y + 2 * Math.sin(x * 0.045 + t * 1.7) + 1.3 * Math.sin(x * 0.021 - t * 1.1);
+        for (const r of sea.ripples) {
+            const age = t - r.t, d = Math.abs(x - r.x);
+            y += r.amp * Math.exp(-age * 2.6) * Math.exp(-d / (26 + age * 170)) * Math.cos(d * 0.085 - age * 11);
+        }
+        return y;
+    }
+    function drawWater(t) {
+        sea.ripples = sea.ripples.filter(r => t - r.t < 2.2);
+        ctx.save();
+        // the light just under the surface
+        const glow = ctx.createLinearGradient(0, sea.y - 4, 0, sea.y + 30);
+        glow.addColorStop(0, 'rgba(170, 228, 255, 0.34)');
+        glow.addColorStop(1, 'rgba(170, 228, 255, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.moveTo(0, surfaceAt(0, t));
+        for (let x = 6; x <= W + 6; x += 6) ctx.lineTo(x, surfaceAt(x, t));
+        ctx.lineTo(W, sea.y + 30); ctx.lineTo(0, sea.y + 30);
+        ctx.closePath(); ctx.fill();
+        // the surface itself
+        ctx.beginPath();
+        ctx.moveTo(0, surfaceAt(0, t));
+        for (let x = 6; x <= W + 6; x += 6) ctx.lineTo(x, surfaceAt(x, t));
+        ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+        ctx.strokeStyle = 'rgba(222, 246, 255, 0.85)';
+        ctx.stroke();
+        ctx.restore();
+    }
+    // A gem goes into the water at x (r its size): drops fly up, the surface ripples, bubbles rise from under it
+    function splash(x, r, tier, impact) {
+        if (!sea) return;
+        const k = Math.max(0.2, Math.min(1.2, impact)), now = performance.now() / 1000;
+        sea.ripples.push({ x, t: now, amp: (3 + tier * 0.9) * k });
+        const n = Math.round((5 + tier * 1.6) * k);
+        for (let i = 0; i < n; i++) {
+            const side = Math.random() < 0.5 ? -1 : 1, a = rand(0.15, 1.1);   // (angle from straight up)
+            const sp = rand(120, 250) * (0.55 + 0.5 * k) * (1 + tier * 0.03);
+            effects.push({ kind: 'spray', x: x + side * rand(0.2, 0.9) * r, y: sea.y - 2, vx: side * Math.sin(a) * sp, vy: -Math.cos(a) * sp,
+                size: rand(2.2, 4.6) + tier * 0.25, t: 0, dur: rand(0.45, 0.8) });
+        }
+        const m = Math.round((3 + tier * 0.8) * k);
+        for (let i = 0; i < m; i++) bubble(x + rand(-0.8, 0.8) * r, sea.y + rand(10, 30 + r), rand(1.5, 4));
+    }
+    function bubble(x, y, size) {
+        if (!sea || y < sea.y + 6 || effects.length > 260) return;
+        effects.push({ kind: 'bubble', x, y, v: rand(45, 95), ph: rand(0, 6.3), size, t: 0, dur: 6 });
+    }
+
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
         'word_combo', 'word_congratulations', 'word_levelup', 'word_timesup', ...GAME.praise.map(w => `word_${w}`),
@@ -297,6 +351,7 @@ const FX = (() => {
         ctx.clearRect(0, 0, W, H);
         shakeStep(dt);
         if (threadsOf) drawThreads(now / 1000);
+        if (sea) drawWater(now / 1000);
         for (const e of effects) {
             e.t += dt;
             const k = e.t / e.dur;
@@ -323,6 +378,26 @@ const FX = (() => {
                 ctx.fillStyle = '#efe6ff';
                 ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (0.6 + 0.9 * k), 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
+            } else if (e.kind === 'spray') {
+                e.vy += 900 * dt;
+                e.x += e.vx * dt; e.y += e.vy * dt;
+                if (e.y > sea.y + 2 && e.vy > 0) { e.t = e.dur; continue; }   // (back in the water)
+                ctx.save();
+                ctx.globalAlpha = 0.9 * (1 - k * k);
+                ctx.fillStyle = '#e3f6ff';
+                ctx.beginPath(); ctx.ellipse(e.x, e.y, e.size * 0.8, e.size * 1.15, Math.atan2(e.vx, -e.vy), 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            } else if (e.kind === 'bubble') {
+                e.y -= e.v * dt; e.x += Math.sin(e.t * 5 + e.ph) * 14 * dt;
+                if (e.y < sea.y + e.size + 3) { e.t = e.dur; continue; }      // (it pops at the surface)
+                ctx.save();
+                ctx.globalAlpha = Math.min(1, e.t / 0.15) * 0.75;
+                ctx.lineWidth = 1.1;
+                ctx.strokeStyle = '#e6f8ff'; ctx.fillStyle = 'rgba(200, 238, 255, 0.22)';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath(); ctx.arc(e.x - e.size * 0.35, e.y - e.size * 0.35, Math.max(0.5, e.size * 0.22), 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
             } else if (e.kind === 'praise') {
                 // the long CONGRATULATIONS! pops with a smaller overshoot so it stays inside the board
                 const s = e.big ? easeOutBack(Math.min(1, e.t / 0.5)) : elastic(Math.min(1, e.t / 0.6));
@@ -336,5 +411,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, merge, praise, zap, banner, splinters, thud };
 })();

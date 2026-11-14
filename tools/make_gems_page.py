@@ -51,7 +51,7 @@ swap('    <script src="config.js"></script>', '''    <script>
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },
                 { id: 'crystal', name: 'Crystal Cave' },
-                { id: 'ocean', name: 'Ocean Jewels' },
+                { id: 'ocean', name: 'Ocean Jewels', water: true },   // under water: small gems float, big ones sink
                 { id: 'royal', name: 'Royal Treasury' },
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
