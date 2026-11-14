@@ -1,7 +1,7 @@
 // The Google Play graphics for Zombie Bomber, from real screens of the game:
 //   android/store/bomber/screenshots/zombiebomber-screenshot-1..8.png   1080 x 1920: a headline over a game screen
 //   android/store/bomber/feature_graphic.png                             1024 x 500: the logo and the horde
-//   node tools/bomber_media/store.js   (after film.js final: five screens are frames of the film)
+//   node tools/bomber_media/store.js   (after film.js final: four screens are frames of the film)
 // No "free", "#1", "best" or calls to action: Google Play doesn't allow them on store graphics.
 const fs = require('fs'), path = require('path');
 const { openGame, FLAGS, OUT, ROOT } = require('./page');
@@ -14,9 +14,9 @@ const SHOTS = [
     ['film@0.55', 'DRAG BOMBS', 'ONTO THE HORDE'],
     ['film@1.55', 'MERGE THEM', 'AND BLOW THEM UP!'],
     ['film@8.55', 'MERGE YOUR WAY', 'TO THE MEGA NUKE'],
-    ['film@7.35', 'TAKE DOWN', 'THE ZOMBIE KINGS'],
+    ['boss', 'BIG BOSSES', 'EVERY 25 LEVELS'],
     ['film@12.90', 'CALL IN', 'AIR STRIKES'],
-    ['zone', '300 LEVELS', 'IN 15 ZONES'],
+    ['zone', '500 LEVELS', 'IN 25 ZONES'],
     ['shop', 'UPGRADE YOUR', 'SOLDIERS AND BASE'],
     ['daily', 'DAILY REWARDS,', 'MISSIONS AND MORE']
 ];
@@ -26,7 +26,7 @@ async function captured(save, seed, fn) {
     const g = await openGame({ save, seed });
     const shot = await g.page.evaluate(fn => {
         window.__t = 0; last = 0;
-        window.step = n => { for (let i = 0; i < n; i++) { window.__t += 1000 / 60; frame(window.__t); } };
+        window.step = n => { for (let i = 0; i < n; i++) { if (state === 'play') baseHP = baseMax; window.__t += 1000 / 60; frame(window.__t); } };   // the base holds
         return (0, eval)(`(${fn})`)();
     }, fn.toString());
     if (g.errors().length) console.log(g.errors().join('\n'));
@@ -44,17 +44,21 @@ async function captured(save, seed, fn) {
     toFile(await captured({ level: 47, coins: 6840, gems: 64, streak: 4, tut: true, bestTier: 8, up: { soldiers: 5, weapons: 6, base: 8, bombs: 7 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 3 }, flags: FLAGS }, 5, () => {
         openShop(); while (Meta.t.panel) Meta.t.close(); Meta.t.queue.length = 0; step(50); return canvas.toDataURL('image/png');
     }), path.join(FR, 'shop.png'));
-    // a fight in Toxic Ruins (level 92): a Thermobaric goes off in the middle of the final wave
-    toFile(await captured({ level: 92, coins: 900, gems: 40, streak: 3, tut: true, bestTier: 9, up: { soldiers: 7, weapons: 9, base: 12, bombs: 12 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 2 }, flags: FLAGS }, 11, () => {
-        startLevel(92); banner = null; crateAt = 0;
+    // a big boss: the Butcher charges at the base in the final wave of level 125 (Ashfall), the Kings behind it
+    toFile(await captured({ level: 125, coins: 900, gems: 40, streak: 3, tut: true, bestTier: 10, up: { soldiers: 8, weapons: 12, base: 20, bombs: 16 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 2 }, flags: FLAGS }, 7, () => {
+        startLevel(125); banner = null; crateAt = 0;
         waveIdx = waves.length - 2; waveState = 'gap'; waveGapT = 0.1;
-        step(60 * 4);
-        for (const [x, y, t] of [[110, 260, 8], [300, 250, 7], [330, 120, 6], [210, 60, 5]]) spawnBayBomb(x, y, t, false);
-        step(60);
-        const alive = zombies.filter(z => !z.dead && z.x < W - 20).sort((a, b) => a.x - b.x);
-        throwBomb(9, L.bay.x + 200, L.bay.y - 20, alive.length ? alive[Math.floor(alive.length * 0.45)].x : 260);
-        for (let i = 0; i < 90 && !explosions.length; i++) step(1);
-        step(5);
+        step(60 * 2);
+        for (let i = 0; i < 60 * 10 && !(boss && boss.type.mech && boss.x < W - 120 && boss.charging > 0.5); i++) step(1);
+        banner = null; step(3);
+        return canvas.toDataURL('image/png');
+    }), path.join(FR, 'boss.png'));
+    // one of the new zones: Dune Road (level 328) in a Lightning Storm, a bolt striking the final wave
+    toFile(await captured({ level: 328, coins: 900, gems: 40, streak: 3, tut: true, bestTier: 11, up: { soldiers: 8, weapons: 12, base: 20, bombs: 16 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 2 }, flags: FLAGS }, 11, () => {
+        startLevel(328); banner = null; crateAt = 0;
+        waveIdx = waves.length - 2; waveState = 'gap'; waveGapT = 0.1;
+        World.levelStart();
+        step(60 * 4.5); banner = null; step(1);
         return canvas.toDataURL('image/png');
     }), path.join(FR, 'zone.png'));
     // the daily reward, day 5

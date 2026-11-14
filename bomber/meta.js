@@ -45,7 +45,7 @@ const Meta = (() => {
         def('gems', 0); def('streak', 0); def('starter', false); def('seen', now()); def('kingLv', 0); def('zoneLv', 0);
         save.gems = Math.max(0, Math.floor(save.gems) || 0);
         save.boost = { air: 1, freeze: 1, ...(save.boost || {}) };
-        save.stats = { kills: 0, kings: 0, merges: 0, thrown: 0, multi: 0, clears: 0, perfect: 0, coins: 0, days: 0, streak: 0, air: 0, crates: 0, spins: 0, ...(save.stats || {}) };
+        save.stats = { kills: 0, kings: 0, bosses: 0, merges: 0, thrown: 0, multi: 0, clears: 0, perfect: 0, coins: 0, days: 0, streak: 0, air: 0, crates: 0, spins: 0, ...(save.stats || {}) };
         save.ach = save.ach || {};
         save.login = { last: '', n: 0, ...(save.login || {}) };
         save.daily = save.daily || {};
@@ -108,6 +108,7 @@ const Meta = (() => {
         switch (name) {
             case 'kill': st.kills += n; break;
             case 'king': st.kings += n; break;
+            case 'boss': st.bosses += n; break;
             case 'merge': st.merges += n; break;
             case 'throw': st.thrown += n; break;
             case 'coins': st.coins += n; break;
@@ -130,7 +131,7 @@ const Meta = (() => {
         st.streak = Math.max(st.streak, save.streak || 0);
         // gems for beating a Zombie King's level for the first time, and for finishing a zone
         let g = 0;
-        if (lv % 5 === 0 && lv > save.kingLv) { save.kingLv = lv; g += 3; }
+        if (lv % 5 === 0 && lv > save.kingLv) { save.kingLv = lv; g += lv % 25 === 0 ? 8 : 3; }   // a milestone boss: more
         if (lv % ZONE_LEVELS === 0 && lv > save.zoneLv) { save.zoneLv = lv; g += 10; toast('ZONE CLEARED! +10 GEMS', '#8fe9ff', 3.5); }
         if (g && gemsShown()) flyGems(W / 2, L.battleTop + 150, g); else if (g) save.gems += g;
     }
@@ -262,11 +263,12 @@ const Meta = (() => {
     const ACH = [
         { id: 'slayer', name: 'ZOMBIE SLAYER', text: n => `BLOW UP ${fmt(n)} ZOMBIES`, stat: s => s.kills, tiers: [100, 500, 2500, 10000, 50000], gems: [5, 8, 12, 20, 40] },
         { id: 'multi', name: 'CROWD PLEASER', text: n => `BLOW UP ${n} ZOMBIES WITH ONE BOMB`, stat: s => s.multi, tiers: [5, 8, 12, 16, 20], gems: [5, 8, 10, 15, 25] },
-        { id: 'levels', name: 'SURVIVOR', text: n => `CLEAR LEVEL ${n}`, stat: () => (save.won ? 300 : save.level - 1), tiers: [10, 25, 50, 100, 200, 300], gems: [5, 10, 15, 25, 40, 100] },
+        { id: 'levels', name: 'SURVIVOR', text: n => `CLEAR LEVEL ${n}`, stat: () => (save.won ? MAX_LEVEL : save.level - 1), tiers: [10, 25, 50, 100, 200, 300, 400, 500], gems: [5, 10, 15, 25, 40, 100, 120, 200] },
         { id: 'arsenal', name: 'ARSENAL', text: n => `DISCOVER ${n} KINDS OF BOMB`, stat: () => save.bestTier + 1, tiers: [5, 8, 10, 12], gems: [5, 10, 15, 30] },
         { id: 'merger', name: 'MASTER MERGER', text: n => `MERGE BOMBS ${fmt(n)} TIMES`, stat: s => s.merges, tiers: [100, 600, 3000, 12000], gems: [5, 8, 12, 25] },
         { id: 'bomber', name: 'BOMBARDIER', text: n => `THROW ${fmt(n)} BOMBS`, stat: s => s.thrown, tiers: [50, 300, 1500, 6000], gems: [5, 8, 12, 25] },
         { id: 'kings', name: 'KING SLAYER', text: n => `TAKE DOWN ${n} ZOMBIE KING${n > 1 ? 'S' : ''}`, stat: s => s.kings, tiers: [1, 5, 20, 60], gems: [5, 10, 20, 40] },
+        { id: 'bosses', name: 'BOSS HUNTER', text: n => `BEAT ${n} BIG BOSS${n > 1 ? 'ES' : ''} (EVERY 25 LEVELS)`, stat: s => s.bosses, tiers: [1, 4, 8, 20], gems: [10, 20, 40, 80] },
         { id: 'perfect', name: 'UNTOUCHABLE', text: n => `CLEAR ${n} LEVELS WITH 3 STARS`, stat: s => s.perfect, tiers: [10, 40, 120, 250], gems: [5, 10, 20, 40] },
         { id: 'streak', name: 'ON FIRE', text: n => `WIN ${n} LEVELS IN A ROW`, stat: s => s.streak, tiers: [5, 10, 20, 40], gems: [5, 10, 20, 40] },
         { id: 'rich', name: 'WAR CHEST', text: n => `COLLECT ${fmt(n)} COINS IN ALL`, stat: s => s.coins, tiers: [2000, 20000, 150000, 1000000], gems: [5, 10, 20, 40] },

@@ -73,7 +73,7 @@ def build_www(www):
     assert 'https://' not in html, 'the app page must not load anything from the internet'
     (www / 'bomber' / 'index.html').write_text(html)
 
-    for js in ('ads.js', 'meta.js', 'shapes.js', 'bomber.js'):
+    for js in ('ads.js', 'meta.js', 'world.js', 'shapes.js', 'bomber.js'):
         shutil.copy(ROOT / 'bomber' / js, www / 'bomber' / js)
     cache = gem.SDK / 'web-cache'
     for name, url in VENDOR.items():

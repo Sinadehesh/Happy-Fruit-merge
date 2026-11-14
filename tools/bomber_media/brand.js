@@ -40,7 +40,7 @@ const DIR = path.join(OUT, 'brand'), FPS = 60, SECS = 1.8;
                 ctx.restore();
             }
             ctx.save(); ctx.globalAlpha = k((t - 0.75) / 0.3);
-            text('300 LEVELS  ·  12 BOMBS  ·  ZOMBIE KINGS', cx, H * 0.82, 17, '#d9d2ff', 'center', '#120d22', 4);
+            text('500 LEVELS  ·  12 BOMBS  ·  BIG BOSSES', cx, H * 0.82, 17, '#d9d2ff', 'center', '#120d22', 4);
             ctx.restore();
         };
         Sound.init();
@@ -73,7 +73,7 @@ const DIR = path.join(OUT, 'brand'), FPS = 60, SECS = 1.8;
         const ts = Math.min(fit('MERGE BOMBS.', 34, 540), fit('BLOW UP THE HORDE!', 34, 540));
         text('MERGE BOMBS.', lx, 680 / s, ts, '#fff');
         text('BLOW UP THE HORDE!', lx, 680 / s + ts * 1.3, ts, '#ffd32a');
-        const rows = [[11, '300 LEVELS'], [6, '15 ZONES'], [9, '12 BOMBS TO MERGE'], [4, 'ZOMBIE KINGS']];
+        const rows = [[11, '500 LEVELS'], [6, '25 ZONES'], [9, '12 BOMBS TO MERGE'], [4, 'BIG BOSSES']];
         const rs = Math.min(...rows.map(([, str]) => fit(str, 30, 430)));
         rows.forEach(([tier, str], i) => { const y = (330 + i * 140) / s; drawBomb(1356 / s, y, 21, tier, 0); text(str, 1408 / s, y + 2, rs, '#fff', 'left'); });
         ctx = main;

@@ -6,11 +6,17 @@
 // players have it a bit easier. A lost level is played again (coins picked up are kept); after 6 losses in a row
 // the run stops there. Prints a summary for every 10 levels: play time a level, tries, losses, the lowest base
 // health, 3-star wins, the threat level and the upgrades.
+// To check late levels without playing up to them, start with upgrades and a threat level, e.g. everything maxed:
+//   UP=8,12,20,16 THREAT=1.2 node tools/bomber_balance.js 10 good 300
+// VERBOSE=1 also prints every try (kills, time, coins, the biggest bomb merged...).
 const { openGame } = require('./bomber_media/page');
 const LEVELS = +(process.argv[2] || 100), SKILL = process.argv[3] || 'good', FIRST = +(process.argv[4] || 1), SEED = +(process.argv[5] || 1);
+const START = { level: FIRST, coins: 0, tut: true, flags: { starter: 1, boosterHint: 1 } };
+if (process.env.UP) { const [soldiers, weapons, base, bombs] = process.env.UP.split(',').map(Number); START.up = { soldiers, weapons, base, bombs }; START.bestTier = 11; }
+if (process.env.THREAT) START.threat = +process.env.THREAT;
 
 (async () => {
-  const g = await openGame({ save: { level: FIRST, coins: 0, tut: true, flags: { starter: 1, boosterHint: 1 } }, seed: SEED, dpr: 1 });
+  const g = await openGame({ save: START, seed: SEED, dpr: 1 });
   const page = g.page;
   const res = await page.evaluate(async ({ LEVELS, SKILL }) => {
     window.requestAnimationFrame = () => 0;   // stop the real loop; we drive it
@@ -92,6 +98,7 @@ const LEVELS = +(process.argv[2] || 100), SKILL = process.argv[3] || 'good', FIR
     const t = rs.reduce((s, r) => s + (r.time || 0), 0), last = rs[rs.length - 1];
     lines.push(`  ${String(FIRST + b).padStart(3)}-${String(FIRST + b + 9).padEnd(3)}  ${String(Math.round(t / Math.max(1, cl.length))).padStart(9)}  ${(cl.reduce((s, r) => s + r.tries, 0) / Math.max(1, cl.length)).toFixed(2).padStart(6)}  ${String(lost.length).padStart(6)}  ${String(Math.min(...cl.map(r => r.minHp), 100)).padStart(9)}  ${String(cl.filter(r => r.stars === 3).length).padStart(6)}  ${(rs.reduce((s, r) => s + (r.threat || 1), 0) / rs.length).toFixed(2).padStart(6)}  ${String(last.up).padStart(14)}`);
   }
+  if (process.env.VERBOSE) res.forEach(r => console.log(JSON.stringify(r)));   // every try, one line each
   const lostAt = res.filter(r => r.result !== 'cleared').map(r => r.level);
   console.log(`${SKILL} player, levels ${FIRST}-${FIRST + LEVELS - 1}, seed ${SEED}`);
   console.log('  levels   play s/level  tries  losses  low base%  3-star  threat  upgrades (sol, wpn, base, bombs)');
