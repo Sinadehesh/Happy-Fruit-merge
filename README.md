@@ -105,7 +105,7 @@ Switched on by `mine: true` in the gem page's `GAME_SETUP`; opens at Level 2. A 
 
 - **Google Play:** upload `gems/GemJar.aab` (App Bundle, https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.aab).
 - **Install directly:** `gems/GemJar.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar.apk).
-- The files there are version 1.6 (code 7): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
+- The files there are version 1.7 (code 8): real AdMob ads (the app and its three ad units, a banner, an interstitial and a rewarded ad, are in `android/gemjar/admob.properties`) and the No Ads purchase (product `remove_ads`, made in Play Console after the first upload).
 - **Test build:** `gems/GemJar-test.apk` (https://sinadehesh.github.io/Happy-Fruit-merge/gems/GemJar-test.apk) is the same version with Google's test ads (marked "Test Ad"), for trying the ads on your own phone without touching real ones; it is never uploaded to Google Play.
 - Package `com.sinadehesh.gemjar`, Android 7 and up, targeting Android 16 (API 36) as Google Play requires for new apps and updates.
 - **Store listing** (name, short and full description, within Play's limits): `android/store/listing.md`. The 8 phone screenshots (1080 x 1920) are in `android/store/screenshots/`, made by `python3 tools/make_store_screens.py <TitanOne.ttf>` from real screens of the game that `tools/store_capture.js` takes (`android/store/captures/`): a headline, the screen, and gems from the sets around it. The game's web page is https://www.sinadehesh.com/apps/gemjar/ (`site/apps/gemjar/` in the Flora repository).
