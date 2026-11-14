@@ -44,9 +44,9 @@ async function captured(save, seed, fn) {
     toFile(await captured({ level: 47, coins: 6840, gems: 64, streak: 4, tut: true, bestTier: 8, up: { soldiers: 5, weapons: 6, base: 8, bombs: 7 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 3 }, flags: FLAGS }, 5, () => {
         openShop(); while (Meta.t.panel) Meta.t.close(); Meta.t.queue.length = 0; step(50); return canvas.toDataURL('image/png');
     }), path.join(FR, 'shop.png'));
-    // a big boss: the Butcher charges at the base in the final wave of level 125 (Ashfall), the Kings behind it
-    toFile(await captured({ level: 125, coins: 900, gems: 40, streak: 3, tut: true, bestTier: 10, up: { soldiers: 8, weapons: 12, base: 20, bombs: 16 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 2 }, flags: FLAGS }, 7, () => {
-        startLevel(125); banner = null; crateAt = 0;
+    // a big boss: the Butcher charges at the base in the final wave of level 175 (Plague Marsh), the Kings behind it
+    toFile(await captured({ level: 175, coins: 900, gems: 40, streak: 3, tut: true, bestTier: 10, up: { soldiers: 8, weapons: 12, base: 20, bombs: 16 }, login: { last: 'x', n: 4 }, boost: { air: 2, freeze: 2 }, flags: FLAGS }, 7, () => {
+        startLevel(175); banner = null; crateAt = 0;
         waveIdx = waves.length - 2; waveState = 'gap'; waveGapT = 0.1;
         step(60 * 2);
         for (let i = 0; i < 60 * 10 && !(boss && boss.type.mech && boss.x < W - 120 && boss.charging > 0.5); i++) step(1);
