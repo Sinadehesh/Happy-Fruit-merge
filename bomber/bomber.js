@@ -126,18 +126,26 @@ const MAX_LEVEL = 300;
 // Special levels: every 5th level from level 8 (8, 13, 18, ...) plays differently; they take turns.
 // count / hp: how many zombies and how tough, against a normal level. small: only the small kinds. coins: per zombie.
 const SPECIALS = [
-    { id: 'armored', name: 'ARMORED COLUMN', sub: 'FEWER ZOMBIES, TWICE AS TOUGH!', color: '#c8d6e5', count: 0.6, hp: 2 },
+    { id: 'armored', name: 'ARMORED COLUMN', sub: 'FEWER ZOMBIES, MUCH TOUGHER!', color: '#c8d6e5', count: 0.75, hp: 1.3 },
     { id: 'rush', name: 'COIN RUSH', sub: 'EVERY ZOMBIE DROPS 3x COINS!', color: '#ffd32a', coins: 3 },
     { id: 'swarm', name: 'THE SWARM', sub: 'A FLOOD OF SMALL ZOMBIES!', color: '#badc58', count: 1.9, hp: 0.5, small: true }
 ];
 const specialOf = lv => lv >= 8 && lv % 5 === 3 ? SPECIALS[Math.floor(lv / 5) % SPECIALS.length] : null;
 
 // Difficulty: the number, toughness, speed and crowding of zombies go up with the level
-const levelZombieCount = level => Math.min(150, Math.round(12 + level * 1.5));
+const levelZombieCount = level => Math.min(320, Math.round(16 + level * 2.8));
 // toughness: gentle for the first 10 levels, steep up to 60, then slower so the last levels stay winnable
-const levelHpMul = level => level <= 10 ? 1 + (level - 1) * 0.12 : level <= 60 ? 2.08 + (level - 10) * 0.3 : 17.08 + (level - 60) * 0.12;
+const levelHpMul = level => level <= 10 ? 1 + (level - 1) * 0.12 : level <= 60 ? 2.08 + (level - 10) * 0.36 : 20.08 + (level - 60) * 0.144;
 const levelSpeedMul = level => Math.min(1.8, 1 + (level - 1) * 0.006);
-const levelWaves = level => Math.min(5, 2 + Math.floor(level / 6));
+// how hard zombies hit the base: grows with the level, so a fully upgraded base still needs defending
+const levelDmgMul = level => 1 + (level - 1) * 0.025;
+// The threat level: from level 12, zombies get tougher for players who win easily and easier for players
+// who struggle, so every player plays near the edge of what they can do. A 3-star win raises it 6%, a 2-star
+// win 1%; a 1-star win lowers it 2% and a lost level 12%. It is kept in the save, between 0.85 and 2.2.
+const THREAT_FROM = 12, THREAT_MIN = 0.85, THREAT_MAX = 2.2;
+const threatMul = () => state === 'play' && level >= THREAT_FROM ? save.threat : 1;
+function moveThreat(d) { if (level >= THREAT_FROM) save.threat = clamp(save.threat + d, THREAT_MIN, THREAT_MAX); }
+const levelWaves = level => level < 6 ? 2 : level < 12 ? 3 : level < 18 ? 4 : level < 40 ? 5 : level < 80 ? 6 : level < 140 ? 7 : 8;
 const packSize = level => Math.min(9, 1 + Math.floor(Math.random() * (2 + level / 8)));   // zombies arriving together
 const packEvery = level => Math.max(0.4, 1.6 - level * 0.018);
 
@@ -217,10 +225,10 @@ const zoneOf = lv => ZONES[zoneIndex(lv) % ZONES.length];
 // Zombies drop coins; between levels the coins buy levels in 4 upgrade tracks.
 // grow = how much dearer each level gets than the one before
 const UPGRADES = {
-    soldiers: { name: 'SOLDIERS', max: 8,  price: 60, grow: 1.9 },
-    weapons:  { name: 'WEAPONS',  max: 12, price: 50, grow: 1.65 },
-    base:     { name: 'BASE',     max: 20, price: 40, grow: 1.42 },
-    bombs:    { name: 'BOMBS',    max: 16, price: 80, grow: 1.6 }
+    soldiers: { name: 'SOLDIERS', max: 8,  price: 60, grow: 2.1 },
+    weapons:  { name: 'WEAPONS',  max: 12, price: 50, grow: 1.75 },
+    base:     { name: 'BASE',     max: 20, price: 40, grow: 1.5 },
+    bombs:    { name: 'BOMBS',    max: 16, price: 80, grow: 1.7 }
 };
 const upgradePrice = (key, lv) => Math.round(UPGRADES[key].price * Math.pow(UPGRADES[key].grow, lv - 1));  // from lv to lv + 1
 const SOLDIER_COUNT = [1, 1, 2, 2, 3, 3, 4, 5];
@@ -237,6 +245,7 @@ save.level = clamp(Math.floor(save.level) || 1, 1, MAX_LEVEL);
 save.coins = Math.max(0, Math.floor(save.coins) || 0);
 save.bestTier = clamp(Math.floor(save.bestTier) || 0, 0, BOMBS.length - 1);
 for (const k of Object.keys(UPGRADES)) save.up[k] = clamp(Math.floor(save.up[k]) || 1, 1, UPGRADES[k].max);
+save.threat = clamp(+save.threat || 1, THREAT_MIN, THREAT_MAX);
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // What the current upgrade levels do. Soldiers only get stronger through upgrades (zombies get tougher
@@ -1011,7 +1020,7 @@ function buildHorde(lv) {
     const weightOf = t => (t.kind === 'walker' ? Math.max(0.6, 3 - lv / 40) : t.weight);
     const total = kinds.reduce((s, t) => s + weightOf(t), 0);
     const pickKind = () => { let r = Math.random() * total; return (kinds.find(k => (r -= weightOf(k)) < 0) || kinds[0]).kind; };
-    const n = Math.min(220, Math.round(levelZombieCount(lv) * (sp && sp.count || 1))), nw = levelWaves(lv);
+    const n = Math.min(320, Math.round(levelZombieCount(lv) * (sp && sp.count || 1))), nw = levelWaves(lv);
     const ws = Array.from({ length: nw }, (_, i) => 1 + 0.35 * i), wsum = ws.reduce((a, b) => a + b, 0);
     let left = n;
     const out = ws.map((w, i) => {
@@ -1193,7 +1202,7 @@ function spawnPack() {
 const isBossKind = kind => !!ZOMBIES[kind].boss;
 function spawnZombie(kind, x, y) {
     const tough = state === 'play' && special && !isBossKind(kind) ? special.hp || 1 : 1;
-    const type = ZOMBIES[kind], hp = type.hp * levelHpMul(state === 'title' ? 1 : level) * tough;
+    const type = ZOMBIES[kind], hp = type.hp * levelHpMul(state === 'title' ? 1 : level) * tough * threatMul();
     const z = {
         kind, type, x, y, hp, maxHp: hp, walk: rand(0, 6), flash: 0, lunge: 0, stun: 0, burn: 0,
         speedMul: rand(0.8, 1.2) * levelSpeedMul(state === 'title' ? 1 : level),
@@ -1221,6 +1230,7 @@ function levelCleared() {
     streakBonus = Math.round((coinsThisLevel + clearBonus) * streakUsed / 100);
     save.coins += clearBonus + streakBonus;
     save.streak = (save.streak || 0) + 1;
+    moveThreat(stars === 3 ? 0.06 : stars === 2 ? 0.01 : -0.02);
     save.bestScore = Math.max(save.bestScore, score);
     if (level >= MAX_LEVEL) save.won = true;
     save.level = Math.min(MAX_LEVEL, level + 1);
@@ -1301,6 +1311,7 @@ function baseDestroyed() {
     state = 'over'; stateT = 0;
     banner = null; popup = null;
     lostStreak = save.streak || 0; save.streak = 0;
+    moveThreat(-0.12);
     strike = null; freezeT = 0; crate = null; crateAt = 0;
     Meta.ev('lose', 1);
     if (grabbed) grabbed = null;
@@ -1575,11 +1586,12 @@ function toxicBurst(x, y) {
 
 function hitBase(z) {
     if (state !== 'play') return;
-    baseHP = Math.max(0, baseHP - z.type.dmg);
+    const dmg = Math.max(1, Math.round(z.type.dmg * levelDmgMul(level)));
+    baseHP = Math.max(0, baseHP - dmg);
     baseFlash = 0.22; hurtA = Math.min(0.7, hurtA + 0.35);
-    addShake(3 + z.type.dmg * 0.7);
+    addShake(3 + Math.min(12, dmg * 0.7));
     Sound.baseHit(); Haptics.buzz(30);
-    floatText(L.stopX - 30 + rand(-10, 10), L.baseBottom - 74, `-${z.type.dmg}`, '#ff4757', 22);
+    floatText(L.stopX - 30 + rand(-10, 10), L.baseBottom - 74, `-${dmg}`, '#ff4757', 22);
     for (let i = 0; i < 6; i++) fieldParts.push({ kind: 'debris', x: L.stopX - 14, y: z.y - 24, vx: rand(-160, -40), vy: rand(-260, -80), g: 1000, drag: 0.4, life: rand(0.6, 1), t: 0, size: rand(2, 4), rot: rand(0, 6), vr: rand(-10, 10), floor: z.y + rand(-4, 8), color: pick(['#a08b6b', '#7a6a50', '#c8a96e']) });
     if (baseHP <= 0) baseFalls();
 }
