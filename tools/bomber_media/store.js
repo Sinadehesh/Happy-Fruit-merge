@@ -16,7 +16,7 @@ const SHOTS = [
     ['film@8.55', 'MERGE YOUR WAY', 'TO THE MEGA NUKE'],
     ['boss', 'BIG BOSSES', 'EVERY 25 LEVELS'],
     ['film@12.90', 'CALL IN', 'AIR STRIKES'],
-    ['zone', '500 LEVELS', 'IN 25 ZONES'],
+    ['zone', '1000 LEVELS', 'IN 50 ZONES'],
     ['shop', 'UPGRADE YOUR', 'SOLDIERS AND BASE'],
     ['daily', 'DAILY REWARDS,', 'MISSIONS AND MORE']
 ];
@@ -58,7 +58,8 @@ async function captured(save, seed, fn) {
         startLevel(328); banner = null; crateAt = 0;
         waveIdx = waves.length - 2; waveState = 'gap'; waveGapT = 0.1;
         World.levelStart();
-        step(60 * 4.5); banner = null; step(1);
+        step(60 * 4.5); banner = null;
+        World.t.strike(); step(8);   // a bolt comes down on the horde (and its flash fades)
         return canvas.toDataURL('image/png');
     }), path.join(FR, 'zone.png'));
     // the daily reward, day 5

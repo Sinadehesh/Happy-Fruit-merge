@@ -263,7 +263,7 @@ const Meta = (() => {
     const ACH = [
         { id: 'slayer', name: 'ZOMBIE SLAYER', text: n => `BLOW UP ${fmt(n)} ZOMBIES`, stat: s => s.kills, tiers: [100, 500, 2500, 10000, 50000], gems: [5, 8, 12, 20, 40] },
         { id: 'multi', name: 'CROWD PLEASER', text: n => `BLOW UP ${n} ZOMBIES WITH ONE BOMB`, stat: s => s.multi, tiers: [5, 8, 12, 16, 20], gems: [5, 8, 10, 15, 25] },
-        { id: 'levels', name: 'SURVIVOR', text: n => `CLEAR LEVEL ${n}`, stat: () => (save.won ? MAX_LEVEL : save.level - 1), tiers: [10, 25, 50, 100, 200, 300, 400, 500], gems: [5, 10, 15, 25, 40, 100, 120, 200] },
+        { id: 'levels', name: 'SURVIVOR', text: n => `CLEAR LEVEL ${n}`, stat: () => (save.won ? MAX_LEVEL : save.level - 1), tiers: [10, 25, 50, 100, 200, 300, 400, 500, 750, 1000], gems: [5, 10, 15, 25, 40, 100, 120, 200, 250, 400] },
         { id: 'arsenal', name: 'ARSENAL', text: n => `DISCOVER ${n} KINDS OF BOMB`, stat: () => save.bestTier + 1, tiers: [5, 8, 10, 12], gems: [5, 10, 15, 30] },
         { id: 'merger', name: 'MASTER MERGER', text: n => `MERGE BOMBS ${fmt(n)} TIMES`, stat: s => s.merges, tiers: [100, 600, 3000, 12000], gems: [5, 8, 12, 25] },
         { id: 'bomber', name: 'BOMBARDIER', text: n => `THROW ${fmt(n)} BOMBS`, stat: s => s.thrown, tiers: [50, 300, 1500, 6000], gems: [5, 8, 12, 25] },

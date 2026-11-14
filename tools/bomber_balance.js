@@ -2,18 +2,20 @@
 //   node tools/bomber_balance.js [levels, default 100] [good|sloppy] [first level, default 1] [seed, default 1]
 // Two automated players: "good" drops often, thinks often and aims well; "sloppy" is slower and aims worse. Both
 // merge by dropping onto a bomb of the same size, throw where a blast does the most (kills, and wearing tough
-// zombies down), and spend every coin on the cheapest upgrade. They use no boosters, revives or ads, so real
+// zombies down), and spend every coin on the cheapest upgrade (or mastery star). They use no boosters, revives or ads, so real
 // players have it a bit easier. A lost level is played again (coins picked up are kept); after 6 losses in a row
 // the run stops there. Prints a summary for every 10 levels: play time a level, tries, losses, the lowest base
 // health, 3-star wins, the threat level and the upgrades.
 // To check late levels without playing up to them, start with upgrades and a threat level, e.g. everything maxed:
 //   UP=8,12,20,16 THREAT=1.2 node tools/bomber_balance.js 10 good 300
+// and MASTERY=30,25,15,10 for the mastery stars a player would have bought by then.
 // VERBOSE=1 also prints every try (kills, time, coins, the biggest bomb merged...).
 const { openGame } = require('./bomber_media/page');
 const LEVELS = +(process.argv[2] || 100), SKILL = process.argv[3] || 'good', FIRST = +(process.argv[4] || 1), SEED = +(process.argv[5] || 1);
 const START = { level: FIRST, coins: 0, tut: true, flags: { starter: 1, boosterHint: 1 } };
 if (process.env.UP) { const [soldiers, weapons, base, bombs] = process.env.UP.split(',').map(Number); START.up = { soldiers, weapons, base, bombs }; START.bestTier = 11; }
 if (process.env.THREAT) START.threat = +process.env.THREAT;
+if (process.env.MASTERY) { const [soldiers, weapons, base, bombs] = process.env.MASTERY.split(',').map(Number); START.mastery = { soldiers, weapons, base, bombs }; }
 
 (async () => {
   const g = await openGame({ save: START, seed: SEED, dpr: 1 });
@@ -26,9 +28,10 @@ if (process.env.THREAT) START.threat = +process.env.THREAT;
     const results = [];
     const buy = () => {   // spend coins on the cheapest upgrade, again and again
       for (; !window.__noBuy;) {
-        const opts = Object.keys(UPGRADES).filter(k => save.up[k] < UPGRADES[k].max).map(k => ({ k, p: upgradePrice(k, save.up[k]) })).sort((a, b) => a.p - b.p);
-        if (!opts.length || save.coins < opts[0].p) break;
-        save.coins -= opts[0].p; save.up[opts[0].k]++;
+        const opts = Object.keys(UPGRADES).map(k => ({ k, p: nextPrice(k) })).sort((a, b) => a.p - b.p);   // a maxed track: mastery stars
+        if (save.coins < opts[0].p) break;
+        save.coins -= opts[0].p;
+        if (isMaxed(opts[0].k)) save.mastery[opts[0].k]++; else save.up[opts[0].k]++;
       }
       writeSave(); setupBase();
     };
@@ -76,13 +79,13 @@ if (process.env.THREAT) START.threat = +process.env.THREAT;
           }
         }
       } else if (state === 'shop' || state === 'won') {
-        results.push({ level, result: 'cleared', threat: +(save.threat || 1).toFixed(2), tries: tries + 1, hp: Math.round(endHp * 100), minHp: Math.round(minHp * 100), time: Math.round(simT - levelStart), stars, coins: save.coins, kills, total: totalZombies, maxAlive, best: bestMerge, up: Object.values(save.up).join(',') });
+        results.push({ level, result: 'cleared', threat: +(save.threat || 1).toFixed(2), tries: tries + 1, hp: Math.round(endHp * 100), minHp: Math.round(minHp * 100), time: Math.round(simT - levelStart), stars, coins: save.coins, kills, total: totalZombies, maxAlive, best: bestMerge, up: Object.values(save.up).join(',') + (Object.values(save.mastery).some(Boolean) ? ' +' + Object.values(save.mastery).join(',') : '') });
         tries = 0;
         if (results.filter(r => r.result === 'cleared').length >= LEVELS || state === 'won') break;
         buy(); startLevel(save.level); levelStart = simT; maxAlive = 0; minHp = 1; endHp = 1;
       } else if (state === 'over' && stateT > 1.5) {
         tries++;
-        results.push({ level, result: 'LOST', threat: +(save.threat || 1).toFixed(2), tries, kills, total: totalZombies, time: Math.round(simT - levelStart), coins: save.coins, maxAlive, best: bestMerge, up: Object.values(save.up).join(',') });
+        results.push({ level, result: 'LOST', threat: +(save.threat || 1).toFixed(2), tries, kills, total: totalZombies, time: Math.round(simT - levelStart), coins: save.coins, maxAlive, best: bestMerge, up: Object.values(save.up).join(',') + (Object.values(save.mastery).some(Boolean) ? ' +' + Object.values(save.mastery).join(',') : '') });
         if (tries >= 6) break;
         openShop(); buy(); startLevel(save.level); levelStart = simT; maxAlive = 0; minHp = 1; endHp = 1;
       }

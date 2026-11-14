@@ -1,7 +1,8 @@
 // --- ZOMBIE BOMBER: THE WORLD ---
 // What makes levels look and play differently, besides the zombies:
 //   Weather: every zone has its own (zone.fx in bomber.js): rain, snow, ash, embers, spores, fog, fireflies,
-//            leaves, flies, dust, sand, acid rain, neon rain, motes, an aurora, and lightning in the sky.
+//            leaves, flies, dust, sand, acid rain, neon rain, motes, cherry petals, wisps, bats, shooting stars,
+//            an aurora, and lightning in the sky.
 //   Special levels (bomber.js SPECIALS) that change the battlefield:
 //            BLACKOUT: the battlefield goes dark; explosions, fires, the base's searchlight and the aim ring
 //                      light it, and the zombies' eyes glow.
@@ -110,6 +111,44 @@ const World = (() => {
             circle(cx + Math.sin(t * p.f + p.ph) * p.rx, cy + Math.cos(t * p.f * 1.3 + p.ph) * p.ry, 1.3); ctx.fill();
         }
     };
+    const meteors = {   // shooting stars streaking down the sky now and then
+        n: 3,
+        make(p, first) {
+            p.x = rand(W * 0.2, W + 120); p.y = top() + rand(-40, 50);
+            const sp = rand(380, 560); p.vx = -sp * 0.8; p.vy = sp * 0.55; p.len = rand(40, 80);
+            p.wait = first ? rand(0, 3) : rand(0.6, 3.2); p.t = 0;
+            p.life = clamp((L.groundY - 70 - p.y) / p.vy, 0.25, rand(0.6, 1));   // gone before the road
+        },
+        step(p, dt) {
+            if (p.wait > 0) { p.wait -= dt; return true; }
+            p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+            return p.t < p.life;
+        },
+        draw(p) {
+            if (p.wait > 0) return;
+            const a = Math.min(1, p.t / 0.1, (p.life - p.t) / 0.25), d = Math.hypot(p.vx, p.vy), ux = p.vx / d, uy = p.vy / d;
+            const g = ctx.createLinearGradient(p.x, p.y, p.x - ux * p.len, p.y - uy * p.len);
+            g.addColorStop(0, `rgba(255, 240, 200, ${0.9 * a})`); g.addColorStop(1, 'rgba(255, 160, 80, 0)');
+            ctx.strokeStyle = g; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - ux * p.len, p.y - uy * p.len); ctx.stroke();
+            ctx.globalCompositeOperation = 'lighter'; glow('yellow', p.x, p.y, 7, 0.8 * a); ctx.globalCompositeOperation = 'source-over';
+        }
+    };
+    const bats = {   // bats flapping across the sky
+        n: 9,
+        make(p, first) { p.x = first ? rand(-40, W + 40) : W + rand(20, 260); p.y = top() + rand(20, 120); p.vx = -rand(60, 110); p.ph = rand(0, 6); p.s = rand(0.7, 1.2); p.f = rand(10, 14); },
+        step(p, dt) { p.x += p.vx * dt; p.y += Math.sin(t * 2 + p.ph) * 12 * dt; return p.x > -40; },
+        draw(p) {
+            const flap = Math.sin(t * p.f + p.ph), s = 6 * p.s;
+            ctx.fillStyle = 'rgba(20, 14, 30, 0.9)';
+            ctx.beginPath(); ctx.moveTo(p.x, p.y);
+            ctx.quadraticCurveTo(p.x - s, p.y - s * flap, p.x - s * 1.9, p.y - s * 0.3 * flap);
+            ctx.quadraticCurveTo(p.x - s * 0.9, p.y + s * 0.2, p.x, p.y + s * 0.25);
+            ctx.quadraticCurveTo(p.x + s * 0.9, p.y + s * 0.2, p.x + s * 1.9, p.y - s * 0.3 * flap);
+            ctx.quadraticCurveTo(p.x + s, p.y - s * flap, p.x, p.y);
+            ctx.fill();
+        }
+    };
     const WEATHER = {
         rain: fall({ n: 60, wind: -110, speed: [620, 760], len: [12, 20], alpha: [0.22, 0.4], color: '185, 205, 255', width: 1.2, splash: true }),
         storm: fall({ n: 150, wind: -230, speed: [760, 900], len: [16, 26], alpha: [0.25, 0.45], color: '190, 210, 255', width: 1.4, splash: true }),
@@ -126,7 +165,9 @@ const World = (() => {
         fireflies: glows({ n: 16, from: () => L.groundY - 110, to: () => L.laneBottom, vx: [-20, 20], vy: [-14, 14], life: [5, 10], size: [1, 1.6], glow: 'yellow', core: '#fffbb0', alpha: 0.8, wander: true, blink: 3 }),
         dust: streaks({ n: 40, speed: [260, 380], color: '215, 195, 160', alpha: 0.22, haze: 'rgba(200, 170, 120, 0.1)' }),
         sand: streaks({ n: 80, speed: [320, 460], color: '235, 195, 125', alpha: 0.3, haze: 'rgba(225, 175, 105, 0.18)' }),
-        fog, flies
+        petals: flakes({ n: 30, wind: -40, speed: [30, 60], size: [1.8, 2.8], colors: ['255, 183, 213', '255, 214, 230', '245, 140, 180'], alpha: 1, sway: 1.4, swayPx: 30, leaf: true }),
+        wisps: glows({ n: 12, from: () => L.groundY - 70, to: () => L.laneBottom, vx: [-12, 12], vy: [-10, 10], life: [5, 9], size: [2, 3.2], glow: 'cyan', core: '#d6fff9', alpha: 0.7, wander: true, blink: 1.2 }),
+        fog, flies, meteors, bats
     };
 
     // the weather now: the zone's, and a storm's rain on a Lightning Storm level
@@ -186,6 +227,7 @@ const World = (() => {
     // ---------- GRAVEYARD SHIFT ----------
     // a zombie climbing out of the ground: dirt flies, a gravestone is left in the road
     function rise(z) {
+        z.under = false;   // a Digger in a graveyard comes up like the rest
         z.emerge = z.emergeMax = 1.05;
         const x = z.x, y = z.y;
         for (let i = 0; i < 10; i++) fieldParts.push({ kind: 'debris', x: x + rand(-10, 10), y: y - 2, vx: rand(-120, 120), vy: rand(-320, -120), g: 1000, drag: 0.4, life: rand(0.6, 1), t: 0, size: rand(2, 4.5), rot: rand(0, 6), vr: rand(-10, 10), floor: y + rand(-4, 8), color: pick(['#5a4030', '#6d5038', '#3d2a1d', '#7a6a5a']) });
@@ -245,7 +287,7 @@ const World = (() => {
         // eyes in the dark
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
         for (const z of zombies) {
-            if (z.dead || z.x > W + 10 || (z.emerge && z.emerge > z.emergeMax * 0.6)) continue;
+            if (z.dead || z.under || z.faded || z.x > W + 10 || (z.emerge && z.emerge > z.emergeMax * 0.6)) continue;
             const s = z.type.size * depthOf(z.y), hgt = ZOMBIE_H * s, bob = z.attacking ? 0 : -Math.abs(Math.sin(z.walk)) * 2.6 * s;
             const rise = z.emerge ? z.emerge / z.emergeMax * hgt : 0;
             const ex1 = z.x - hgt * 0.16, eyY = z.y + bob + rise - hgt * 0.84, gap = Math.max(2.2, hgt * 0.07), blink = Math.sin(t * 2.3 + z.walk * 0.7) > -0.96 ? 1 : 0.1;
@@ -255,7 +297,7 @@ const World = (() => {
         ctx.restore();
         ctx.fillStyle = '#fff3c4';
         for (const z of zombies) {
-            if (z.dead || z.x > W + 10 || (z.emerge && z.emerge > z.emergeMax * 0.6)) continue;
+            if (z.dead || z.under || z.faded || z.x > W + 10 || (z.emerge && z.emerge > z.emergeMax * 0.6)) continue;
             const s = z.type.size * depthOf(z.y), hgt = ZOMBIE_H * s, bob = z.attacking ? 0 : -Math.abs(Math.sin(z.walk)) * 2.6 * s;
             const rise = z.emerge ? z.emerge / z.emergeMax * hgt : 0;
             const ex1 = z.x - hgt * 0.16, eyY = z.y + bob + rise - hgt * 0.84, gap = Math.max(2.2, hgt * 0.07);

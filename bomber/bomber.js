@@ -1,5 +1,5 @@
 // --- ZOMBIE BOMBER ---
-// 500 levels. Zombies walk at your base from the right and you blow them up.
+// 1000 levels. Zombies walk at your base from the right and you blow them up.
 //   Tap the bomb bay to drop a bomb in. Two of the same merge into a bigger bomb (Happy Fruit Merge rules).
 //   Drag any bomb out of the bay onto the battlefield and let go: it lands right there and blows up.
 //   Bigger bombs blast wider and harder, and the big ones have tricks of their own (cluster, napalm, nuke, ...).
@@ -118,33 +118,49 @@ const ZOMBIES = {
     ghoul:      { name: 'Ghoul',       unlock: 120, skin: '#c8d6e5', shirt: '#222f3e', pants: '#10161e', size: 1.15, hp: 30,  speed: 64, dmg: 3,  pts: 140, weight: 0.7, look: 'glow' },
     juggernaut: { name: 'Juggernaut',  unlock: 140, skin: '#6ab04c', shirt: '#57606f', pants: '#2f3542', size: 2.0,  hp: 90,  speed: 15, dmg: 6,  pts: 300, weight: 0.3, look: 'armor', armor: 0.5 },
     titan:      { name: 'Titan',       unlock: 160, skin: '#1dd1a1', shirt: '#341f97', pants: '#130f40', size: 2.5,  hp: 110, speed: 11,  dmg: 12, pts: 900, weight: 0.1, look: 'horns' },
+    // From level 180 a new kind every 40-60 levels, each with a trick (mech: see zombieMech, hurtZombie and killZombie).
+    // Like the bosses, they wear another zombie's art, recolored, and what they carry is drawn in code (drawKit).
+    shielder:   { name: 'Shielder',    unlock: 180, art: 'trooper',  recolor: ['#4b7bec', 0.45], skin: '#8fbc8f', shirt: '#556b2f', pants: '#3b3b2e', size: 1.15, hp: 22, speed: 26, dmg: 3, pts: 120, weight: 0.6, mech: 'shield', plate: 1, look: 'helmet' },
+    leaper:     { name: 'Leaper',      unlock: 220, art: 'sprinter', recolor: ['#fa8231', 0.6],  skin: '#c4e538', shirt: '#e84393', pants: '#2d3436', size: 0.95, hp: 7,  speed: 36, dmg: 2, pts: 90,  weight: 0.8, mech: 'leap', look: 'mohawk' },
+    digger:     { name: 'Digger',      unlock: 260, art: 'brute',    recolor: ['#a1887f', 0.65], skin: '#4b9e6b', shirt: '#6d214f', pants: '#1e272e', size: 1.25, hp: 18, speed: 24, dmg: 3, pts: 130, weight: 0.5, mech: 'dig' },
+    medic:      { name: 'Medic',       unlock: 320, art: 'walker',   recolor: ['#ecf0f1', 0.75], skin: '#7bd389', shirt: '#4a69bd', pants: '#353b48', size: 1.1,  hp: 16, speed: 24, dmg: 2, pts: 160, weight: 0.4, mech: 'heal' },
+    kamikaze:   { name: 'Kamikaze',    unlock: 360, art: 'walker',   recolor: ['#eb3b5a', 0.45], skin: '#7bd389', shirt: '#4a69bd', pants: '#353b48', size: 1.05, hp: 9,  speed: 36, dmg: 2, pts: 110, weight: 0.6, mech: 'boom' },
+    phantom:    { name: 'Phantom',     unlock: 420, art: 'ghoul',    recolor: ['#a29bfe', 0.7],  skin: '#c8d6e5', shirt: '#222f3e', pants: '#10161e', size: 1.1,  hp: 15, speed: 42, dmg: 3, pts: 170, weight: 0.5, mech: 'phase', look: 'glow' },
+    splitter:   { name: 'Splitter',    unlock: 480, art: 'bloater',  recolor: ['#0fb9b1', 0.6],  skin: '#a3cb38', shirt: '#ffbe76', pants: '#6d4c41', size: 1.3,  hp: 20, speed: 21, dmg: 3, pts: 150, weight: 0.5, mech: 'split3', look: 'fat' },
+    necro:      { name: 'Necromancer', unlock: 540, art: 'screamer', recolor: ['#4b2a7a', 0.9, 'multiply'], skin: '#d6a2e8', shirt: '#5f27cd', pants: '#2c2c54', size: 1.2,  hp: 24, speed: 20, dmg: 3, pts: 220, weight: 0.3, mech: 'raise', look: 'hood' },
     // The milestone bosses, every 25 levels in turn (they lead the final wave, with the Kings), and what the
     // Abomination splits into. art: whose picture they wear (recolored, with something of their own drawn on);
     // mech: what they do (updateZombies, hurtZombie, killZombie). unlock 999: never in an ordinary wave.
     butcher:    { name: 'The Butcher',     unlock: 999, art: 'brute',   recolor: ['#c0392b', 0.6], skin: '#4b9e6b', shirt: '#6d214f', pants: '#1e272e', size: 2.7, hp: 85,  speed: 12, dmg: 10, pts: 1500, weight: 0, boss: true, mech: 'charge', intro: 'IT CHARGES! KEEP IT OFF THE GATE!', down: 'BUTCHER DOWN!' },
     brood:      { name: 'The Broodmother', unlock: 999, art: 'bloater', recolor: ['#8e44ad', 0.65], skin: '#a3cb38', shirt: '#ffbe76', pants: '#6d4c41', size: 2.9, hp: 90,  speed: 9,  dmg: 10, pts: 1500, weight: 0, boss: true, mech: 'brood', look: 'fat', intro: 'SHE KEEPS HATCHING MORE ZOMBIES!', down: 'BROODMOTHER DOWN!' },
-    ironking:   { name: 'The Iron King',   unlock: 999, art: 'boss',    recolor: ['#8395a7', 0.95], skin: '#26de81', shirt: '#130f40', pants: '#000000', size: 2.5, hp: 70,  speed: 11, dmg: 12, pts: 1800, weight: 0, boss: true, mech: 'armor', look: 'crown', intro: 'BLAST ITS ARMOR OFF FIRST!', down: 'IRON KING DOWN!' },
+    ironking:   { name: 'The Iron King',   unlock: 999, art: 'boss',    recolor: ['#8395a7', 0.95], skin: '#26de81', shirt: '#130f40', pants: '#000000', size: 2.5, hp: 70,  speed: 11, dmg: 12, pts: 1800, weight: 0, boss: true, mech: 'armor', plate: 0.6, look: 'crown', intro: 'BLAST ITS ARMOR OFF FIRST!', down: 'IRON KING DOWN!' },
     abom:       { name: 'The Abomination', unlock: 999, art: 'hulk',    recolor: ['#e84393', 0.5], skin: '#009432', shirt: '#2c2c54', pants: '#1e272e', size: 3.0, hp: 80,  speed: 10, dmg: 14, pts: 1600, weight: 0, boss: true, mech: 'split', look: 'horns', intro: 'KILL IT AND IT SPLITS IN TWO!', down: 'IT SPLITS!' },
+    wraith:     { name: 'The Wraith',      unlock: 999, art: 'ghoul',   recolor: ['#3c3c7a', 0.9, 'multiply'], skin: '#c8d6e5', shirt: '#222f3e', pants: '#10161e', size: 2.6, hp: 75,  speed: 12, dmg: 12, pts: 1700, weight: 0, boss: true, mech: 'blink', look: 'glow', intro: 'IT VANISHES AND COMES BACK CLOSER!', down: 'WRAITH DOWN!' },
+    colossus:   { name: 'The Colossus',    unlock: 999, art: 'titan',   recolor: ['#8d8d8d', 0.95], skin: '#1dd1a1', shirt: '#341f97', pants: '#130f40', size: 3.3, hp: 120, speed: 7,  dmg: 16, pts: 2000, weight: 0, boss: true, mech: 'stomp', look: 'horns', intro: 'ITS STOMPS SHAKE YOUR BOMB BAY!', down: 'COLOSSUS DOWN!' },
     abomling:   { name: 'Abomination',     unlock: 999, art: 'hulk',    recolor: ['#e84393', 0.5], skin: '#009432', shirt: '#2c2c54', pants: '#1e272e', size: 2.0, hp: 28,  speed: 15, dmg: 8,  pts: 300,  weight: 0, mech: 'split2', look: 'horns', down: 'IT SPLITS AGAIN!' }
 };
-const MILESTONES = ['butcher', 'brood', 'ironking', 'abom'];
+const MILESTONES = ['butcher', 'brood', 'ironking', 'abom', 'wraith', 'colossus'];
 // how many bosses lead the final wave of a level (every 5th): one more every 60 levels, at most four
 const kingsOf = lv => lv % 5 === 0 ? 1 + Math.min(3, Math.floor(lv / 60)) : 0;
 const milestoneOf = lv => lv % 25 === 0 ? MILESTONES[(lv / 25 - 1) % MILESTONES.length] : null;
 for (const [kind, t] of Object.entries(ZOMBIES)) t.kind = kind;
 
-const MAX_LEVEL = 500;
+const MAX_LEVEL = 1000;
 
 // Special levels: every 5th level from level 8 (8, 13, 18, ...) plays differently; they take turns.
 // count / hp: how many zombies and how tough, against a normal level. small: only the small kinds. coins: per zombie.
-// Blackout, Graveyard Shift and Lightning Storm change the battlefield itself (world.js).
+// Blackout, Graveyard Shift and Lightning Storm change the battlefield itself (world.js). Chain Reaction: every zombie
+// blows up when it dies. Golden Horde: 1 in 5 is golden (6x coins, sometimes a gem). Giants: 1.6x as big, 1.5x as tough.
 const SPECIALS = [
     { id: 'armored', name: 'ARMORED COLUMN', sub: 'FEWER ZOMBIES, MUCH TOUGHER!', color: '#c8d6e5', count: 0.75, hp: 1.3 },
     { id: 'rush', name: 'COIN RUSH', sub: 'EVERY ZOMBIE DROPS 3x COINS!', color: '#ffd32a', coins: 3 },
     { id: 'swarm', name: 'THE SWARM', sub: 'A FLOOD OF SMALL ZOMBIES!', color: '#badc58', count: 1.9, hp: 0.5, small: true },
     { id: 'blackout', name: 'BLACKOUT', sub: 'THE LIGHTS ARE OUT. EXPLOSIONS LIGHT THE WAY!', color: '#a9b4ff' },
     { id: 'graveyard', name: 'GRAVEYARD SHIFT', sub: 'THEY CLIMB OUT OF THE GROUND!', color: '#b8e994', count: 0.85 },
-    { id: 'storm', name: 'LIGHTNING STORM', sub: 'THE SKY FIGHTS ON YOUR SIDE!', color: '#8fd8ff', count: 1.25 }
+    { id: 'storm', name: 'LIGHTNING STORM', sub: 'THE SKY FIGHTS ON YOUR SIDE!', color: '#8fd8ff', count: 1.25 },
+    { id: 'chain', name: 'CHAIN REACTION', sub: 'EVERY ZOMBIE BLOWS UP WHEN IT GOES DOWN!', color: '#ff9f43', count: 1.3 },
+    { id: 'golden', name: 'GOLDEN HORDE', sub: 'GOLDEN ZOMBIES DROP PILES OF COINS!', color: '#ffd32a' },
+    { id: 'giants', name: 'LAND OF GIANTS', sub: 'FEWER ZOMBIES, BUT HUGE!', color: '#ff7f50', count: 0.5, giant: true }
 ];
 const specialOf = lv => lv >= 8 && lv % 5 === 3 ? SPECIALS[Math.floor(lv / 5) % SPECIALS.length] : null;
 
@@ -220,8 +236,8 @@ const BACKGROUNDS = [
 ];
 
 // ---------- ZONES ----------
-// The scenery changes every 20 levels: one of the 3 skies in one of 9 kinds of light, with its own weather
-// (fx: drawn by world.js), so each of the 25 zones looks its own. A light is a colour laid over the sky and
+// The scenery changes every 20 levels: one of the 3 skies in one of 13 kinds of light, with its own weather
+// (fx: drawn by world.js), so each of the 50 zones looks its own. A light is a colour laid over the sky and
 // the ground with a blend mode.
 const ZONE_LEVELS = 20;
 const LIGHTS = {
@@ -233,7 +249,11 @@ const LIGHTS = {
     frost: { mode: 'color', sky: 'rgba(175, 215, 255, 0.85)', ground: 'rgba(195, 222, 255, 0.6)' },
     sand: { mode: 'multiply', sky: 'rgba(255, 196, 120, 0.75)', ground: 'rgba(255, 214, 160, 0.45)' },
     neon: { mode: 'hue', sky: 'rgba(255, 60, 220, 0.6)', ground: 'rgba(90, 210, 255, 0.3)' },
-    void: { mode: 'multiply', sky: 'rgba(115, 75, 205, 0.85)', ground: 'rgba(125, 95, 205, 0.6)' }
+    void: { mode: 'multiply', sky: 'rgba(115, 75, 205, 0.85)', ground: 'rgba(125, 95, 205, 0.6)' },
+    gold: { mode: 'color', sky: 'rgba(255, 196, 70, 0.55)', ground: 'rgba(255, 205, 110, 0.35)' },
+    ember: { mode: 'multiply', sky: 'rgba(255, 130, 70, 0.85)', ground: 'rgba(255, 150, 100, 0.5)' },
+    abyss: { mode: 'multiply', sky: 'rgba(60, 120, 140, 0.88)', ground: 'rgba(80, 130, 150, 0.6)' },
+    rose: { mode: 'hue', sky: 'rgba(255, 105, 180, 0.55)', ground: 'rgba(255, 150, 200, 0.25)' }
 };
 const ZONES = [
     ['THE OUTSKIRTS', 0, 'dusk', 'fireflies'], ['DEAD DOWNTOWN', 1, 'dusk', 'rain'], ['BLOOD MOON VALLEY', 2, 'dusk', 'embers'],
@@ -245,7 +265,17 @@ const ZONES = [
     ['FROZEN HIGHWAY', 0, 'frost', 'snow'], ['DUNE ROAD', 1, 'sand', 'sand'], ['NEON STRIP', 2, 'neon', 'neon'],
     ['THE WHITEOUT', 1, 'frost', 'blizzard'], ['SCORCHED EARTH', 0, 'blood', 'hellfire'], ['THE VOID', 2, 'void', 'motes'],
     ['SANDSTORM ALLEY', 0, 'sand', 'sand dust'], ['ELECTRIC AVENUE', 1, 'neon', 'neon lightning'], ['GLACIER PASS', 2, 'frost', 'snow aurora'],
-    ['ZERO HOUR', 0, 'void', 'hellfire lightning']
+    ['ZERO HOUR', 0, 'void', 'hellfire lightning'],
+    // levels 501-1000
+    ['THE GOLDEN MILE', 0, 'gold', 'dust'], ['BAT COUNTRY', 1, 'night', 'bats fog'], ['CHERRY HILL', 2, 'rose', 'petals'],
+    ['METEOR FIELDS', 0, 'void', 'meteors'], ['WISP WOODS', 1, 'abyss', 'wisps fog'], ['THE BURNING CITY', 2, 'ember', 'embers ash'],
+    ['CRIMSON NIGHT', 0, 'blood', 'bats'], ['THE SUNKEN ROAD', 1, 'abyss', 'rain wisps'], ['STARFALL RIDGE', 2, 'night', 'meteors snow'],
+    ['ROSE GARDEN', 0, 'rose', 'petals fireflies'], ['SMOKESTACK ROW', 1, 'ash', 'ash dust'], ['THE HAUNTED HIGHWAY', 2, 'void', 'wisps bats'],
+    ['GOLDEN DUNES', 0, 'gold', 'sand'], ['VOLCANO ROAD', 1, 'ember', 'hellfire meteors'], ['THE BONEYARD', 2, 'ash', 'wisps'],
+    ['THUNDER PLAINS', 0, 'night', 'storm lightning'], ['THE FROZEN WASTES', 1, 'frost', 'blizzard aurora'], ['TOXIC TIDE', 2, 'toxic', 'acid spores'],
+    ['NEON NIGHTS', 0, 'neon', 'neon bats'], ['THE ABYSS', 1, 'abyss', 'motes wisps'], ['DESERT OF BONES', 2, 'sand', 'sand meteors'],
+    ['BLOOD RAIN', 0, 'blood', 'rain lightning'], ['THE LAST LIGHT', 1, 'gold', 'embers petals'], ['DOOMSDAY', 2, 'ember', 'meteors hellfire lightning'],
+    ['THE END OF THE ROAD', 0, 'void', 'meteors aurora wisps']
 ].map(([name, bg, light, fx], i) => ({ i, name, bg, light: LIGHTS[light], fx: fx.split(' ') }));
 const zoneIndex = lv => Math.floor((lv - 1) / ZONE_LEVELS);
 const zoneOf = lv => ZONES[zoneIndex(lv) % ZONES.length];
@@ -274,24 +304,34 @@ save.level = clamp(Math.floor(save.level) || 1, 1, MAX_LEVEL);
 save.coins = Math.max(0, Math.floor(save.coins) || 0);
 save.bestTier = clamp(Math.floor(save.bestTier) || 0, 0, BOMBS.length - 1);
 for (const k of Object.keys(UPGRADES)) save.up[k] = clamp(Math.floor(save.up[k]) || 1, 1, UPGRADES[k].max);
+save.mastery = save.mastery || {};
+for (const k of Object.keys(UPGRADES)) save.mastery[k] = Math.max(0, Math.floor(save.mastery[k]) || 0);
 save.threat = clamp(+save.threat || 1, THREAT_MIN, THREAT_MAX);
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
 // What the current upgrade levels do. Soldiers only get stronger through upgrades (zombies get tougher
-// every level), so the bombs you merge carry the later levels.
-function stats(up = save.up) {
+// every level), so the bombs you merge carry the later levels. A maxed track goes on with mastery stars.
+function stats(up = save.up, ms = save.mastery) {
+    const m = k => ms[k] || 0;
     return {
         soldiers: SOLDIER_COUNT[up.soldiers - 1],
         soldierLook: up.soldiers - 1,                                   // one look per level
-        soldierDmg: 0.6 * (1 + 0.15 * (up.soldiers - 1)) * (1 + 0.18 * (up.weapons - 1)),
-        fireRate: 1 + 0.05 * (up.weapons - 1),
-        baseHp: 20 + 10 * (up.base - 1),
+        soldierDmg: 0.6 * (1 + 0.15 * (up.soldiers - 1)) * (1 + 0.18 * (up.weapons - 1)) * (1 + 0.04 * m('soldiers')) * (1 + 0.03 * m('weapons')),
+        fireRate: (1 + 0.05 * (up.weapons - 1)) * (1 + 0.02 * m('weapons')),
+        baseHp: 20 + 10 * (up.base - 1) + 6 * m('base'),
         baseStage: Math.min(3, Math.floor((up.base - 1) / 2)),          // which base art to draw
         dropMin: Math.floor((up.bombs - 1) / 3),                        // smallest bomb you drop
-        bombDmg: 1 + 0.12 * (up.bombs - 1),
+        bombDmg: (1 + 0.12 * (up.bombs - 1)) * (1 + 0.03 * m('bombs')),
         blastMul: 1 + 0.03 * (up.bombs - 1)
     };
 }
+// Mastery: once all four tracks are maxed, endless stars, each a little more (and dearer) than the one before.
+// (Not before: cheap stars on the first maxed track would only keep you from saving up for the others.)
+const MASTERY = { soldiers: '+4% SOLDIER DAMAGE', weapons: '+3% DAMAGE · +2% RATE', base: '+6 BASE HP', bombs: '+3% BOMB DAMAGE' };
+const isMaxed = key => save.up[key] >= UPGRADES[key].max;
+const masteryOpen = () => Object.keys(UPGRADES).every(isMaxed);
+const masteryPrice = key => Math.round(upgradePrice(key, UPGRADES[key].max - 1) * 0.5 * Math.pow(1.12, save.mastery[key]));
+const nextPrice = key => !isMaxed(key) ? upgradePrice(key, save.up[key]) : masteryOpen() ? masteryPrice(key) : Infinity;
 
 // What the next level of a track gives, for the shop card
 function upgradeEffect(key) {
@@ -350,16 +390,16 @@ function drawUi(name, cx, cy, w, h) {
 
 // A one-color copy of an image (white for hit flashes, red for "this one's in the blast"), made once
 const silCache = new Map();
-// A picture recolored with its shading kept (the bosses wear other zombies' art)
-function recolor(img, color, a) {
+// A picture recolored with its shading kept (the bosses wear other zombies' art); 'multiply' also darkens it
+function recolor(img, color, a, mode = 'color') {
     if (!imgReady(img)) return null;
-    const key = img.src + '|' + color + '|' + a;
+    const key = img.src + '|' + color + '|' + a + '|' + mode;
     let c = silCache.get(key);
     if (!c) {
         c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
         const g = c.getContext('2d');
         g.drawImage(img, 0, 0);
-        g.globalCompositeOperation = 'color'; g.globalAlpha = a; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
+        g.globalCompositeOperation = mode; g.globalAlpha = a; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height);
         g.globalCompositeOperation = 'destination-in'; g.globalAlpha = 1; g.drawImage(img, 0, 0);
         silCache.set(key, c);
     }
@@ -1109,6 +1149,7 @@ function startLevel(n) {
     state = 'play'; stateT = 0;
     reviveUsed = false;
     levelT = 0; strike = null; freezeT = 0; crate = null; plane.cargo = null;
+    slowT = 0; hitstop = 0;   // no slow motion carried over from the last level
     // most levels the plane brings a supply crate (always on level 2, to show it)
     crateAt = level >= 2 && (level === 2 || Math.random() < 0.6) ? rand(9, 22) : 0;
     const fresh = Object.values(ZOMBIES).find(t => t.unlock === level && level > 1 && !t.boss);
@@ -1267,9 +1308,13 @@ function spawnPack() {
 }
 
 const isBossKind = kind => !!ZOMBIES[kind].boss;
+// the Land of Giants: each kind 1.6x as big, 1.5x as tough, slower, hitting 1.5x as hard and worth 2.5x
+const GIANTS = {};
+const giantOf = t => GIANTS[t.kind] || (GIANTS[t.kind] = { ...t, size: t.size * 1.6, hp: t.hp * 1.5, speed: t.speed * 0.8, dmg: t.dmg * 1.5, pts: t.pts * 2.5 });
 function spawnZombie(kind, x, y) {
     const tough = state === 'play' && special && !isBossKind(kind) ? special.hp || 1 : 1;
-    const type = ZOMBIES[kind], threat = type.boss ? Math.min(1.25, threatMul()) : threatMul();   // a boss: a set piece
+    const giant = state === 'play' && special && special.giant && !isBossKind(kind);
+    const type = giant ? giantOf(ZOMBIES[kind]) : ZOMBIES[kind], threat = type.boss ? Math.min(1.25, threatMul()) : threatMul();   // a boss: a set piece
     const hp = type.hp * levelHpMul(state === 'title' ? 1 : level) * tough * threat;
     const z = {
         kind, type, x, y, hp, maxHp: hp, walk: rand(0, 6), flash: 0, lunge: 0, stun: 0, burn: 0,
@@ -1278,7 +1323,9 @@ function spawnZombie(kind, x, y) {
         dead: false, targeted: false
     };
     if (type.mech) z.mechT = rand(2.2, 3.4);
-    if (type.mech === 'armor') z.plate = z.plateMax = hp * 0.6;   // armor plate, worn down before its health
+    if (type.plate) z.plate = z.plateMax = hp * type.plate;   // an armor plate or a riot shield, worn down before its health
+    if (type.mech === 'dig') z.under = true;                  // a Digger starts out underground
+    if (state === 'play' && special && special.id === 'golden' && !type.boss && Math.random() < 0.2) z.golden = true;
     if (type.boss) {
         z.y = lerp(L.laneTop, L.laneBottom, 0.55);
         if (state === 'play') {
@@ -1368,18 +1415,17 @@ function openShop() {
 }
 
 function buyUpgrade(card) {
-    const key = card.key, lv = save.up[key];
-    if (lv >= UPGRADES[key].max) return;
-    const price = upgradePrice(key, lv);
+    const key = card.key, mastery = isMaxed(key), price = nextPrice(key);
+    if (price === Infinity) return;   // maxed, and mastery not open yet
     if (save.coins < price) { floatText(card.x + card.w / 2, card.y + card.h * 0.5, 'NOT ENOUGH COINS', '#ff6b81', 16); Sound.error(); return; }
     save.coins -= price;
-    save.up[key]++;
+    if (mastery) save.mastery[key]++; else save.up[key]++;
     writeSave();
     setupBase();  // new soldiers / base HP show right away
     Sound.buy(); Haptics.buzz(20);
     for (let i = 0; i < 26; i++) { const a = rand(0, Math.PI * 2), sp = rand(80, 260); topParts.push({ kind: 'sparkle', x: card.x + card.w / 2, y: card.y + card.h * 0.3, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0, drag: 4, life: rand(0.4, 0.8), t: 0, size: rand(2.5, 5), color: '#ffd32a' }); }
     card.bump = 1;
-    floatText(card.x + card.w / 2, card.y + card.h * 0.25, 'LEVEL UP!', '#7bed9f', 24);
+    floatText(card.x + card.w / 2, card.y + card.h * 0.25, mastery ? 'MASTERY UP!' : 'LEVEL UP!', mastery ? '#ffd32a' : '#7bed9f', 24);
 }
 
 function baseDestroyed() {
@@ -1568,7 +1614,7 @@ function explode(x, tier, opts = {}) {
     let killed = 0;
     const power = 0.75 + Math.min(1.3, tier * 0.13);
     for (const z of zombies) {
-        if (z.dead) continue;
+        if (z.dead || z.faded) continue;
         const reach = R + 12 * z.type.size;
         const dx = z.x - x;
         if (Math.abs(dx) > reach) continue;
@@ -1606,13 +1652,17 @@ function multiKill(x, n, tier) {
 }
 
 function hurtZombie(z, dmg, src) {
-    if (z.dead) return false;
+    if (z.dead || z.faded) return false;   // a Phantom (or the Wraith) faded out: nothing touches it
+    if (z.under) {                         // a Digger underground: bullets can't reach it, blasts do half
+        if (src.kind === 'shot') return false;
+        dmg *= 0.5;
+    }
     if (z.plate > 0) {
         const hit = src.kind === 'shot' ? dmg * 0.25 : dmg, took = Math.min(z.plate, hit);
         z.plate -= took;
         dmg = src.kind === 'shot' ? 0 : dmg - took;
         z.flash = Math.max(z.flash, src.kind === 'shot' ? 0.03 : 0.1);
-        if (z.plate <= 0) armorBreaks(z);
+        if (z.plate <= 0) (z.type.boss ? armorBreaks : shieldBreaks)(z);
         if (dmg <= 0) return false;
     }
     z.hp -= dmg;
@@ -1643,11 +1693,17 @@ function killZombie(z, src = {}) {
         const a = rand(-Math.PI, 0);
         fieldParts.push({ kind: 'goo', x: z.x + rand(-6, 6) * s, y: z.y - h * rand(0.3, 0.7), vx: Math.cos(a) * rand(40, 200) + dir * 40, vy: Math.sin(a) * rand(80, 300), g: 900, drag: 0.4, life: 2, t: 0, size: rand(1.8, 3.6) * d, floor: z.y + rand(-6, 6), color: z.kind === 'ghoul' ? '#8ff3ff' : pick(['#7ed957', '#5fb83a', '#9be86b']) });
     }
-    if (state === 'play') { Sound.splat(); flyCoins(z.x, z.y - h * 0.5, coinsFor(z.type) * (special && special.coins || 1), 0); }
+    if (state === 'play' && src.kind !== 'self') {
+        Sound.splat(); flyCoins(z.x, z.y - h * 0.5, coinsFor(z.type) * (special && special.coins || 1) * (z.golden ? 6 : 1), 0);
+        if (z.golden) { Sound.coin(); if (Math.random() < 0.12) flyGems(z.x, z.y - h * 0.7, 1); }
+    }
+    if (special && special.id === 'chain' && state === 'play' && !z.type.boss && src.kind !== 'self') timers.push({ t: rand(0.07, 0.15), fn: () => explode(z.x, chainTier(), { small: true, dmgMul: 0.7 }) });
     if (z.type.bursts) timers.push({ t: 0.12, fn: () => toxicBurst(z.x, z.y) });
     if (z.type.mech === 'brood') timers.push({ t: 0.3, fn: () => { toxicBurst(z.x, z.y); timers.push({ t: 0.15, fn: () => hatch(z, 5, ['walker', 'runner', level >= 40 ? 'sprinter' : 'runner'], 40) }); } });
     if (z.type.mech === 'split') timers.push({ t: 0.12, fn: () => splitInto(z, 'abomling') });
     if (z.type.mech === 'split2') timers.push({ t: 0.12, fn: () => splitInto(z, 'brute') });
+    if (z.type.mech === 'split3') timers.push({ t: 0.1, fn: () => { hatch(z, 3, ['runner'], 24); Sound.splat(); } });
+    if (z.type.mech === 'boom' && src.kind !== 'self') timers.push({ t: 0.06, fn: () => explode(z.x, kamikazeTier(), { scale: 0.75 }) });   // its TNT goes off
     if (z === boss || (z.type.mech && z.type.down)) {
         if (z === boss) boss = zombies.find(o => !o.dead && o !== z && (o.type.boss || o.type.mech)) || null;
         if (z.type.boss || z.type.mech === 'split2') {
@@ -1698,7 +1754,7 @@ function updateSoldiers(dt) {
         s.cd -= dt;
         if (s.cd > 0 || (state !== 'play' && state !== 'title')) continue;
         let target = null;
-        for (const z of zombies) if (!z.dead && z.x < s.x + SOLDIER_RANGE && z.x < W - 12 && (!target || z.x < target.x)) target = z;
+        for (const z of zombies) if (!z.dead && !z.under && !z.faded && z.x < s.x + SOLDIER_RANGE && z.x < W - 12 && (!target || z.x < target.x)) target = z;
         if (target) { soldierShoot(s, target); s.cd = 1.0 / rate * rand(0.85, 1.15); }
     }
 }
@@ -1741,13 +1797,15 @@ function updateZombies(dt) {
         if (z.emerge > 0) { z.emerge = Math.max(0, z.emerge - dt); continue; }   // climbing out of the ground
         if (z.popIn > 0) z.popIn = Math.max(0, z.popIn - dt);
         if (z.stun > 0) { z.stun -= dt; continue; }
-        if (z.type.mech && bossMech(z, dt)) continue;   // true: it stands still this frame (the Butcher winding up)
-        let sp = z.type.speed * z.speedMul * (z.charging > 0 ? 5 : 1);
+        if (z.type.mech && zombieMech(z, dt)) continue;   // true: it stands still this frame (winding up, crouching...)
+        let sp = z.type.speed * z.speedMul * (z.charging > 0 ? 5 : z.leapT > 0 ? 3 : z.under ? 1.5 : 1);
         if (screamers.length && !z.type.screams && screamers.some(s => Math.abs(s.x - z.x) < 90)) sp *= 1.35;
         if (z.x > z.stopX) {
             z.x = Math.max(z.stopX, z.x - sp * dt);
             z.walk += dt * (4 + sp * 0.14);
             z.attacking = false;
+        } else if (z.type.mech === 'boom') {
+            selfDestruct(z);   // a Kamikaze at the gate blows itself up
         } else {
             z.attacking = true;
             z.attackT -= dt;
@@ -1757,10 +1815,11 @@ function updateZombies(dt) {
     zombies = zombies.filter(z => !z.gone);
 }
 
-// The Butcher rears back, roars and charges; the Broodmother hatches zombies as she walks.
-// Returns true while the boss stands still.
-function bossMech(z, dt) {
+// What the zombies with a trick do, every frame (the bosses' tricks and the later kinds').
+// Returns true while it stands still.
+function zombieMech(z, dt) {
     const t = z.type, d = depthOf(z.y), h = ZOMBIE_H * t.size * d;
+    if (z.casting > 0) z.casting -= dt;
     if (t.mech === 'charge') {
         const aim = z.windup > 0 ? -2.3 : z.charging > 0 ? 1.35 : 0.3 + Math.sin(z.walk) * 0.12;   // the cleaver: raised, thrust forward, at its side
         z.cleaverA = z.cleaverA === undefined ? aim : z.cleaverA + (aim - z.cleaverA) * Math.min(1, dt * 14);
@@ -1783,7 +1842,88 @@ function bossMech(z, dt) {
     } else if (t.mech === 'brood' && z.x < W - 24 && (z.hatched || 0) < 24) {
         z.mechT -= dt;
         if (z.mechT <= 0) { z.mechT = rand(2.4, 3.2); hatch(z, 2, ['walker', 'runner']); }
+    } else if (t.mech === 'leap') {   // a Leaper crouches, then jumps far ahead
+        if (z.crouch > 0) { z.crouch -= dt; if (z.crouch <= 0) { z.leapT = 0.45; Sound.whoosh(); } return true; }
+        if (z.leapT > 0) {
+            z.leapT -= dt;
+            z.hop = Math.sin(Math.PI * clamp(1 - z.leapT / 0.45, 0, 1)) * h * 0.55;
+            if (z.leapT <= 0) { z.hop = 0; for (let i = 0; i < 4; i++) fieldParts.push({ kind: 'smoke', dust: true, x: z.x + rand(-10, 10), y: z.y, vx: rand(-50, 50), vy: rand(-20, 0), g: 0, drag: 3, life: 0.5, t: 0, size: 8, grow: 1.4, alpha: 0.4 }); }
+        } else if (z.x > z.stopX + 50 && z.x < W - 20) {
+            z.mechT -= dt;
+            if (z.mechT <= 0) { z.mechT = rand(2.4, 3.6); z.crouch = 0.28; }
+        }
+    } else if (t.mech === 'dig') {   // a Digger tunnels along fast and comes up close to the base
+        if (z.under) {
+            if (Math.random() < dt * 16) fieldParts.push({ kind: 'debris', x: z.x + rand(-8, 8), y: z.y - 4, vx: rand(10, 80), vy: rand(-160, -60), g: 1000, drag: 0.4, life: 0.5, t: 0, size: rand(1.5, 3), rot: rand(0, 6), vr: rand(-10, 10), floor: z.y + rand(-3, 5), color: pick(['#5a4030', '#6d5038', '#3d2a1d']) });
+            if (z.x < z.stopX + 110 && z.x < W - 30) surface(z);
+        }
+    } else if (t.mech === 'heal' && z.x < W - 10) {   // a Medic heals the zombies around it
+        z.mechT -= dt;
+        if (z.mechT <= 0) {
+            z.mechT = 2.2; z.casting = 0.5;
+            fieldParts.push({ kind: 'ring', x: z.x, y: z.y - h * 0.4, vx: 0, vy: 0, g: 0, drag: 0, life: 0.6, t: 0, size: 95, color: '46, 213, 115' });
+            for (const o of zombies) if (!o.dead && o !== z && !o.type.boss && Math.abs(o.x - z.x) < 95 && o.hp < o.maxHp) {
+                o.hp = Math.min(o.maxHp, o.hp + o.maxHp * 0.08);
+                const oh = ZOMBIE_H * o.type.size * depthOf(o.y);
+                fieldParts.push({ kind: 'sparkle', x: o.x + rand(-6, 6), y: o.y - oh * 0.8, vx: 0, vy: -40, g: 0, drag: 0, life: 0.7, t: 0, size: 3, color: '#2ed573' });
+            }
+        }
+    } else if (t.mech === 'phase') {   // a Phantom fades in and out; faded, nothing can touch it
+        z.mechT -= dt;
+        if (z.mechT <= 0) { z.faded = !z.faded; z.mechT = z.faded ? 1.1 : rand(1.8, 2.5); phasePuff(z); }
+    } else if (t.mech === 'raise' && z.x < W - 30 && (z.raised || 0) < 10) {   // a Necromancer raises the dead
+        z.mechT -= dt;
+        if (z.mechT <= 0) {
+            z.mechT = rand(4.5, 5.5); z.casting = 0.7; z.raised = (z.raised || 0) + 2;
+            for (let i = 0; i < 2; i++) {
+                const c = spawnZombie(pick(['walker', 'runner']), clamp(z.x + (i ? 1 : -1) * rand(30, 70), L.stopX + 60, W - 20), clamp(z.y + rand(-20, 20), L.laneTop, L.laneBottom));
+                totalZombies++; World.rise(c);
+            }
+            lights.push({ x: z.x, y: z.y - h * 0.9, r: 90, a: 0.5, t: 0, life: 0.6, color: 'purple' });
+        }
+    } else if (t.mech === 'blink') {   // the Wraith vanishes and comes back further along
+        if (z.blinkT > 0) { z.blinkT -= dt; if (z.blinkT <= 0) { z.faded = false; phasePuff(z); } return true; }
+        if (z.x > z.stopX + 60 && z.x < W - 20) {
+            z.mechT -= dt;
+            if (z.mechT <= 0) { z.mechT = rand(3, 4.4); phasePuff(z); z.x = Math.max(z.stopX + 20, z.x - rand(70, 110)); z.faded = true; z.blinkT = 0.5; Sound.whoosh(); }
+        }
+    } else if (t.mech === 'stomp' && z.x < W - 20) {   // the Colossus stomps, and the bombs in your bay jump
+        z.mechT -= dt;
+        if (z.mechT <= 0) { z.mechT = rand(3.5, 4.8); stomp(z); }
     }
+}
+// a Digger comes up out of the ground
+function surface(z) {
+    z.under = false; z.emerge = z.emergeMax = 0.55;
+    for (let i = 0; i < 10; i++) { const a = rand(-Math.PI * 0.85, -Math.PI * 0.15), sp = rand(80, 220); fieldParts.push({ kind: 'debris', x: z.x, y: z.y - 2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 1100, drag: 0.3, life: rand(0.5, 0.9), t: 0, size: rand(2, 4), rot: rand(0, 6), vr: rand(-12, 12), floor: z.y + rand(-6, 8), color: pick(['#5a4030', '#6d5038', '#3d2a1d']) }); }
+    Sound.dig();
+}
+// a Phantom or the Wraith goes (or comes back): a puff of ghostly smoke
+function phasePuff(z) {
+    const h = ZOMBIE_H * z.type.size * depthOf(z.y);
+    for (let i = 0; i < 8; i++) fieldParts.push({ kind: 'smoke', x: z.x + rand(-12, 12), y: z.y - h * rand(0.2, 0.9), vx: rand(-40, 40), vy: rand(-50, -10), g: 0, drag: 2, life: rand(0.4, 0.7), t: 0, size: rand(8, 14) * Math.sqrt(z.type.size), grow: 1.4, alpha: 0.45, tint: 'purple' });
+}
+// the Colossus stomps: the ground shakes, and so do the bombs in your bay
+function stomp(z) {
+    const h = ZOMBIE_H * z.type.size * depthOf(z.y);
+    addShake(14); Sound.land(1); Sound.boom(2);
+    floatText(clamp(z.x, 60, W - 60), z.y - h - 10, 'STOMP!', '#ffb142', 22, 0.9);
+    fieldParts.push({ kind: 'ring', x: z.x, y: z.y, vx: 0, vy: 0, g: 0, drag: 0, life: 0.6, t: 0, size: 160, color: '200, 170, 120' });
+    for (let i = 0; i < 12; i++) fieldParts.push({ kind: 'smoke', dust: true, x: z.x + rand(-40, 40), y: z.y + rand(-4, 4), vx: rand(-160, 160), vy: rand(-30, 0), g: 0, drag: 3, life: rand(0.6, 1), t: 0, size: rand(12, 20), grow: 1.5, alpha: 0.5 });
+    if (state === 'play') for (const b of bayBombs()) if (!b.isDropping) Body.setVelocity(b, { x: b.velocity.x + rand(-2.5, 2.5), y: b.velocity.y - rand(4, 7) });
+}
+// a Kamikaze reaches the gate and blows itself up: a big hit on the base (and on the zombies next to it)
+const kamikazeTier = () => clamp(stats().dropMin + 2, 2, 9);
+const chainTier = () => clamp(stats().dropMin + 2, 2, 9);   // a Chain Reaction's blasts
+function selfDestruct(z) {
+    const dmg = Math.max(1, Math.round(z.type.dmg * 8 * levelDmgMul(level)));
+    killZombie(z, { kind: 'self', x: z.x + 10 });
+    explode(z.x, kamikazeTier(), { scale: 0.7 });
+    if (state !== 'play') return;
+    baseHP = Math.max(0, baseHP - dmg);
+    baseFlash = 0.3; hurtA = Math.min(0.8, hurtA + 0.5); Haptics.buzz(60);
+    floatText(L.stopX - 30, L.baseBottom - 74, `-${dmg}`, '#ff4757', 26);
+    if (baseHP <= 0) baseFalls();
 }
 // zombies popping out of a Broodmother (or out of the Abomination, when it splits)
 function hatch(z, n, kinds, spread = 18) {
@@ -1809,6 +1949,14 @@ function armorBreaks(z) {
     floatText(clamp(z.x, 80, W - 80), z.y - h - 14, 'ARMOR BROKEN!', '#d6e4ff', 24, 1.4, true);
     for (let i = 0; i < 14; i++) fieldParts.push({ kind: 'debris', x: z.x + rand(-20, 20), y: z.y - h * rand(0.3, 0.9), vx: rand(-260, 260), vy: rand(-360, -120), g: 1000, drag: 0.3, life: rand(0.8, 1.3), t: 0, size: rand(4, 8), rot: rand(0, 6), vr: rand(-14, 14), floor: z.y + rand(-6, 10), color: pick(['#c8d0d8', '#9aa6b2', '#e8eef4', '#7f8b97']) });
     Sound.clang(); addShake(9); flashA = Math.max(flashA, 0.2); flashColor = '220, 230, 255';
+}
+
+// a Shielder's riot shield shatters
+function shieldBreaks(z) {
+    const d = depthOf(z.y), h = ZOMBIE_H * z.type.size * d;
+    floatText(z.x, z.y - h - 8, 'SHIELD DOWN!', '#a5d8ff', 15, 0.9);
+    for (let i = 0; i < 8; i++) fieldParts.push({ kind: 'debris', x: z.x - h * 0.3 + rand(-6, 6), y: z.y - h * rand(0.2, 0.8), vx: rand(-180, 80), vy: rand(-260, -80), g: 1000, drag: 0.3, life: rand(0.6, 1), t: 0, size: rand(3, 6), rot: rand(0, 6), vr: rand(-14, 14), floor: z.y + rand(-6, 8), color: pick(['#a5c8e8', '#d8e8f5', '#7f9cb8']) });
+    Sound.clang();
 }
 
 // A dead zombie flies (ragdoll), bounces once, lies there and fades
@@ -2478,6 +2626,8 @@ function drawEntities() {
     for (const z of zombies) {
         const s = depthOf(z.y) * z.type.size;
         let k = 1;
+        if (z.under) continue;
+        if (z.faded) k = 0.3;
         if (z.dead) k = clamp(1 - z.ay / 260, 0.25, 1) * (z.landed ? clamp(1 - z.landT / 0.9, 0, 1) : 1);
         ctx.globalAlpha = k; ellipse(z.x, z.y + 1, 15 * s * k, 4.5 * s * k); ctx.fill(); ctx.globalAlpha = 1;
     }
@@ -2569,6 +2719,7 @@ function drawPlane() {
 
 function drawZombie(z) {
     const t = z.type, d = depthOf(z.y), s = t.size * d, h = ZOMBIE_H * s;
+    if (z.under && !z.dead) { drawMound(z, s); return; }
     const img = zombieImgs[t.art || z.kind];
     const w = imgReady(img) ? h * img.naturalWidth / img.naturalHeight : h;
     ctx.save();
@@ -2585,18 +2736,27 @@ function drawZombie(z) {
             ctx.beginPath(); ctx.rect(z.x - h * 2, z.y - h * 3, h * 4, h * 3 + 1.5); ctx.clip();
             ctx.translate(0, z.emerge / z.emergeMax * h * (0.9 + 0.1 * Math.sin(time * 40)));
         }
-        ctx.translate(z.x - (z.attacking ? z.lunge * 7 * s : 0), z.y + bob);
+        ctx.translate(z.x - (z.attacking ? z.lunge * 7 * s : 0), z.y + bob - (z.hop || 0));
         ctx.rotate(rock);
+        if (z.crouch > 0) ctx.scale(1.12, 0.82);
+        if (t.mech === 'phase' || t.mech === 'blink') ctx.globalAlpha *= z.faded ? 0.16 + 0.06 * Math.sin(time * 24) : 0.9;   // ghosts
         if (z.stun > 0) ctx.rotate(0.12);
         if (z.windup > 0) ctx.rotate(0.14 + 0.03 * Math.sin(time * 60));
         else if (z.charging > 0) ctx.rotate(-0.16);
         if (z.popIn > 0) { const k = 1 - z.popIn / 0.3 * 0.65; ctx.scale(k, k); }
     }
     if (imgReady(img)) {
-        const rc = t.recolor && (t.mech === 'armor' && !(z.plate > 0) ? [t.recolor[0], 0.3] : t.recolor);   // the Iron King, its armor gone
-        ctx.drawImage(rc && recolor(img, rc[0], rc[1]) || img, -w / 2, -h, w, h);
+        const rc = z.golden ? ['#ffc312', 0.95] : t.recolor && (t.mech === 'armor' && !(z.plate > 0) ? [t.recolor[0], 0.3] : t.recolor);   // the Iron King, its armor gone
+        ctx.drawImage(rc && recolor(img, rc[0], rc[1], rc[2]) || img, -w / 2, -h, w, h);
         const tint = (color, a) => { const sil = silhouette(img, color); if (sil && a > 0) { ctx.globalAlpha *= a; ctx.drawImage(sil, -w / 2, -h, w, h); ctx.globalAlpha /= a; } };
-        if (t.mech && !z.dead) drawBossKit(z, w, h, tint);
+        if (t.mech && !z.dead) drawKit(z, w, h, tint);
+        if (z.golden && !z.dead) {   // it shines
+            ctx.globalCompositeOperation = 'lighter';
+            tint('#a87b00', 0.55 + 0.25 * Math.max(0, Math.sin(time * 5 + z.walk)));
+            glow('yellow', 0, -h * 0.5, h * 0.55, 0.18);
+            ctx.globalCompositeOperation = 'source-over';
+            if (Math.random() < 0.12) fieldParts.push({ kind: 'sparkle', x: z.x + rand(-w, w) * 0.35, y: z.y - h * rand(0.2, 0.9), vx: 0, vy: -20, g: 0, drag: 0, life: 0.5, t: 0, size: rand(2, 3.5), color: '#fff3a0' });
+        }
         if (z.charred) tint('#1a1210', 0.75);
         else if (z.burn > 0) tint('#ff7a1a', 0.35 + 0.15 * Math.sin(time * 30));
         if (freezeT > 0 && !z.dead) tint('#9fe6ff', 0.55 * Math.min(1, freezeT / 0.6));
@@ -2616,8 +2776,18 @@ function drawZombie(z) {
     }
 }
 
-// What each boss has of its own, drawn over its borrowed picture (feet at 0, facing left, w x h)
-function drawBossKit(z, w, h, tint) {
+// a Digger underground: a mound of earth on the move
+function drawMound(z, s) {
+    const x = z.x, y = z.y, wob = Math.sin(z.walk * 2) * 1.5;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ellipse(x, y + 1, 22 * s, 5 * s); ctx.fill();
+    ctx.fillStyle = '#5a4030'; ellipse(x, y - 2, 20 * s, 7 * s + wob * 0.3); ctx.fill();
+    ctx.fillStyle = '#6d5038'; ellipse(x - 3 * s, y - 5 * s, 13 * s, 6 * s); ctx.fill();
+    ctx.fillStyle = '#3d2a1d';
+    for (let i = 0; i < 4; i++) { circle(x + (i - 1.5) * 8 * s, y - 4 * s - (i % 2) * 3 * s + wob, 2.2 * s); ctx.fill(); }
+}
+
+// What the bosses and the later kinds carry, drawn over the borrowed picture (feet at 0, facing left, w x h)
+function drawKit(z, w, h, tint) {
     const t = z.type, k = h / 100;
     ctx.save();
     if (t.mech === 'charge') {   // a cleaver in its fist
@@ -2649,6 +2819,56 @@ function drawBossKit(z, w, h, tint) {
         for (let i = 0; i < 5; i++) { const q = i / 4, x = lerp(-w * 0.18, w * 0.12, q), y = lerp(-h * 0.72, -h * 0.38, q); ctx.beginPath(); ctx.moveTo(x - 4 * k, y + 2 * k); ctx.lineTo(x + 4 * k, y - 2 * k); ctx.stroke(); }
         ctx.globalCompositeOperation = 'lighter';
         glow('purple', 0, -h * 0.5, h * 0.55, 0.12 + 0.05 * Math.sin(time * 3));
+    } else if (t.mech === 'shield' && z.plate > 0) {   // a riot shield held out in front
+        const sw = Math.max(8 * k, w * 0.22), sh = h * 0.7, sx = -w * 0.47, sy = -h * 0.8;
+        ctx.fillStyle = 'rgba(170, 200, 235, 0.62)'; ctx.strokeStyle = '#1e2d3d'; ctx.lineWidth = 2.2 * k;
+        rrect(sx, sy, sw, sh, 3 * k); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'rgba(30, 45, 61, 0.55)'; ctx.fillRect(sx + sw * 0.15, sy + sh * 0.16, sw * 0.7, sh * 0.06);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; ctx.fillRect(sx + sw * 0.2, sy + sh * 0.3, sw * 0.12, sh * 0.55);
+        if (z.plate < z.plateMax * 0.5) {   // cracked
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)'; ctx.lineWidth = 1.2 * k;
+            ctx.beginPath(); ctx.moveTo(sx + sw * 0.5, sy + sh * 0.35); ctx.lineTo(sx + sw * 0.25, sy + sh * 0.5); ctx.lineTo(sx + sw * 0.6, sy + sh * 0.62); ctx.lineTo(sx + sw * 0.35, sy + sh * 0.8); ctx.stroke();
+        }
+    } else if (t.mech === 'dig') {   // a miner's helmet and its lamp
+        const hx = -w * 0.2, hy = -h * 0.88, r = h * 0.12;
+        ctx.fillStyle = '#f7b731'; ctx.strokeStyle = '#7d5a10'; ctx.lineWidth = 1.4 * k;
+        ctx.beginPath(); ctx.arc(hx, hy, r, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillRect(hx - r * 1.25, hy - 1 * k, r * 2.5, 2.4 * k);
+        ctx.fillStyle = '#fff6c2'; circle(hx - r * 0.85, hy - r * 0.45, r * 0.32); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter'; glow('yellow', hx - r * 1.2, hy - r * 0.45, r * 1.6, 0.5);
+    } else if (t.mech === 'heal' || t.mech === 'raise') {   // a staff with a glowing orb (a cross for the Medic)
+        const sx = -w * 0.34, top = -h * 0.98, heal = t.mech === 'heal', lift = z.casting > 0 ? -h * 0.06 : 0;
+        ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 2.6 * k; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(sx, -h * 0.12 + lift); ctx.lineTo(sx, top + lift); ctx.stroke();
+        const oy = top + lift - 5 * k, r = 5 * k;
+        ctx.fillStyle = heal ? '#2ed573' : '#a55eea'; circle(sx, oy, r); ctx.fill();
+        if (heal) { ctx.fillStyle = '#fff'; ctx.fillRect(sx - r * 0.2, oy - r * 0.65, r * 0.4, r * 1.3); ctx.fillRect(sx - r * 0.65, oy - r * 0.2, r * 1.3, r * 0.4); }
+        else { ctx.fillStyle = '#2d1b47'; circle(sx - r * 0.3, oy - r * 0.1, r * 0.22); ctx.fill(); circle(sx + r * 0.3, oy - r * 0.1, r * 0.22); ctx.fill(); }
+        ctx.globalCompositeOperation = 'lighter';
+        glow(heal ? 'green' : 'purple', sx, oy, r * (z.casting > 0 ? 6 : 3.5), z.casting > 0 ? 0.7 : 0.35 + 0.1 * Math.sin(time * 4));
+    } else if (t.mech === 'boom') {   // a barrel of TNT on its back, the fuse fizzing
+        drawBomb(w * 0.22, -h * 0.58, h * 0.17, 4, 0.35);
+        ctx.globalCompositeOperation = 'lighter';
+        glow('yellow', w * 0.3, -h * 0.8, h * 0.08 * (0.8 + 0.4 * Math.random()), 0.9);
+    } else if (t.mech === 'split3') {   // pods that will split off
+        [[0.12, 0.55, 8], [-0.08, 0.38, 7], [0.24, 0.32, 6]].forEach(([fx, fy, r], i) => {
+            const rr = r * k * (1 + 0.1 * Math.sin(time * 5 + i * 2));
+            ctx.fillStyle = 'rgba(15, 185, 177, 0.9)'; circle(w * fx, -h * fy, rr); ctx.fill();
+            ctx.strokeStyle = 'rgba(10, 60, 60, 0.85)'; ctx.lineWidth = 1.2 * k; ctx.stroke();
+            ctx.fillStyle = 'rgba(220, 255, 250, 0.6)'; circle(w * fx - rr * 0.35, -h * fy - rr * 0.35, rr * 0.3); ctx.fill();
+        });
+    } else if (t.mech === 'phase' || t.mech === 'blink') {   // a cold glow
+        ctx.globalCompositeOperation = 'lighter';
+        glow('purple', 0, -h * 0.55, h * 0.6, z.faded ? 0.08 : 0.22 + 0.06 * Math.sin(time * 3));
+    } else if (t.mech === 'stomp') {   // cracks in the stone, glowing
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        const cracks = [[[-0.05, 0.75], [0.06, 0.62], [-0.02, 0.52], [0.1, 0.4]], [[0.2, 0.7], [0.14, 0.58], [0.24, 0.5]], [[-0.18, 0.45], [-0.08, 0.35], [-0.16, 0.25]]];
+        for (const pass of [['#2d2d2d', 1.9], ['#ff9f43', 0.8]]) {
+            ctx.strokeStyle = pass[0]; ctx.lineWidth = pass[1] * k;
+            for (const c of cracks) { ctx.beginPath(); c.forEach(([fx, fy], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, w * fx, -h * fy)); ctx.stroke(); }
+        }
+        ctx.globalCompositeOperation = 'lighter';
+        glow('orange', w * 0.04, -h * 0.55, h * 0.3, 0.18 + 0.08 * Math.sin(time * 2));
     }
     ctx.restore();
 }
@@ -3130,8 +3350,8 @@ function drawShop() {
     text(fmt(save.coins), x + 41, y + 26, 19, '#ffd32a', 'left');
     drawFreeCoinsBtn();
     for (const c of SHOP_CARDS()) {
-        const lv = save.up[c.key], up = UPGRADES[c.key], maxed = lv >= up.max;
-        const price = maxed ? 0 : upgradePrice(c.key, lv), afford = !maxed && save.coins >= price;
+        const lv = save.up[c.key], up = UPGRADES[c.key], stars = save.mastery[c.key];
+        const price = nextPrice(c.key), done = price === Infinity, maxed = lv >= up.max && !done, afford = save.coins >= price;
         const bump = 1 + (c.ref.bump || 0) * 0.06;
         ctx.save();
         ctx.translate(c.x + c.w / 2, c.y + c.h / 2); ctx.scale(bump, bump); ctx.translate(-c.x - c.w / 2, -c.y - c.h / 2);
@@ -3160,9 +3380,16 @@ function drawShop() {
             drawBomb(px, py + 2, Math.min(28, c.h * 0.2), Math.min(BOMBS.length - 1, nextSt.dropMin + 2), Math.sin(time * 2) * 0.08);
         }
         text(up.name, px, c.y + c.h * 0.5, 17, '#fff');
-        text(maxed ? 'MAX LEVEL' : `LV ${lv} → ${lv + 1}`, px, c.y + c.h * 0.61, 12, '#d6ccff', 'center', '#1a1026', 3);
-        if (!maxed) text(upgradeEffect(c.key), px, c.y + c.h * 0.705, 11, '#7bed9f', 'center', '#1a1026', 3);
-        if (!maxed) {
+        if (done) {   // maxed; its mastery stars open once the other tracks are maxed too
+            text('MAX LEVEL', px, c.y + c.h * 0.61, 12, '#d6ccff', 'center', '#1a1026', 3);
+            text('MAX ALL 4 FOR MASTERY', px, c.y + c.h * 0.705, 10, '#ffe066', 'center', '#1a1026', 3);
+        } else if (maxed) {   // mastery: a star and how many
+            const label = `MASTERY ${stars} → ${stars + 1}`, tw = textWidth(label, 12);
+            drawUi('icon_star', px - tw / 2 - 9, c.y + c.h * 0.61, 15, 15);
+            text(label, px + 6, c.y + c.h * 0.61, 12, '#ffd32a', 'center', '#1a1026', 3);
+        } else text(`LV ${lv} → ${lv + 1}`, px, c.y + c.h * 0.61, 12, '#d6ccff', 'center', '#1a1026', 3);
+        if (!done) text(maxed ? MASTERY[c.key] : upgradeEffect(c.key), px, c.y + c.h * 0.705, 11, maxed ? '#ffe066' : '#7bed9f', 'center', '#1a1026', 3);
+        if (!done) {
             const bx = c.x + 26, bw = c.w - 52, bh = 24, by = c.y + c.h - bh - 8;
             if (afford) button(bx, by, bw, bh, '#4cd964', '#1e9e46', null);
             else button(bx, by, bw, bh, '#7d6fb0', '#4a3f7a', null, 16, 0.7);
@@ -3192,7 +3419,7 @@ function drawShopField() {
         text(`NEXT: LEVEL ${lv}`, W / 2, cy - 22, 28, '#ffd32a');
         text(`${totalFor(lv)} ZOMBIES · ${levelWaves(lv)} WAVES`, W / 2, cy + 6, 16, '#fff');
         const mile = milestoneOf(lv);
-        const line = sp ? [`SPECIAL LEVEL: ${sp.name}`, sp.color] : mile ? [`BOSS LEVEL: ${ZOMBIES[mile].name.toUpperCase()}!`, '#ff6b81'] : lv % 5 === 0 ? ['THE ZOMBIE KING IS COMING!', '#ff6b6b'] : fresh ? [`NEW ZOMBIE: ${fresh.name.toUpperCase()}`, '#9fe8ff']
+        const line = sp ? [`SPECIAL LEVEL: ${sp.name}`, sp.color] : mile ? [`BOSS LEVEL: ${ZOMBIES[mile].name.toUpperCase()}!`, '#ff6b81'] : fresh ? [`NEW ZOMBIE: ${fresh.name.toUpperCase()}`, '#9fe8ff'] : lv % 5 === 0 ? ['THE ZOMBIE KING IS COMING!', '#ff6b6b']
             : streak >= 1 ? [`WIN STREAK ${streak}: +${streakPct()}% COINS`, '#ffb142'] : ['SPEND YOUR COINS ON UPGRADES', '#9fe8ff'];
         text(line[0], W / 2, cy + 28, 13, line[1], 'center', '#120d22', 3);
         // where you are in the zone: a pip per level, bigger for the Zombie King's
