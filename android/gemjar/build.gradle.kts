@@ -71,4 +71,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-ads:25.5.0")          // AdMob
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")     // ad consent (EU/UK and other regions)
     implementation("com.android.billingclient:billing:9.1.0")                  // the "No Ads" purchase
+    // The app has no fragments of its own. Google's Play services libraries bring this one in, and on their own
+    // they settle for the 2019 version (1.1.0), which Play Console reports as outdated; so a current one is named
+    // here. 1.8.9 is the last of the 1.8 line: it only lifts androidx.activity (to 1.8.1) with it, where 1.9 would
+    // replace thirty more libraries under the ad SDK.
+    implementation("androidx.fragment:fragment:1.8.9")
 }
