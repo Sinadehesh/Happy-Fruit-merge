@@ -209,6 +209,32 @@ const WATER = SKIN && SKIN.water && !FLOAT && !MINE ? Object.assign({
     drag: 0.016,       // how much the water slows a gem (added to its air friction), and
     dragFast: 0.003    // ... how much more for every px a step it moves, so a gem that plunges in is braked hard
 }, SKIN.water === true ? null : SKIN.water) : null;
+// A volcano set (GAME.skins erupt: the Volcano Gems): merges heat the volcano until it erupts, see ERUPTION below.
+// Not in the Gem Mine, whose stages are measured without it. (erupt: true, or an object that changes these numbers)
+const ERUPT = SKIN && SKIN.erupt && !MINE ? Object.assign({
+    full: 70,     // how much heat fills the bar; a merge adds the level of the gem it makes
+    burn: 2       // an eruption burns the gems of this many lowest levels
+}, SKIN.erupt === true ? null : SKIN.erupt) : null;
+// A scales set (GAME.skins scales: the Royal Treasury): the jar's floor is the beam of a pair of scales and leans
+// to the heavier side, see SCALES below. Not in the Gem Mine, whose stages are built on a level floor.
+// (scales: true, or an object that changes these numbers)
+const SCALES = SKIN && SKIN.scales && !FLOAT && !MINE ? Object.assign({
+    max: 5,         // how far the floor leans, in degrees
+    level: 6,       // it stays level while the gems' centre of weight is within this many px of the middle,
+    reach: 20,      // and leans all the way when it is this many px further off...
+    steady: 100,    // ...counting a weight like this in the middle too, so a few small gems barely tip it
+    speed: 0.05     // how fast it turns, degrees a physics step (3 degrees a second)
+}, SKIN.scales === true ? null : SKIN.scales) : null;
+// A calling set (GAME.skins call: the Gem Pets): while a gem is held, the same gems in the jar hop toward the
+// finger, see COME HERE below. In every mode. (call: true, or an object that changes these numbers)
+const CALL = SKIN && SKIN.call ? Object.assign({
+    wait: 12,       // physics steps a gem is held before the others answer (a quick tap calls nobody)
+    every: 32,      // steps from one hop of a pet to its next
+    hop: 3.1,       // how hard it jumps, px a step...
+    stride: 1.6     // ...and how fast it goes sideways while in the air
+}, SKIN.call === true ? null : SKIN.call) : null;
+// the level floor is this far above a plain jar's, so the low end of the leaning beam stays in sight
+const SCALES_RISE = SCALES ? Math.round(GAME_WIDTH / 2 * Math.tan(SCALES.max * Math.PI / 180) + 10) : 0;
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
 // (Not in the Daily Challenge, which is the same game for everyone, nor in Gem Rush or the Gem Mine.)
@@ -445,6 +471,87 @@ function splash(gem) {
     FX.splash(gem.position.x, TIERS[gem.tier], gem.tier, impact);
 }
 
+// --- ERUPTION --- (a set with erupt in GAME.skins, the Volcano Gems)
+// Every merge heats the volcano: the gem it makes adds its level to the heat, shown by the bar at the side of the
+// jar. When the bar is full the volcano erupts: the jar rumbles, lava bursts up from the floor, every gem jumps
+// a little (the light ones more), and each gem of the lowest levels (ERUPT.burn of them) lying in the jar burns
+// away. Then the heat starts again from nothing. It follows only from the merges: nothing here depends on time
+// or on how the player is doing.
+let heat = 0;
+let eruptIn = -1;   // physics steps until the lava bursts (-1: no eruption on its way)
+const heatFill = ERUPT ? (() => {
+    const bar = document.createElement('div');
+    bar.id = 'heat';
+    bar.append(document.createElement('i'));
+    board.append(bar);
+    return bar.firstChild;
+})() : null;
+function heatUI() {
+    if (!heatFill) return;
+    const k = Math.min(1, heat / ERUPT.full);
+    heatFill.style.height = `${k * 100}%`;
+    heatFill.parentNode.classList.toggle('hot', k >= 0.8);
+}
+function addHeat(level) {
+    if (!ERUPT || isGameOver) return;
+    heat += level;
+    heatUI();
+    if (heat >= ERUPT.full && eruptIn < 0) {   // full: a rumble first, the lava a moment later
+        eruptIn = 26;
+        Sound.play('eruption');
+        Haptics.play('eruption');
+        FX.rumble();
+    }
+}
+if (ERUPT) Events.on(engine, 'beforeUpdate', () => {
+    if (eruptIn < 0 || isGameOver || --eruptIn > 0) return;
+    eruptIn = -1;
+    heat = 0;
+    heatUI();
+    FX.eruption();
+    emitGame('erupt');
+    for (const b of Composite.allBodies(engine.world)) {
+        if (b.tier === undefined || b.isMerging) continue;
+        if (b.tier < ERUPT.burn && !b.isDropping && !b.isGrowing) {
+            FX.burn(b.position.x, b.position.y, TIERS[b.tier]);
+            Composite.remove(engine.world, b);
+        } else {
+            Body.setVelocity(b, { x: b.velocity.x, y: b.velocity.y - 2.4 * (1 - b.tier / TIERS.length) });   // the jump
+        }
+    }
+});
+
+// --- COME HERE --- (a set with call in GAME.skins, the Gem Pets)
+// While a gem is held over the jar, every gem of its level that has landed hops toward the finger: a small jump
+// every half second or so, until it is under it. Only a pet that stands still with nothing on its back can jump,
+// and a jump is too low to climb over another gem, so pets come only where the way is free. Letting go ends
+// the call. Small hops for the small pets, a little less for the bigger ones.
+let held = false;      // a gem is being held over the jar (setHeld)
+let heldSteps = 0;     // ...for this many physics steps
+if (CALL) Events.on(engine, 'beforeUpdate', () => {
+    if (!held || isGameOver) { heldSteps = 0; return; }
+    if (++heldSteps < CALL.wait) return;
+    if ((heldSteps - CALL.wait) % 40 === 0) FX.calling(dropX, spawnY(currentTier), TIERS[currentTier]);
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined);
+    // o stands or lies on b
+    const onBack = (o, b) => o !== b && (b.position.y - o.position.y) * DOWN > b.currentRadius * 0.25
+        && Math.abs(o.position.x - b.position.x) < (o.currentRadius + b.currentRadius) * 0.85
+        && Math.hypot(o.position.x - b.position.x, o.position.y - b.position.y) < o.currentRadius + b.currentRadius + 3;
+    for (const b of gems) {
+        if (b.tier !== currentTier || b.isDropping || b.isMerging || b.isGrowing) continue;
+        const dx = dropX - b.position.x;
+        if (Math.abs(dx) < b.currentRadius * 0.6) continue;                       // it is here already
+        b.hopIn = (b.hopIn === undefined ? Math.floor(Math.random() * 12) : b.hopIn) - 1;   // (not all in step)
+        if (b.hopIn > 0) continue;
+        if (Math.abs(b.velocity.y) > 0.6 || gems.some(o => onBack(o, b))) { b.hopIn = 6; continue; }
+        b.hopIn = CALL.every;
+        const k = 1 - 0.06 * b.tier;
+        Body.setVelocity(b, { x: Math.sign(dx) * Math.min(CALL.stride, Math.abs(dx) / 18) * k, y: -CALL.hop * k * DOWN });
+        Sound.play('hop', b.tier);
+        FX.hop(b.position.x, b.position.y + b.currentRadius * DOWN, b.currentRadius);
+    }
+});
+
 // --- PULL --- (a set with pull: true in GAME.skins, the Cosmic Gems)
 // Gems of the same level pull each other in, like planets, so alike gems near each other drift together, meet
 // and merge. The higher the level, the stronger the pull. It falls off with the distance between them (as
@@ -509,10 +616,72 @@ const runner = Runner.create();
 Runner.run(runner, engine);
 
 const wallOptions = { isStatic: true, render: { fillStyle: '#34495e' } };
-const ground = Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);   // (floating: the ceiling)
+// (floating: the floor is the ceiling; scales: a wider beam, higher up, that turns about the middle of its top)
+const ground = SCALES ? Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - SCALES_RISE + 25, GAME_WIDTH + 190, 50, { isStatic: true, friction: 0.5 })
+    : Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);
 const leftWall = Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 const rightWall = Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 Composite.add(engine.world, [ground, leftWall, rightWall]);
+
+// --- SCALES --- (a set with scales in GAME.skins, the Royal Treasury)
+// The jar's floor is the beam of a pair of scales, resting on a pivot in the middle, and it leans to the side
+// where more weight lies. How far follows from where the centre of weight of all the landed gems is: within
+// SCALES.level px of the middle the beam is level (so a balanced jar stays balanced: on a level floor nothing
+// rolls), and SCALES.reach px beyond that it leans all the way (SCALES.max degrees). A steadying weight in the
+// middle (SCALES.steady) keeps a few small gems from tipping it. The beam turns slowly and the gems on it slide
+// and roll with it, which shifts the weight further: once it leans, it takes weight on the high side to bring
+// it back. Nothing but the gems' weights moves it.
+const PIVOT = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - SCALES_RISE };   // the middle of the beam's top
+let tilt = 0;   // the beam's angle now, in radians; above 0: the right side is down
+function placeBeam(moving) {   // (moving: the gems on it feel it turn)
+    Body.setPosition(ground, { x: PIVOT.x - Math.sin(tilt) * 25, y: PIVOT.y + Math.cos(tilt) * 25 }, moving);
+    Body.setAngle(ground, tilt, moving);
+}
+if (SCALES) {
+    // the beam's picture: a gold bar along the top of its body, with a ruby over the pivot; and the stand under it
+    const T = 12, w = GAME_WIDTH + 190;
+    const bar = document.createElement('canvas');
+    bar.width = w; bar.height = 50;
+    let c = bar.getContext('2d');
+    const gold = c.createLinearGradient(0, 0, 0, T);
+    gold.addColorStop(0, '#fff3b0'); gold.addColorStop(0.35, '#ffcf4a'); gold.addColorStop(1, '#b9791a');
+    c.fillStyle = gold; c.strokeStyle = '#5a3208'; c.lineWidth = 2;
+    c.fillRect(1, 1, w - 2, T - 2); c.strokeRect(1, 1, w - 2, T - 2);   // (its ends are outside the jar)
+    c.fillStyle = 'rgba(255, 255, 255, 0.5)'; c.fillRect(2, 2.5, w - 4, 2);
+    c.fillStyle = 'rgba(90, 50, 8, 0.55)';
+    for (let x = w / 2 % 45; x < w; x += 45) { if (Math.abs(x - w / 2) > 20) { c.beginPath(); c.arc(x, T / 2, 2, 0, Math.PI * 2); c.fill(); } }
+    c.fillStyle = '#e0245e'; c.strokeStyle = '#5a3208';
+    c.beginPath(); c.arc(w / 2, T / 2, 7, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    c.beginPath(); c.arc(w / 2 - 2, T / 2 - 2.5, 2, 0, Math.PI * 2); c.fill();
+    ground.render.sprite.texture = bar.toDataURL();
+    const h = SCALES_RISE - T + 3, sw = 52;
+    const stand = document.createElement('canvas');
+    stand.width = sw; stand.height = h;
+    c = stand.getContext('2d');
+    const sg = c.createLinearGradient(0, 0, sw, 0);
+    sg.addColorStop(0, '#b9791a'); sg.addColorStop(0.5, '#ffd866'); sg.addColorStop(1, '#a5670f');
+    c.fillStyle = sg; c.strokeStyle = '#5a3208'; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(sw / 2, 1); c.lineTo(sw - 1, h); c.lineTo(1, h); c.closePath(); c.fill(); c.stroke();
+    // (nothing collides with the stand; it is added first so the beam is drawn over its tip)
+    Composite.remove(engine.world, ground);
+    Composite.add(engine.world, [Bodies.rectangle(PIVOT.x, GAME_HEIGHT - h / 2, sw, h, { isStatic: true, collisionFilter: { mask: 0 },
+        render: { sprite: { texture: stand.toDataURL(), xScale: 1, yScale: 1 } } }), ground]);
+    Events.on(engine, 'beforeUpdate', () => {
+        let mass = SCALES.steady, turn = 0;
+        if (!isGameOver) for (const b of Composite.allBodies(engine.world)) {
+            if (b.tier === undefined || b.isDropping) continue;
+            mass += b.mass;
+            turn += b.mass * (b.position.x - PIVOT.x);
+        }
+        const lean = turn / mass;   // how far off the middle the weight sits, px
+        const want = isGameOver ? tilt
+            : Math.sign(lean) * Math.min(1, Math.max(0, Math.abs(lean) - SCALES.level) / SCALES.reach) * SCALES.max * Math.PI / 180;
+        const step = SCALES.speed * Math.PI / 180, gap = want - tilt;
+        if (Math.abs(gap) > step * 0.3) tilt += Math.abs(gap) < step ? gap : Math.sign(gap) * step;   // (no trembling)
+        placeBeam(true);
+    });
+}
 // a Gem Mine stage adds its beams, pegs, crates and starting gems
 if (MINE) Mine.setupWorld();
 
@@ -607,6 +776,7 @@ const playArea = document.getElementById('app');
 let holding = null;   // pointer id of the finger holding the fruit
 
 function setHeld(on) {
+    held = on;   // (COME HERE: the Gem Pets answer)
     dropGuide.classList.toggle('held', on);
     aimLine.classList.toggle('show', on);
 }
@@ -656,7 +826,7 @@ function dropFruit() {
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     spawnItem(dropX, spawnY(currentTier), currentTier, false);
-    if (FLOAT || WATER) floatHint();
+    if (SET_HINT) setHint();
 
     currentTier = nextTier;
     if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
@@ -668,15 +838,21 @@ function dropFruit() {
     if (!MINE) Ads.onDrop();   // (never an ad in the middle of a stage)
 }
 
-// the first 3 games with a floating set, or one under water, say what's going on, at the first drop
-let floatHinted = false;
-function floatHint() {
-    if (floatHinted) return;
-    floatHinted = true;
-    const key = `${GAME.id}.${WATER ? 'waterTold' : 'floatTold'}`;
+// the first 3 games with a set that has a rule of its own say what's going on, at the first drop
+// ([where it is counted, what it says])
+const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
+    : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
+    : ERUPT ? ['told.erupt', 'Merges heat the volcano until it erupts!']
+    : SCALES ? ['told.scales', 'The floor is a pair of scales: balance it!']
+    : CALL ? ['told.call', 'Hold your finger: the same pets hop to it!'] : null;
+let setHinted = false;
+function setHint() {
+    if (setHinted) return;
+    setHinted = true;
+    const key = `${GAME.id}.${SET_HINT[0]}`;
     let told = 0;
     try { told = +localStorage.getItem(key) || 0; localStorage.setItem(key, told + 1); } catch (e) {}
-    if (told < 3) showToast(WATER ? 'Under water: small gems float, big ones sink!' : 'Zero gravity: these gems float up!');
+    if (told < 3) showToast(SET_HINT[1]);
 }
 
 // --- MERGING ---
@@ -720,6 +896,7 @@ function handleCollisions(event) {
         dailyOnMerge(mergedTier);
         if (!seeded) countForNextSet(mergedTier);
         emitGame('merge', mergedTier, points, combo, seeded);
+        if (ERUPT) addHeat(mergedTier + 1);
 
         const midX = (bodyA.position.x + bodyB.position.x) / 2;
         const midY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -828,7 +1005,9 @@ function saveGame() {
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
     const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items, float: FLOAT };
+    if (SCALES) Object.assign(data, { scales: true, tilt: +tilt.toFixed(4) });
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
+    if (ERUPT) data.heat = Math.min(heat, ERUPT.full - 1);   // (an eruption on its way is not saved)
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
@@ -846,9 +1025,16 @@ function loadGame() {
     const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
     // saved with a set that falls the other way (the set was changed): the pile is turned upside down
     const turn = !!data.float !== FLOAT;
+    // scales: the beam as it was; a pile saved on a plain floor (the set was changed) is lifted onto the beam
+    const lift = SCALES && !data.scales ? SCALES_RISE : 0;
+    if (SCALES && data.scales) {
+        const most = SCALES.max * Math.PI / 180;
+        tilt = Math.max(-most, Math.min(most, +data.tilt || 0));
+        placeBeam(false);
+    }
     for (const [tier, x, y, angle] of data.items) {
         if (!okTier(tier)) continue;
-        const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
+        const body = spawnItem(x, (turn ? GAME_HEIGHT - y : y) - lift, tier, false);
         Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
     }
@@ -860,6 +1046,7 @@ function loadGame() {
     combo = data.combo | 0;
     dropsWithoutMerge = data.dropsWithoutMerge | 0;
     revives = data.revived === true ? 1 : Math.max(0, data.revived | 0);   // (older saves: true or false)
+    if (ERUPT) { heat = Math.max(0, Math.min(ERUPT.full - 1, +data.heat || 0)); heatUI(); }
     if (DAILY) {
         if (Number.isInteger(data.rng)) dropRandom.setState(data.rng);
         if (Array.isArray(data.made)) data.made.forEach((n, t) => { if (t < made.length) made[t] = n | 0; });
@@ -1206,7 +1393,7 @@ function snapshot() {
         items: Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging).map(b => ({
             tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
             vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
-        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier,
+        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, heat, tilt,
         daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
     };
 }
@@ -1240,6 +1427,8 @@ function undoLastDrop() {
         maxCombo = s.daily.maxCombo;
         updateGoal();
     }
+    if (ERUPT) { heat = s.heat || 0; eruptIn = -1; heatUI(); }   // (an eruption the drop set off is taken back too)
+    if (SCALES) { tilt = s.tilt || 0; placeBeam(false); }
     dangerTimer = 0;
     dropX = clampX(dropX, currentTier);
     updateUI();
@@ -1326,7 +1515,10 @@ function renderSets() {
         MODES[sk.id].sprites.forEach(src => { const im = document.createElement('img'); im.src = src; im.alt = ''; gems.append(im); });
         card.append(head, gems);
         const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in',
-            sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink'].filter(Boolean);
+            sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink',
+            sk.scales && '⚖ The floor is a pair of scales (not in the Gem Mine): it leans to the heavier side',
+            sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it erupts, the smallest gems burn',
+            sk.call && '🐾 Hold your finger down and the same pets hop to it'].filter(Boolean);
         if (notes.length) {
             const note = document.createElement('div');
             note.className = 'set-note';

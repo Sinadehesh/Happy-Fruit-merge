@@ -115,6 +115,18 @@
             background: linear-gradient(rgba(96, 196, 255, 0.24), rgba(46, 124, 235, 0.26) 45%, rgba(16, 50, 150, 0.4));
         }
         #board.water #toast { top: 57%; }   /* (not over the water's surface, nor where the praise words pop) */
+        /* a volcano set (game.js ERUPT, the Volcano Gems): the heat that merges build up, a bar at the side of the jar
+           that fills from the bottom; it throbs when it is nearly full */
+        #heat {
+            position: absolute; left: 1.2%; bottom: 1.1%; top: 27%; width: 2%; z-index: 10; pointer-events: none; overflow: hidden;
+            border-radius: 999px; background: rgba(12, 5, 24, 0.6); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+        }
+        #heat i {
+            position: absolute; left: 0; right: 0; bottom: 0; height: 0; border-radius: 999px; transition: height 0.35s ease-out;
+            background: linear-gradient(to top, #ffe45c, #ff9a1f 45%, #f0401c 80%, #c81e3a);
+        }
+        #heat.hot { animation: heat-throb 0.45s ease-in-out infinite alternate; }
+        @keyframes heat-throb { to { box-shadow: 0 0 10px 2px #ff7a1a, inset 0 0 0 1px rgba(255, 255, 255, 0.5); } }
         /* combo effects layer (fx.js) */
         .fx-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 12; }
         /* "+30" popping up where a merge happens */

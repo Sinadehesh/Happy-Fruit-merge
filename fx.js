@@ -92,6 +92,44 @@ const FX = (() => {
         effects.push({ kind: 'bubble', x, y, v: rand(45, 95), ph: rand(0, 6.3), size, t: 0, dur: 6 });
     }
 
+    // The volcano (game.js ERUPT). rumble: the jar trembles while the eruption is on its way. eruption: lava
+    // bursts up from the floor, the jar glows and shakes, and the word pops. burn: one gem burning away.
+    function quake(amp, dur) {
+        if (!boardEl || (lessMotion && lessMotion.matches)) return;
+        const left = shake ? shake.amp * (1 - shake.t / shake.dur) : 0;
+        if (amp > left) shake = { amp, t: 0, dur };
+    }
+    function rumble() { quake(3.5, 0.5); }
+    function eruption() {
+        for (let i = 0; i < 80; i++) {
+            effects.push({ kind: 'lava', x: rand(8, W - 8), y: H + rand(0, 26), vx: rand(-110, 110), vy: -rand(430, 1080),
+                size: rand(4, 11), t: 0, dur: rand(0.9, 1.6) });
+        }
+        effects.push({ kind: 'heatglow', t: 0, dur: 1.0 });
+        effects = effects.filter(e => e.kind !== 'praise' && e.kind !== 'word');
+        effects.push({ kind: 'word', text: 'ERUPTION!', t: 0, dur: 1.6 });
+        quake(10, 0.85);
+    }
+    function burn(x, y, r) {
+        for (let i = 0; i < 8; i++) {
+            effects.push({ kind: 'lava', x: x + rand(-0.6, 0.6) * r, y: y + rand(-0.4, 0.5) * r, vx: rand(-80, 80), vy: -rand(130, 340),
+                size: rand(3, 6.5), t: 0, dur: rand(0.5, 0.95) });
+        }
+        effects.push({ kind: 'smoke', x, y, r, t: 0, dur: 0.75 });
+    }
+
+    // Calling the pets (game.js CALL). calling: a ring spreading from the held pet. hop: a little dust where a pet
+    // jumped, and now and then a heart over it.
+    function calling(x, y, r) { effects.push({ kind: 'callring', x, y, r, t: 0, dur: 0.75 }); }
+    function hop(x, y, r) {
+        for (const side of [-1, 1]) {
+            effects.push({ kind: 'dust', x: x + side * r * 0.35, y, vx: side * rand(25, 60), vy: -down * rand(5, 25), g: 40 * down, size: rand(3, 5), t: 0, dur: rand(0.25, 0.4) });
+        }
+        if (Math.random() < 0.3) {
+            effects.push({ kind: 'piece', name: 'heart', x, y: y - down * (2 * r + 6), vx: rand(-14, 14), vy: -230, rot: rand(-0.3, 0.3), vr: 0, size: rand(13, 17), t: 0, dur: 0.7 });
+        }
+    }
+
     const NAMES = ['burst_yellow', 'burst_pink', 'ring', 'sparkle', 'star', 'heart', 'drop_orange', 'drop_red',
         'sprinkle_blue', 'sprinkle_purple', 'jellybean', 'lollipop',
         'word_combo', 'word_congratulations', 'word_levelup', 'word_timesup', ...GAME.praise.map(w => `word_${w}`),
@@ -378,6 +416,54 @@ const FX = (() => {
                 ctx.fillStyle = '#efe6ff';
                 ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (0.6 + 0.9 * k), 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
+            } else if (e.kind === 'callring') {
+                ctx.save();
+                ctx.globalAlpha = 0.7 * (1 - k);
+                ctx.lineWidth = 3 * (1 - k) + 1;
+                ctx.strokeStyle = '#ffd9ec';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.r * 1.1 + 44 * k, 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
+            } else if (e.kind === 'lava') {
+                e.vy += 1000 * dt;
+                e.x += e.vx * dt; e.y += e.vy * dt;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - k * k);
+                ctx.fillStyle = k < 0.25 ? '#fff3a6' : k < 0.6 ? '#ffb02e' : '#f0501c';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (1 - 0.4 * k), 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha *= 0.3;
+                ctx.fillStyle = '#ff7a1a';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 1.9, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            } else if (e.kind === 'heatglow') {
+                const g = ctx.createLinearGradient(0, H * 0.3, 0, H);
+                g.addColorStop(0, 'rgba(255, 120, 30, 0)');
+                g.addColorStop(1, `rgba(255, 96, 20, ${0.55 * (1 - k) * (1 - k)})`);
+                ctx.fillStyle = g;
+                ctx.fillRect(0, H * 0.3, W, H * 0.7);
+            } else if (e.kind === 'smoke') {
+                ctx.save();
+                ctx.globalAlpha = 0.42 * (1 - k);
+                ctx.fillStyle = '#4a3340';
+                ctx.beginPath(); ctx.arc(e.x, e.y - 34 * k, e.r * (0.7 + 0.9 * k), 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            } else if (e.kind === 'word') {
+                // a word drawn here (no word art for it): fiery letters that pop in and fade out
+                const s = elastic(Math.min(1, e.t / 0.55)), fade = k < 0.75 ? 1 : 1 - (k - 0.75) / 0.25;
+                ctx.save();
+                ctx.globalAlpha = fade;
+                ctx.translate(W / 2, wordY() - Math.max(0, k - 0.75) * 110);
+                ctx.rotate(Math.sin(e.t * 5) * 0.03);
+                ctx.scale(s, s);
+                ctx.font = "800 58px Poppins, 'Arial Black', sans-serif";
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.lineJoin = 'round';
+                ctx.lineWidth = 12; ctx.strokeStyle = '#4a1206';
+                ctx.strokeText(e.text, 0, 0);
+                const fill = ctx.createLinearGradient(0, -30, 0, 30);
+                fill.addColorStop(0, '#fff3a6'); fill.addColorStop(0.5, '#ffb02e'); fill.addColorStop(1, '#f0401c');
+                ctx.fillStyle = fill;
+                ctx.fillText(e.text, 0, 0);
+                ctx.restore();
             } else if (e.kind === 'spray') {
                 e.vy += 900 * dt;
                 e.x += e.vx * dt; e.y += e.vy * dt;
@@ -411,5 +497,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, eruption, burn, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

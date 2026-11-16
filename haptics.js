@@ -78,7 +78,9 @@ const Haptics = (() => {
         tap() { buzz(8, 1); },
         // Gem Mine: a crate cracking (one knock) or breaking (a crunchy triple)
         crate(broke) { buzz(broke ? [26, 30, 22, 30, 34] : 16, broke ? 2 : 1); },
-        outOfDrops() { buzz([70, 60, 110], 4); }
+        outOfDrops() { buzz([70, 60, 110], 4); },
+        // the volcano erupting: a tremble, then the burst
+        eruption() { buzz([30, 40, 30, 40, 30, 60, 220], 4); }
     };
 
     function play(name, ...args) { if (feel[name]) feel[name](...args); }

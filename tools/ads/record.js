@@ -92,6 +92,7 @@ function startBot() {
   const log = window.__log = [];
   onGame('merge', (tier, points, combo) => log.push({ t: performance.now(), tier, combo }));
   onGame('gameOver', () => log.push({ t: performance.now(), over: true }));
+  onGame('erupt', () => log.push({ t: performance.now(), erupt: true }));   // (Volcano Gems)
   const reach = b => FLOAT ? GAME_HEIGHT - b.bounds.max.y : b.bounds.min.y;
   const bodies = () => Composite.allBodies(engine.world);
   function target() {
@@ -123,7 +124,10 @@ function startBot() {
   }
   function cycle() {
     if (isGameOver) return;
-    const tx = target(), x0 = dropX, T = 300 + Math.random() * 160, t0 = performance.now();
+    const tx = target(), x0 = dropX, t0 = performance.now();
+    // (Gem Pets: with a pet of this kind in the jar the bot holds on for a second, so the pets are seen coming)
+    const calls = typeof CALL !== 'undefined' && CALL && bodies().some(b => b.tier === currentTier && !b.isDropping && Math.abs(b.position.x - tx) > 30);
+    const T = calls ? 950 + Math.random() * 350 : 300 + Math.random() * 160;
     setHeld(true); place(); dot.className = 'on';
     (function move() {
       const k = Math.min(1, (performance.now() - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
@@ -162,12 +166,15 @@ function startBot() {
       if (over) break;
     }
     const log = (await p.evaluate(() => window.__log)).map(e => ({ ...e, t: (e.t - zero) / 1000 }));
+    const erupts = log.filter(e => e.erupt).map(e => e.t);
+    log.splice(0, log.length, ...log.filter(e => !e.erupt));
     const end = log.find(e => e.over); const last = end ? end.t : secs;
     // the best 20 seconds: big merges and combos count most; at least 25 s in (a jar with something in it)
     let best = null;
     for (let s = 25; s + 20 <= last - 1; s += 0.5) {
       const m = log.filter(e => !e.over && e.t >= s && e.t < s + 20);
-      const score = m.reduce((a, e) => a + Math.pow(e.tier + 1, 2.2) + (e.combo >= 3 ? 25 : 0), 0) + (m.length ? Math.pow(Math.max(...m.map(e => e.tier)) + 1, 2.6) : 0);
+      const score = m.reduce((a, e) => a + Math.pow(e.tier + 1, 2.2) + (e.combo >= 3 ? 25 : 0), 0) + (m.length ? Math.pow(Math.max(...m.map(e => e.tier)) + 1, 2.6) : 0)
+        + (erupts.some(t => t >= s + 4 && t <= s + 15) ? 900 : 0);   // (an eruption in the middle of it is worth showing)
       if (!best || score > best.score) best = { start: s, end: s + 20, score: Math.round(score), merges: m.length, top: m.length ? Math.max(...m.map(e => e.tier)) + 1 : 0, combos: m.filter(e => e.combo >= 3).length };
     }
     console.log(JSON.stringify({ set: SET, seed: +SEED, over: end ? end.t : null, merges: log.filter(e => !e.over).length, topLevel: Math.max(0, ...log.filter(e => !e.over).map(e => e.tier + 1)), best, errs: errs.slice(0, 3) }));
@@ -198,7 +205,7 @@ function startBot() {
     }, [start + (zero - (await p.evaluate(() => window.__audioZero))) / 1000, stop + (zero - (await p.evaluate(() => window.__audioZero))) / 1000]);
     fs.writeFileSync(`${out}/sfx.wav`, Buffer.from(wav, 'base64'));
     const log = (await p.evaluate(() => window.__log)).map(e => ({ ...e, t: (e.t - zero) / 1000 })).filter(e => e.t >= start && e.t < stop);
-    console.log(JSON.stringify({ set: SET, frames, merges: log.length, top: Math.max(0, ...log.map(e => (e.tier ?? -1) + 1)), errs: errs.slice(0, 3) }));
+    console.log(JSON.stringify({ set: SET, frames, merges: log.filter(e => e.tier !== undefined).length, top: Math.max(0, ...log.map(e => (e.tier ?? -1) + 1)), eruptions: log.filter(e => e.erupt).length, errs: errs.slice(0, 3) }));
   }
   await b.close();
 })();

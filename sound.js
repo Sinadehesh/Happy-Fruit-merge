@@ -122,6 +122,30 @@ const Sound = (() => {
         o.connect(g); g.connect(sfxBus);
         o.start(t); o.stop(t + dur + 0.03);
     }
+    // The volcano (game.js ERUPT). growl: a long low roar of noise that swells and dies away; crackle: one
+    // short bright snap of it, a moment from now.
+    function growl(dur, gain) {
+        const t = ac.currentTime, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        src.buffer = noiseBuffer(); src.loop = true;
+        f.type = 'lowpass'; f.Q.value = 0.6;
+        f.frequency.setValueAtTime(140, t);
+        f.frequency.linearRampToValueAtTime(420, t + dur * 0.4);
+        f.frequency.exponentialRampToValueAtTime(90, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + dur * 0.38);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(f); f.connect(g); g.connect(sfxBus);
+        src.start(t); src.stop(t + dur + 0.05);
+    }
+    function crackle(when, gain) {
+        const t = ac.currentTime + when, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+        src.buffer = noiseBuffer();
+        f.type = 'highpass'; f.frequency.value = 2200 + Math.random() * 1800;
+        g.gain.setValueAtTime(gain, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+        src.connect(f); f.connect(g); g.connect(sfxBus);
+        src.start(t, Math.random() * 0.4); src.stop(t + 0.07);
+    }
     const pick = (...names) => names[Math.floor(Math.random() * names.length)];
     const jitter = (r, amount = 0.04) => r * (1 + (Math.random() * 2 - 1) * amount);   // so repeats don't sound identical
     const semitones = n => Math.pow(2, n / 12);
@@ -184,6 +208,20 @@ const Sound = (() => {
             sample('land', { gain: (0.16 + tier * 0.045) * k, rate: jitter(Math.max(0.5, 1.42 - tier * 0.08), 0.03) });
             thump(200 - tier * 12, 0.06 + tier * 0.022, (0.05 + tier * 0.032) * k);
             if (tier >= 2) grit(Math.max(700, 2600 - tier * 170), 0.035 + tier * 0.006, (0.025 + tier * 0.011) * k);
+        },
+        // a pet hopping to the finger (game.js CALL): a tiny rising pip, lower for a bigger pet, never many at once
+        hop(tier = 0) {
+            const now = ac.currentTime;
+            if (now - (sfx.hop.last || 0) < 0.09) return;
+            sfx.hop.last = now;
+            bloop(Math.max(260, 640 - tier * 70), 0.06, 0.035);
+        },
+        // the volcano erupts: a roar that swells for a moment, a deep boom as the lava bursts, a thick bubble and crackles
+        eruption() {
+            growl(1.7, 0.5);
+            sample('bubble_big', { gain: 0.5, rate: 0.5, when: 0.4 });
+            setTimeout(() => { if (ac) thump(84, 0.7, 0.6); }, 430);
+            for (let i = 0; i < 7; i++) crackle(0.5 + i * 0.13 + Math.random() * 0.07, 0.16 - i * 0.015);
         },
         // into the water: a splash and a bloop or two, deeper, longer and louder for a heavier gem and a harder fall
         splash(tier, impact = 1) {
