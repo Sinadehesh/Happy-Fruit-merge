@@ -205,6 +205,8 @@ function startBot() {
     }, [start + (zero - (await p.evaluate(() => window.__audioZero))) / 1000, stop + (zero - (await p.evaluate(() => window.__audioZero))) / 1000]);
     fs.writeFileSync(`${out}/sfx.wav`, Buffer.from(wav, 'base64'));
     const log = (await p.evaluate(() => window.__log)).map(e => ({ ...e, t: (e.t - zero) / 1000 })).filter(e => e.t >= start && e.t < stop);
+    // when the set's own big moment happens in this window (an eruption), for the montage: seconds from its start
+    fs.writeFileSync(`${out}/events.json`, JSON.stringify({ erupt: log.filter(e => e.erupt).map(e => +(e.t - start).toFixed(2)) }));
     console.log(JSON.stringify({ set: SET, frames, merges: log.filter(e => e.tier !== undefined).length, top: Math.max(0, ...log.map(e => (e.tier ?? -1) + 1)), eruptions: log.filter(e => e.erupt).length, errs: errs.slice(0, 3) }));
   }
   await b.close();

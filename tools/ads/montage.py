@@ -5,7 +5,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 D = os.environ.get('ADS_WORK') or os.path.join(HERE, 'work')   # frames, sounds and the finished videos
 os.makedirs(D, exist_ok=True)
-import sys, os, glob, subprocess, wave
+import sys, os, glob, json, subprocess, wave
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 FONT = os.path.join(HERE, 'TitanOne-Regular.ttf')   # Titan One, SIL Open Font License (TitanOne-OFL.txt)
@@ -28,6 +28,12 @@ for sid, name in SETS:
     for t in np.arange(0.5, len(a) / sr - SEG - 0.3, 0.1):
         i = int(t * sr); v = c[i + n] - c[i]
         if v > best: best, bt = v, t
+    # the set's own big moment, if the capture has one (an eruption), comes before the loudest merges
+    try:
+        erupt = json.load(open(f'{cap}/events.json')).get('erupt') or []
+        if erupt: bt = max(0.5, min(len(a) / sr - SEG - 0.3, erupt[0] - 0.9))
+    except (OSError, ValueError):
+        pass
     # its name, in a pill near the top of the jar
     lab = Image.new('RGBA', (W, H), (0, 0, 0, 0)); d = ImageDraw.Draw(lab)
     f = ImageFont.truetype(FONT, 66); tw = d.textlength(name.upper(), font=f)
