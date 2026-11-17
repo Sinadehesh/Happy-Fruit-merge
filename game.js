@@ -1678,7 +1678,10 @@ function revive() {
 // --- SAVE ---
 // The game in progress is saved in the browser (one save per mode, and per Reverse setting) about
 // every second and when the page is hidden or closed, so it comes back exactly where you left it.
-const SAVE_KEY = DAILY ? `${GAME.id}.save.daily` : `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`;
+// It goes on when another gem set is picked, except into or out of a swirl set (the Spiral Atoms), which keeps
+// a game of its own: its gems are smaller and lie in no pile, so a long game of it would not fit a jar, and the
+// other sets' game stays as it was for when the player goes back.
+const SAVE_KEY = (DAILY ? `${GAME.id}.save.daily` : `${GAME.id}.save.${MODE}${REVERSE ? '.reverse' : ''}`) + (SWIRL ? '.swirl' : '');
 let saving = !RUSH && !MINE;     // a Gem Rush or a Gem Mine stage is not saved: leaving it ends it
 let revives = 0;       // how many times the "keep going" ad was used this game
 const MAX_REVIVES = 2;
