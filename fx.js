@@ -133,12 +133,28 @@ const FX = (() => {
         try { s = lavaOf(); } catch (e) {}
         if (!s) return;
         ctx.save();
-        // the mark: as far as the lava may come
-        ctx.setLineDash([9, 8]); ctx.lineDashOffset = -t * 14;
-        ctx.lineWidth = 2.5 + (s.soon ? 1.5 * Math.abs(Math.sin(t * 9)) : 0);
-        ctx.strokeStyle = `rgba(255, ${Math.round(170 - 90 * s.hot)}, 60, ${0.3 + 0.5 * s.hot})`;
-        ctx.beginPath(); ctx.moveTo(0, s.mark); ctx.lineTo(W, s.mark); ctx.stroke();
-        ctx.setLineDash([]);
+        if (s.mark !== undefined) {   // the mark: as far as the lava may come (game.js LAVA)
+            ctx.setLineDash([9, 8]); ctx.lineDashOffset = -t * 14;
+            ctx.lineWidth = 2.5 + (s.soon ? 1.5 * Math.abs(Math.sin(t * 9)) : 0);
+            ctx.strokeStyle = `rgba(255, ${Math.round(170 - 90 * s.hot)}, 60, ${0.3 + 0.5 * s.hot})`;
+            ctx.beginPath(); ctx.moveTo(0, s.mark); ctx.lineTo(W, s.mark); ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        if (s.haze) {   // the heat over the lava: strong at its surface, gone at this height (game.js HEAT)
+            const haze = ctx.createLinearGradient(0, s.y - s.haze, 0, s.y);
+            haze.addColorStop(0, 'rgba(255, 90, 30, 0)'); haze.addColorStop(0.55, 'rgba(255, 90, 30, 0.07)'); haze.addColorStop(1, 'rgba(255, 110, 30, 0.26)');
+            ctx.fillStyle = haze; ctx.fillRect(0, s.y - s.haze, W, s.haze);
+        }
+        if (s.safe !== undefined && s.safe !== null && s.safe > 150) {   // from here up the gem in hand is safe from the heat: a cool line, brighter while it is held
+            ctx.setLineDash([4, 7]); ctx.lineDashOffset = t * 10;
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = `rgba(150, 232, 255, ${s.held ? 0.95 : 0.55})`;
+            ctx.beginPath(); ctx.moveTo(0, s.safe); ctx.lineTo(W, s.safe); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.font = "800 11px Poppins, 'Arial Black', sans-serif"; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+            ctx.fillStyle = `rgba(190, 240, 255, ${s.held ? 0.95 : 0.6})`;
+            ctx.fillText('SAFE ABOVE \u25B2', W - 8, s.safe - 3);
+        }
         if (s.y < H - 0.5) {
             // the glow over it
             const glow = ctx.createLinearGradient(0, s.y - 34, 0, s.y);
@@ -165,6 +181,42 @@ const FX = (() => {
             if (Math.random() < 0.015 + 0.05 * s.hot) effects.push({ kind: 'lava', x: rand(10, W - 10), y: s.y + 2, vx: rand(-25, 25), vy: -rand(90, 190 + 140 * s.hot), size: rand(2.5, 5), t: 0, dur: rand(0.4, 0.7) });
         }
         ctx.restore();
+    }
+    // The heat (game.js HEAT). heatGlow: a function giving the stones that are hot, [x, y, r, how hot (0 to 1), whether
+    // they lie in too much heat now]: they glow red, the hotter the more, and a stone still getting hotter has a ring
+    // that throbs. melt: a stone of size r at (x, y) runs down into the lava (its surface at `top`): drops of it fall,
+    // a glow, steam.
+    let heatOf = null;
+    function heatGlow(fn) { heatOf = fn; }
+    function drawHeat(t) {
+        let list = [];
+        try { list = heatOf(); } catch (e) {}
+        ctx.save();
+        for (const [x, y, r, hot, rising] of list) {
+            if (hot > 0) {
+                const g = ctx.createRadialGradient(x, y, r * 0.15, x, y, r * 1.12);
+                g.addColorStop(0, `rgba(255, 236, 150, ${0.5 * hot * hot})`);
+                g.addColorStop(0.6, `rgba(255, 96, 24, ${0.62 * hot})`);
+                g.addColorStop(1, 'rgba(255, 50, 10, 0)');
+                ctx.fillStyle = g;
+                ctx.beginPath(); ctx.arc(x, y, r * 1.12, 0, Math.PI * 2); ctx.fill();
+            }
+            if (rising) {
+                ctx.lineWidth = 2 + 2.5 * hot;
+                ctx.strokeStyle = `rgba(255, ${Math.round(150 - 100 * hot)}, 40, ${0.45 + 0.4 * Math.abs(Math.sin(t * (3 + 6 * hot)))})`;
+                ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+    function melt(x, y, r, top) {
+        const n = Math.round(Math.min(26, 8 + r / 4));
+        for (let i = 0; i < n; i++) {
+            effects.push({ kind: 'lava', x: x + rand(-0.8, 0.8) * r, y: y + rand(-0.6, 0.8) * r, vx: rand(-40, 40), vy: rand(-90, 60), size: rand(3.5, 4 + r / 9), t: -rand(0, 0.12), dur: rand(0.45, 0.8) });
+        }
+        effects.push({ kind: 'flash', x, y, r: r * 1.5, t: 0, dur: 0.35 });
+        for (let i = 0; i < 3; i++) effects.push({ kind: 'steam', x: x + rand(-0.6, 0.6) * r, y: Math.min(top, y + r * 0.5), r: rand(10, 14 + r / 5), t: -rand(0, 0.2), dur: rand(0.7, 1.1) });
+        quake(Math.min(5, 1 + r / 30), 0.2);
     }
     function calm(y) {
         for (let i = 0; i < 9; i++) effects.push({ kind: 'steam', x: W * (i + 0.5) / 9 + rand(-14, 14), y: Math.min(H - 6, y) - rand(0, 10), r: rand(16, 30), t: -rand(0, 0.25), dur: rand(0.9, 1.4) });
@@ -552,6 +604,7 @@ const FX = (() => {
             ctx.restore();
         }
         if (sea) drawWater(now / 1000);
+        if (heatOf) drawHeat(now / 1000);
         if (lavaOf) drawLava(now / 1000);
         for (const e of effects) {
             e.t += dt;
@@ -753,5 +806,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, lava, calm, erupt, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, lava, calm, erupt, heatGlow, melt, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

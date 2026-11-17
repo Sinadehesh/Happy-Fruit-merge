@@ -286,6 +286,23 @@ let lavaAsk = 0;        // (THE VOLCANO) how many stones it has asked for before
 let lavaDrops = 0;      // ...how many gems have been let go since it asked
 let lavaY = 0;          // ...how high the lava stands now, px above the floor
 let eruptIn = -1;       // ...steps until it erupts (-1: it is not about to)
+// A heat set (GAME.skins heat: the Volcano Gems): the jar stands on lava and is hotter the nearer to it; every stone
+// stands so much heat, and one that is left in more melts and raises the lava, see THE HEAT below. Not in the Gem
+// Mine. (heat: true, or an object that changes these numbers)
+const HEAT = SKIN && SKIN.heat && !SKIN.lava && !MINE && !FLOAT ? Object.assign({
+    base: 26,           // the lava the jar starts with, px above the floor
+    range: 200,         // the heat reaches this far above the lava: full at its surface, none from this height up
+    // by level: how much of the full heat a stone stands (pumice 30% ... fire opal 90%; from magma glass on, all of it).
+    // From blue fire (level 5) on a stone can lie on the lava itself: its middle is high enough over it.
+    stands: [0.3, 0.4, 0.5, 0.6, 0.75, 0.82, 0.9, 1, 1, 1, 1, 1],
+    gain: 0.36,         // with every gem that is let go, a stone in too much heat gets hotter by this x how much too hot its place is...
+    least: 0.04,        // ...but never by less than this...
+    cool: 0.25,         // ...and a stone in heat it stands cools by this much; at 1 it melts
+    volume: 2,          // a stone that melts raises the lava by its size (its area / the jar's width) x this: molten, it takes more room
+    up: 0.5,            // how fast the lava rises to where it should be, px a step
+    sunk: 7             // the gems lie this deep in it (the picture only: the floor is that much under its surface)
+}, SKIN.heat === true ? null : SKIN.heat) : null;
+let lavaWant = HEAT ? HEAT.base : 0;   // (THE HEAT) how high the lava should stand: it comes up as stones melt
 // A glitch set (GAME.skins glitch: the Pixel Treasure): at every merge gems vanish and come back somewhere else, at
 // random, see GLITCH below. Not in the Gem Mine. (glitch: true, or an object that changes these numbers)
 const GLITCH = SKIN && SKIN.glitch && !MINE && !FLOAT ? Object.assign({
@@ -956,7 +973,7 @@ const askLevel = () => { const a = LAVA.asks, n = a.length; return a[lavaAsk < n
 const askDrops = () => LAVA.drops[askLevel()] || 10;                                                     // ...and the drops it gives for it
 const lavaGoal = () => LAVA.top * Math.min(1, lavaDrops / askDrops());                                   // how high the lava should stand now
 function lavaFloor() {   // the floor is where the lava is (a little under its surface)
-    Body.setPosition(ground, { x: GAME_WIDTH / 2, y: GAME_HEIGHT + 25 - Math.max(0, lavaY - LAVA.sunk) });
+    Body.setPosition(ground, { x: GAME_WIDTH / 2, y: GAME_HEIGHT + 25 - Math.max(0, lavaY - (LAVA || HEAT).sunk) });
 }
 const askBadge = LAVA ? (() => {
     const el = document.createElement('div');
@@ -1026,6 +1043,58 @@ if (LAVA) {
         if (eruptIn > 0 && --eruptIn === 0) erupt();
     });
     lavaUI(false);
+}
+
+// --- THE HEAT --- (a set with heat in GAME.skins, the Volcano Gems)
+// The jar stands on lava, and it is hot in there: full heat at the lava's surface, less and less going up, none
+// from HEAT.range px above it. Every stone stands so much heat, the bigger the more (HEAT.stands: a pumice 30% of
+// the full heat, a fire opal 90%, and from magma glass on, all of it: those can lie in the lava itself). So each
+// kind has a height above the lava from which it is safe: a pumice 140 px, a garnet 80, a blue fire 50 (which is
+// where it lies when it lies on the lava: the small ones melt there, a blue fire and all above it do not).
+// A stone that lies lower than that is in more heat than it stands, and with every gem that is let go it gets
+// hotter (it glows redder), the faster the more too hot its place is; out of the heat again, it cools. When it is
+// red hot it melts: it runs down into the lava, and the lava rises by as much as there was of it, lifting the
+// pile and the heat with it. Melted stones are gone for good, and the lava never sinks, so a jar where much has
+// melted is soon full. To keep a stone: merge it before it melts (the stone that is made is bigger, stands more,
+// and starts cool), or let it lie higher, on stones that stand the heat.
+// While a gem is in the hand, a line across the jar shows from where up it is safe. Heat is counted in drops, not
+// in time: nothing gets hotter while the player thinks. Nothing here is left to chance. Saved with the game; Undo
+// takes back a drop with the heat it brought and what it melted.
+const tempAt = y => Math.max(0, 1 - Math.max(0, GAME_HEIGHT - lavaY - y) / HEAT.range);   // the heat at height y: 1 at the lava, 0 far above it
+const safeFrom = tier => GAME_HEIGHT - lavaY - HEAT.range * (1 - HEAT.stands[tier]);          // a stone of this level is safe with its middle above this y
+function melt(b) {
+    if (b.isMerging) return;
+    b.isMerging = true;   // (out of every other rule from here on)
+    Composite.remove(engine.world, b);
+    lavaWant += Math.PI * TIERS[b.tier] * TIERS[b.tier] / GAME_WIDTH * HEAT.volume;
+    FX.melt(b.position.x, b.position.y, TIERS[b.tier], GAME_HEIGHT - lavaY);
+    Sound.play('melt', b.tier);
+    Haptics.play('land', b.tier, 0.7);
+    emitGame('melt', b.tier);
+}
+const melting = [];   // the stones about to melt: [the stone, steps until it does] (one after the other, the lowest first)
+function heatTick() {   // a gem was let go: every stone that has landed gets hotter or cooler by where it lies
+    const hot = [];
+    for (const b of Composite.allBodies(engine.world)) {
+        if (b.tier === undefined || b.isDropping || b.isMerging) continue;
+        const over = tempAt(b.position.y) - HEAT.stands[b.tier];
+        b.heat = over > 0 ? (b.heat || 0) + Math.max(HEAT.least, HEAT.gain * over) : Math.max(0, (b.heat || 0) - HEAT.cool);
+        if (b.heat >= 1 && !melting.some(m => m[0] === b)) hot.push(b);
+    }
+    hot.sort((a, b) => b.position.y - a.position.y).forEach((b, i) => melting.push([b, 14 + i * 9]));
+}
+if (HEAT) {
+    board.classList.add('lava');   // (the lava comes up to its level as the game starts: the floor is not there yet at this point)
+    FX.lava(() => ({ y: GAME_HEIGHT - lavaY, hot: 0.35, haze: HEAT.range,
+        safe: isGameOver || HEAT.stands[currentTier] >= 1 ? null : safeFrom(currentTier), held }));
+    FX.heatGlow(() => Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging && !b.isDropping && (b.heat > 0 || tempAt(b.position.y) > HEAT.stands[b.tier]))
+        .map(b => [b.position.x, b.position.y, b.currentRadius, Math.min(1, b.heat || 0), tempAt(b.position.y) > HEAT.stands[b.tier]]));
+    Events.on(engine, 'beforeUpdate', () => {
+        const d = lavaWant - lavaY;
+        if (Math.abs(d) > 0.01) { lavaY += d > 0 ? Math.min(d, HEAT.up) : Math.max(d, -2.5); lavaFloor(); }
+        if (isGameOver) { melting.length = 0; return; }
+        for (let i = melting.length - 1; i >= 0; i--) if (--melting[i][1] <= 0) { const b = melting[i][0]; melting.splice(i, 1); if (b.heat >= 1) melt(b); }
+    });
 }
 
 // --- GLITCH --- (a set with glitch in GAME.skins, the Pixel Treasure)
@@ -1505,6 +1574,7 @@ function dropFruit() {
     }
     if (SET_HINT) setHint();
     if (LAVA) lavaDropped();
+    if (HEAT) heatTick();
 
     currentTier = nextTier;
     if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
@@ -1524,6 +1594,7 @@ const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
     : LAVA ? ['told.lava', 'Make the stone the volcano asks for before the lava reaches the line!']
+    : HEAT ? ['told.heat', 'Hot near the lava: small stones melt there. Keep them above the line!']
     : CLASH ? ['told.clash', CLASH.any ? `A small stone and a big one burn each other: ${CLASH.apart + 1} levels apart or more!`
         : `Drop a stone on one ${CLASH.apart + 1}+ levels bigger: both burn to a cinder!`]
     : GLITCH ? ['told.glitch', 'Glitch: at every merge a gem jumps somewhere else!']
@@ -2129,7 +2200,8 @@ function saveGame() {
     if (!saving || isGameOver) return;
     const items = Composite.allBodies(engine.world)
         .filter(b => b.tier !== undefined && !b.isMerging)
-        .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
+        .map(b => HEAT ? [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3), +(b.heat || 0).toFixed(2)]   // (THE HEAT: and how hot it is)
+            : [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
     const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items, float: FLOAT };
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
     if (ERUPT) data.heat = heat;   // (full: a lava bomb is in the hand, or on its way down)
@@ -2137,6 +2209,7 @@ function saveGame() {
     if (SWIRL) data.swirl = [swirlMerges, swirlTop];                    // (how far the swirl has come: its pattern, and what is dropped)
     if (BEAT) data.sour = !inTune;                                      // (out of tune: alike gems hop apart)
     if (LAVA) data.lava = [lavaAsk, lavaDrops];                         // (which stone the volcano asks for, and the drops since)
+    if (HEAT) data.lavaHigh = +lavaWant.toFixed(1);                     // (how high the lava has come)
     if (CLASH || LAVA) data.cinders = cinders().map(c => [+c.position.x.toFixed(1), +c.position.y.toFixed(1), +c.circleRadius.toFixed(1), +c.angle.toFixed(3)]);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
@@ -2155,12 +2228,14 @@ function loadGame() {
     const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
     // saved with a set that falls the other way (the set was changed): the pile is turned upside down
     const turn = !!data.float !== FLOAT;
-    for (const [tier, x, y, angle] of data.items) {
+    if (HEAT && data.lavaHigh > 0) { lavaWant = lavaY = Math.min(GAME_HEIGHT - DANGER_Y, +data.lavaHigh); lavaFloor(); }   // (the lava where it stood, before the pile is put on it)
+    for (const [tier, x, y, angle, hot] of data.items) {
         if (!okTier(tier)) continue;
         const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
         if (!BLOCKS) Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
         body.old = true;           // (WIRES: so it sends no spark)
+        if (HEAT && hot > 0) body.heat = Math.min(0.99, +hot);
     }
     score = shownScore = Math.max(0, data.score | 0);
     scoreEl.textContent = score;
@@ -2538,9 +2613,9 @@ function snapshot() {
     return {
         items: Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging).map(b => ({
             tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
-            vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
+            vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping, heat: b.heat || 0 })),
         score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, mate: currentMate, nextMate, heat, bomb,
-        swirl: [swirlMerges, swirlTop], tune: inTune, lava: [lavaAsk, lavaDrops, lavaY, eruptIn],
+        swirl: [swirlMerges, swirlTop], tune: inTune, lava: [lavaAsk, lavaDrops, lavaY, eruptIn], lavaHigh: [lavaWant, lavaY],
         cinders: CLASH || LAVA ? cinders().map(c => ({ x: c.position.x, y: c.position.y, r: c.circleRadius, angle: c.angle, vx: c.velocity.x, vy: c.velocity.y })) : [],
         daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
     };
@@ -2558,6 +2633,7 @@ function undoLastDrop() {
         Body.setVelocity(body, { x: it.vx, y: it.vy });
         body.isDropping = it.dropping;
         body.old = !it.dropping;   // (WIRES: a gem put back in the pile sends no spark)
+        if (it.heat) body.heat = it.heat;
     }
     score = shownScore = s.score;
     scoreEl.textContent = score;
@@ -2575,6 +2651,7 @@ function undoLastDrop() {
     [swirlMerges, swirlTop] = s.swirl;   // (THE SWIRL: the pattern and the kinds that are dropped go back too)
     if (BEAT) setTune(s.tune);           // (THE BEAT: and whether the jar was in tune)
     if (LAVA) { [lavaAsk, lavaDrops, lavaY, eruptIn] = s.lava; lavaFloor(); lavaUI(false); }   // (THE VOLCANO: its lava, and what it asked for)
+    if (HEAT) { [lavaWant, lavaY] = s.lavaHigh; melting.length = 0; lavaFloor(); }             // (THE HEAT: the lava as high as it was; what melted is back)
     if (s.daily) {   // the Daily Challenge: the same drops come again, and what this drop made is taken back
         dropRandom.setState(s.daily.rng);
         s.daily.made.forEach((n, t) => { made[t] = n; });
@@ -2686,6 +2763,7 @@ function renderSets() {
             sk.twins && (sk.twins.same ? '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right'
                 : '♛ Royal pairs (not in the Gem Mine): two different jewels fall at once, mirrored left and right'),
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
+            sk.heat && '🌋 Heat (not in the Gem Mine): the nearer the lava, the hotter; a bigger stone stands more heat; one left in too much melts, and the lava rises',
             sk.lava && '🌋 Feed the volcano (not in the Gem Mine): its lava rises with every drop; make the stone it asks for and the lava sinks and the cinders crumble; too late, and it erupts',
             sk.clash && '🌋 Fire and stone (not in the Gem Mine): a stone let go onto one 5 or more levels bigger burns up with it and leaves a cinder; only a big gem made beside a cinder breaks it',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);

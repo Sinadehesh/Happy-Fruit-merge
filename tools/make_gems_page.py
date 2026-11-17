@@ -57,7 +57,8 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
                 // (erupt: true is the lava bomb: merges heat the volcano; full, it gives a bomb to drop. Off while clash is tried.)
                 // (clash: true is fire and stone: a gem let go onto one 5 or more levels from it burns up with it and leaves a cinder. Off while the lava is tried.)
-                { id: 'volcano', name: 'Volcano Gems', lava: true },   // the volcano asks for a stone; its lava rises with every drop until it is made, or it erupts
+                // (lava: true is the volcano that asks for a stone: its lava rises with every drop until it is made, or it erupts. Off while the heat is tried.)
+                { id: 'volcano', name: 'Volcano Gems', heat: true },   // hotter the nearer the lava; each stone stands so much; one left in too much melts and raises the lava
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
                 // (blocks: true is square blocks that fall straight and never roll. Off while glitch is tried.)

@@ -288,6 +288,12 @@ const Sound = (() => {
             sample('bubble_big', { gain: 0.45, rate: 0.55 });
             for (let i = 0; i < 6; i++) crackle(0.08 + i * 0.09 + Math.random() * 0.05, 0.15 - i * 0.018);
         },
+        // a stone melts into the lava (game.js HEAT): a hiss and a thick bubble, deeper for a bigger stone
+        melt(tier = 0) {
+            wash(Math.max(1200, 3000 - tier * 220), 0.32 + tier * 0.03, 0.14 + tier * 0.012);
+            bloop(Math.max(90, 300 - tier * 24), 0.12 + tier * 0.012, 0.1 + tier * 0.012, 0.05);
+            crackle(0.03, 0.1);
+        },
         // the volcano is calmed (game.js LAVA): the lava sinks with a long hiss of steam, and two soft notes
         calm() {
             wash(2600, 0.7, 0.16);
