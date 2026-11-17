@@ -58,7 +58,7 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; full, it gives a lava bomb to drop
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
-                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18 },
+                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, blocks: true },   // square blocks that fall straight and never roll
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30, rubber: true },   // made of rubber: everything bounces
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40 },
                 { id: 'neon', name: 'Neon Nights', mineStars: 48 },

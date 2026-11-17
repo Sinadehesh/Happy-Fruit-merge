@@ -235,6 +235,13 @@ const RUBBER = SKIN && SKIN.rubber && !MINE ? Object.assign({
     less: 0.03,     // ...each level above it keeps this much less...
     least: 0.55     // ...but never less than this
 }, SKIN.rubber === true ? null : SKIN.rubber) : null;
+// A blocks set (GAME.skins blocks: the Pixel Treasure): every gem is a square block that falls straight down and
+// never rolls or turns, see BLOCKS below. Not in the Gem Mine, whose stages are built for gems that roll.
+// (blocks: true, or an object that changes these numbers)
+const BLOCKS = SKIN && SKIN.blocks && !MINE && !FLOAT ? Object.assign({
+    side: 1.6,      // a block's side, x the gem's size (its radius): a little less room than the round gem takes
+    drops: 5        // how many of the smallest kinds are dropped
+}, SKIN.blocks === true ? null : SKIN.blocks) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
 const TWINS = !!(SKIN && SKIN.twins) && !FLOAT && !MINE;
@@ -271,6 +278,8 @@ const CALL = SKIN && SKIN.call && !FLOAT ? Object.assign({
 const petOf = tier => (CALL && CALL.pets[tier]) || { weight: 1, jump: 200 };
 const weightOf = tier => CALL ? petOf(tier).weight : 1;   // x the weight its level gives it (see WEIGHT)
 const strengthOf = gem => CALL.push * gem.mass * petOf(gem.tier).jump / 100;   // the weight it can throw off its back
+
+const DROPS = (BLOCKS && BLOCKS.drops) || DROP_TIERS;   // how many of the smallest kinds are dropped
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
 // (Not in the Daily Challenge, which is the same game for everyone, nor in Gem Rush or the Gem Mine.)
@@ -358,7 +367,7 @@ board.classList.toggle('float', FLOAT);   // (the line, the guide and messages s
 if (WATER) { board.classList.add('water'); board.style.setProperty('--water', `${WATER.y / GAME_HEIGHT * 100}%`); }   // (the water's tint)
 
 function randomDropTier() {
-    return Math.floor(dropRandom() * DROP_TIERS);
+    return Math.floor(dropRandom() * DROPS);
 }
 
 // Combo (Block Blast rule): every merge adds 1; dropping COMBO_BREAK items in a row without
@@ -416,14 +425,14 @@ function showPop(x, y, points) {
 
 const next2Img = document.getElementById('next2-img');
 function updateUI() {
-    nextImg.src = SPRITES[nextTier];
+    nextImg.src = (BLOCKS && blockUrl[nextTier]) || SPRITES[nextTier];
     if (MINE) next2Img.src = SPRITES[afterTier];
 
     // The fruit you're about to drop hangs at the top (a floating set: at the bottom), following the pointer
     const scale = board.clientWidth / GAME_WIDTH;
     const inHand = bomb === 2;   // (a lava bomb, LAVA BOMB)
-    const r = inHand ? ERUPT.size * BOMB_GLOW : TIERS[currentTier] * SPRITE_FIT;
-    dropGuide.style.backgroundImage = `url('${inHand ? bombUrl : SPRITES[currentTier]}')`;
+    const r = inHand ? ERUPT.size * BOMB_GLOW : BLOCKS ? TIERS[currentTier] * BLOCKS.side / 2 : TIERS[currentTier] * SPRITE_FIT;
+    dropGuide.style.backgroundImage = `url('${inHand ? bombUrl : (BLOCKS && blockUrl[currentTier]) || SPRITES[currentTier]}')`;
     dropGuide.style.width = `${r * 2 * scale}px`;
     dropGuide.style.top = `${((inHand ? ERUPT.size + 10 : spawnY(currentTier)) - r) * scale}px`;
     if (ERUPT) { dropGuide.classList.toggle('bomb', inHand); dropGuide.style.setProperty('--blast', ERUPT.blast / r); }
@@ -473,7 +482,7 @@ const aimLine2 = TWINS ? board.insertBefore(Object.assign(aimLine.cloneNode(), {
 if (TWINS) { board.classList.add('twins'); document.querySelectorAll('.tray-label').forEach(l => { l.textContent = 'NEXT ×2'; }); }
 
 function clampX(x, tier) {
-    const r = bomb === 2 ? ERUPT.size : TIERS[tier];   // (a lava bomb in the hand, not the gem)
+    const r = bomb === 2 ? ERUPT.size : TIERS[tier] * (BLOCKS ? BLOCKS.side / 2 : 1);   // (a lava bomb in the hand; a block right up to the wall)
     return Math.max(r, Math.min(GAME_WIDTH - r, x));
 }
 
@@ -1002,6 +1011,7 @@ Events.on(engine, 'beforeUpdate', () => {
                 body.currentRadius = newRadius;
                 syncSprite(body);
             }
+            if (BLOCKS) Body.setInertia(body, Infinity);   // (scaling works its turning out again: a block never turns)
         }
 
         // Fallback for a drop wedged against a wall: once it has fallen for a second and stopped, it counts as landed
@@ -1144,6 +1154,7 @@ const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
     : WAVE ? ['told.wave', 'Every merge sends out a shock wave!']
     : RUBBER ? ['told.rubber', 'Rubber: everything bounces!']
+    : BLOCKS ? ['told.blocks', 'Blocks: they fall straight and never roll!']
     : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
@@ -1237,7 +1248,10 @@ function spawnItem(x, y, tier, animateGrowth) {
     // Matter centres the body on the outline's centroid; offset the sprite to match.
     const outline = SHAPES[SPRITES[tier]].map(([px, py]) => ({ x: px, y: py }));
     const centre = Vertices.centre(outline);
-    const body = Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
+    const body = BLOCKS ? Bodies.rectangle(x, y, startRadius * BLOCKS.side, startRadius * BLOCKS.side, {   // a square that never turns (BLOCKS)
+        restitution: 0, friction: 0.9, frictionStatic: 1, density: 0.001 * (tier + 1), slop: 0.01, inertia: Infinity,
+        chamfer: { radius: startRadius * BLOCKS.side * 0.05 }, render: { sprite: { texture: SPRITES[tier], xScale: scale, yScale: scale } }, tier
+    }) : Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
         restitution: bounceOf(tier),   // heavier gems bounce less (see WEIGHT)
         friction: 0.5,
         density: 0.001 * (tier + 1) * weightOf(tier),
@@ -1246,8 +1260,8 @@ function spawnItem(x, y, tier, animateGrowth) {
         tier: tier
     });
     // Set after creation: Matter rewrites sprite offsets from the hitbox bounds while creating the body
-    body.render.sprite.xOffset = centre.x / SPRITE_SIZE;
-    body.render.sprite.yOffset = centre.y / SPRITE_SIZE;
+    body.render.sprite.xOffset = BLOCKS ? 0.5 : centre.x / SPRITE_SIZE;
+    body.render.sprite.yOffset = BLOCKS ? 0.5 : centre.y / SPRITE_SIZE;
 
     if (animateGrowth) Body.setVelocity(body, { x: 0, y: 2 * DOWN }); // slight push the way gems fall (dev plan §4)
     body.isDropping = !animateGrowth; // merge results are already in the pile
@@ -1255,15 +1269,80 @@ function spawnItem(x, y, tier, animateGrowth) {
     body.currentRadius = startRadius;
     body.targetRadius = targetRadius;
 
+    if (BLOCKS) syncSprite(body);
     Composite.add(engine.world, body);
     return body;
 }
 
 function syncSprite(body) {
+    if (BLOCKS) {   // the block's own picture, as wide as the block (the gem's alone until that is drawn)
+        const art = `block${body.tier}`, ready = !!render.textures[art];
+        body.render.sprite.texture = ready ? art : SPRITES[body.tier];
+        body.render.sprite.xScale = body.render.sprite.yScale = body.currentRadius * BLOCKS.side / SPRITE_SIZE * (ready ? 1 : 0.8);
+        return;
+    }
     const scale = spriteScale(body.currentRadius);
     body.render.sprite.xScale = scale;
     body.render.sprite.yScale = scale;
 }
+
+// --- BLOCKS --- (a set with blocks in GAME.skins, the Pixel Treasure)
+// Like an old video game: every gem sits in a square block. A block falls straight down, never turns and never
+// rolls, and blocks stack. A block stays where it lands as long as its middle has something under it, or it
+// rests on blocks at both sides; one whose middle hangs over an edge slips off that edge (if there is room
+// beside it) and falls straight on, so a pile has no blocks hanging in the air. Two alike that touch, side by
+// side or one on the other, merge as always. Each level's block has the colour of its gem (drawn here once the
+// gem's picture has loaded: a tile in big pixels with a light and a dark edge, the gem on it).
+const blockUrl = [];   // per level: the block's picture for the hand and the tray
+if (BLOCKS) Events.on(engine, 'beforeUpdate', () => {
+    const blocks = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    for (const b of blocks) {
+        const x = b.position.x, foot = b.bounds.max.y;
+        if (b.isDropping || foot >= GAME_HEIGHT - 2) continue;        // still falling, or on the floor
+        let left = false, right = false;                               // what it stands on: left of its middle, right of it
+        for (const o of blocks) {
+            if (o === b || Math.abs(o.bounds.min.y - foot) > 4) continue;
+            const from = Math.max(o.bounds.min.x, b.bounds.min.x), to = Math.min(o.bounds.max.x, b.bounds.max.x);
+            if (to - from < 1) continue;
+            if (from <= x + 1 && to >= x - 1) left = right = true;     // (under its middle)
+            else if (to < x) left = true;
+            else right = true;
+        }
+        if (left === right) continue;                                  // held up well, or in the air
+        // it tips to the side with nothing under it, if nothing stands in its way there
+        const way = left ? 1 : -1, edge = way > 0 ? b.bounds.max.x : b.bounds.min.x;
+        if (way > 0 ? edge + 3 > GAME_WIDTH : edge - 3 < 0) continue;
+        if (blocks.some(o => o !== b && o.bounds.max.y > b.bounds.min.y + 2 && o.bounds.min.y < foot - 2
+            && (way > 0 ? o.bounds.min.x < edge + 3 && o.bounds.max.x > edge : o.bounds.max.x > edge - 3 && o.bounds.min.x < edge))) continue;
+        Body.setVelocity(b, { x: way * 1.6, y: b.velocity.y });
+    }
+});
+if (BLOCKS) SPRITES.forEach((src, tier) => {
+    const img = new Image();
+    img.onload = () => {
+        const S = SPRITE_SIZE, P = S / 16, c = document.createElement('canvas'), x = c.getContext('2d');
+        c.width = c.height = S;
+        // the gem's own colour: the mean of its picture
+        x.drawImage(img, 0, 0, 16, 16);
+        const px = x.getImageData(0, 0, 16, 16).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < px.length; i += 4) if (px[i + 3] > 128) { r += px[i]; g += px[i + 1]; b += px[i + 2]; n++; }
+        x.clearRect(0, 0, S, S);
+        const shade = k => `rgb(${[r, g, b].map(v => Math.round(Math.min(255, v / (n || 1) * k + 18 * (1 - Math.min(1, k))))).join(',')})`;
+        const cell = (cx, cy, w, h, col) => { x.fillStyle = col; x.fillRect(cx * P, cy * P, w * P, h * P); };
+        cell(1, 0, 14, 16, '#120a2c'); cell(0, 1, 16, 14, '#120a2c');            // the outline, its corners cut
+        cell(1, 1, 14, 14, shade(0.42));                                          // the face
+        cell(1, 1, 14, 1, shade(0.8)); cell(1, 1, 1, 14, shade(0.8));             // light from the top left
+        cell(1, 14, 14, 1, shade(0.2)); cell(14, 1, 1, 14, shade(0.2));           // shade at the bottom right
+        x.imageSmoothingEnabled = false;
+        x.drawImage(img, S * 0.14, S * 0.14, S * 0.72, S * 0.72);
+        render.textures[`block${tier}`] = c;
+        blockUrl[tier] = c.toDataURL();
+        for (const o of Composite.allBodies(engine.world)) if (o.tier === tier) syncSprite(o);
+        updateUI();
+    };
+    img.src = src;
+});
 
 // --- RESTART & ADS ---
 
@@ -1334,7 +1413,7 @@ function loadGame() {
     for (const [tier, x, y, angle] of data.items) {
         if (!okTier(tier)) continue;
         const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
-        Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
+        if (!BLOCKS) Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
     }
     score = shownScore = Math.max(0, data.score | 0);
@@ -1704,9 +1783,8 @@ function undoLastDrop() {
     Composite.allBodies(engine.world).filter(b => b.tier !== undefined || b.bomb).forEach(b => { b.gone = true; Composite.remove(engine.world, b); });
     for (const it of s.items) {
         const body = spawnItem(it.x, it.y, it.tier, false);
-        Body.setAngle(body, it.angle);
+        if (!BLOCKS) { Body.setAngle(body, it.angle); Body.setAngularVelocity(body, it.spin); }
         Body.setVelocity(body, { x: it.vx, y: it.vy });
-        Body.setAngularVelocity(body, it.spin);
         body.isDropping = it.dropping;
     }
     score = shownScore = s.score;
@@ -1817,6 +1895,7 @@ function renderSets() {
             sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink',
             sk.wave && '💎 Shatter wave (not in the Gem Mine): every merge shoves the gems around it away, a bigger gem harder',
             sk.rubber && '🏀 Rubber (not in the Gem Mine): everything bounces a few times before it lies still',
+            sk.blocks && '🧱 Blocks (not in the Gem Mine): square blocks that fall straight down and never roll',
             sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);
