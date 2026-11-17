@@ -1149,7 +1149,16 @@ function dropFruit() {
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
     if (TWINS) dropTwins();
-    else callPets(dropX, currentTier, spawnItem(dropX, spawnY(currentTier), currentTier, false));
+    else {
+        const gem = spawnItem(dropX, spawnY(currentTier), currentTier, false);
+        callPets(dropX, currentTier, gem);
+        if (BEAT && onTheBeat()) {   // let go on the beat: its merge will count double
+            gem.onBeat = true;
+            FX.onBeat(dropX, spawnY(currentTier) + TIERS[currentTier] + 26, 'ON BEAT!');
+            Sound.play('beatHit');
+            Haptics.play('pickup');
+        }
+    }
     if (SET_HINT) setHint();
 
     currentTier = nextTier;
@@ -1262,6 +1271,30 @@ function mergeGems(bodyA, bodyB, at) {
     if (WAVE) shatter(midX, midY, mergedTier, merged);
     return merged;
 }
+// --- THE BEAT --- (a set with beat in GAME.skins, the Neon Nights)
+// The jar pulses to a beat: the music's own when a song plays (Sound.beat knows each song's), a steady one of
+// its own when none does, marked by a soft drum. A ring closes in on the gem in hand and meets it on the beat.
+// A gem let go within BEAT.within ms of a beat is on the beat: it glows until it merges, and that merge counts
+// BEAT.times. Nothing in how the gems move changes, and the beat never depends on how the player is doing.
+function onTheBeat() {
+    const b = Sound.beat();
+    return Math.min(b.phase, 1 - b.phase) * b.period <= BEAT.within;
+}
+if (BEAT) {
+    board.classList.add('beat');
+    FX.beatGlow(() => Composite.allBodies(engine.world).filter(b => b.onBeat && !b.isMerging).map(b => [b.position.x, b.position.y, b.currentRadius]));
+    let was = 0;
+    (function pulse() {
+        requestAnimationFrame(pulse);
+        const b = Sound.beat(), since = b.phase * b.period, left = (1 - b.phase) * b.period;
+        board.style.setProperty('--pulse', Math.exp(-since / 150).toFixed(3));   // 1 on the beat, fading
+        dropGuide.style.setProperty('--ring', (1 - b.phase).toFixed(3));         // the ring: wide after a beat, closed on the next
+        dropGuide.classList.toggle('now', Math.min(since, left) <= BEAT.within);
+        if (b.phase < was && !b.music && clockOn && !isGameOver) Sound.play('kick');
+        was = b.phase;
+    })();
+}
+
 // --- WIRES --- (a set with wires in GAME.skins, the Cyber Circuit)
 // Gems that touch are wired together. A gem that has just landed is live for a moment: if a gem of its level
 // that it doesn't touch is linked to it by a short chain of touching gems (WIRES.links of them at most between

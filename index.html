@@ -121,6 +121,19 @@
             content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 0; z-index: 9; pointer-events: none;
             border-left: 2px dotted rgba(255, 214, 110, 0.3); transform: translateX(-1px);
         }
+        /* a beat set (game.js THE BEAT, the Neon Nights): the jar glows on every beat (--pulse: 1 on the beat, then
+           fading) and a ring closes in on the gem in hand (--ring: 1 just after a beat, 0 on the next); the ring is
+           bright while letting go counts */
+        #board.beat {
+            box-shadow: 0 0 calc(var(--pulse, 0) * 24px) calc(var(--pulse, 0) * 5px) rgba(255, 79, 216, 0.9),
+                inset 0 0 calc(var(--pulse, 0) * 46px) rgba(0, 229, 255, calc(var(--pulse, 0) * 0.45));
+        }
+        #board.beat #drop-guide::before {
+            content: ''; position: absolute; left: 50%; top: 50%; width: 100%; aspect-ratio: 1; border-radius: 50%; pointer-events: none;
+            box-sizing: border-box; transform: translate(-50%, -50%) scale(calc(1.04 + var(--ring, 0) * 1.1));
+            border: 3px solid rgba(125, 251, 255, calc(0.2 + (1 - var(--ring, 0)) * 0.6));
+        }
+        #board.beat #drop-guide.now::before { border-color: #fff; box-shadow: 0 0 12px 3px #ff4fd8, inset 0 0 8px 1px #ff4fd8; }
         /* a volcano set (game.js LAVA BOMB, the Volcano Gems): the heat that merges build up, a bar at the side of the
            jar that fills from the bottom; it throbs when it is nearly full and glows while the lava bomb waits.
            The bomb in the hand glows, with a ring around it as wide as its blast */

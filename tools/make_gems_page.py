@@ -61,7 +61,7 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, blocks: true },   // square blocks that fall straight and never roll
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30, rubber: true },   // made of rubber: everything bounces
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40, wires: true },   // touching gems are wires: a spark merges alike gems they link
-                { id: 'neon', name: 'Neon Nights', mineStars: 48 },
+                { id: 'neon', name: 'Neon Nights', mineStars: 48, beat: true },   // the jar pulses to the beat: a gem let go on it counts double
                 { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // the same pets leap to your finger, held or dropped
             ],
             // what to make to open each next set: [level, how many], counted from when the set before it opened.

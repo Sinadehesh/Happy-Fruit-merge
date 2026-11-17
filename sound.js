@@ -234,6 +234,14 @@ const Sound = (() => {
             o.connect(g); g.connect(sfxBus);
             o.start(now); o.stop(now + 0.3 + tier * 0.012);
         },
+        // the beat (game.js BEAT). kick: the soft drum that marks it when no music plays. beatHit: a gem let go on
+        // the beat (a bright double note), or the merge it then makes (strong: higher, with a sparkle)
+        kick() { thump(118, 0.11, 0.13); },
+        beatHit(strong) {
+            sample('chime', { gain: 0.3, rate: semitones(strong ? 19 : 12) });
+            sample('chime', { gain: 0.24, rate: semitones(strong ? 24 : 19), when: 0.07 });
+            if (strong) sample('praise', { gain: 0.16, rate: semitones(7), when: 0.03 });
+        },
         // a spark running along a chain of gems (game.js WIRES): a short electric fizz, never many at once
         zap() {
             const now = ac.currentTime;
@@ -319,11 +327,13 @@ const Sound = (() => {
 
     // ---------- music: songs by Kevin MacLeod, one plays on repeat ----------
 
+    // (bpm: the song's beats a minute, first: when its first beat falls, in seconds; measured from the recordings,
+    // for the beat that game.js BEAT plays to)
     const SONGS = [
-        { title: 'Carefree', file: 'carefree' },
-        { title: 'Easy Lemon', file: 'easy_lemon' },
-        { title: 'Wallpaper', file: 'wallpaper' },
-        { title: 'Monkeys Spinning Monkeys', file: 'monkeys_spinning_monkeys' }
+        { title: 'Carefree', file: 'carefree', bpm: 96, first: 0 },
+        { title: 'Easy Lemon', file: 'easy_lemon', bpm: 82, first: 0 },
+        { title: 'Wallpaper', file: 'wallpaper', bpm: 93, first: 0 },
+        { title: 'Monkeys Spinning Monkeys', file: 'monkeys_spinning_monkeys', bpm: 72, first: 0.616 }
     ];
     const MUSIC_VOLUME = 0.35;
 
@@ -338,6 +348,8 @@ const Sound = (() => {
                 audio.play().catch(() => {});   // blocked until the first tap; unlock() calls this again then
             },
             pause() { if (audio) audio.pause(); },
+            // where the song is, in seconds, while it plays (else -1)
+            at() { return audio && started && !audio.paused && prefs.music >= 0 ? audio.currentTime : -1; },
             // dip the song for a few seconds so the narrator is clear
             duck(seconds) {
                 if (!audio) return;
@@ -356,6 +368,20 @@ const Sound = (() => {
         else args.forEach(a => { if (typeof a === 'function') a(); });
     }
 
+    // The beat (game.js BEAT): { period: how long a beat is, in ms; phase: how far into the beat we are, 0 to 1;
+    // music: whether it is the song's }. With music playing it is the song's own beat, read off where the song is
+    // (less the moment the sound takes to reach the ear); without, a steady beat of its own.
+    const OWN_BEAT = 600;
+    function beat() {
+        const at = Music.at();
+        if (at > 0) {
+            const song = SONGS[prefs.music], period = 60000 / song.bpm;
+            const heard = at - song.first - ((ac && ac.outputLatency) || 0.04);
+            return { period, phase: (((heard * 1000 / period) % 1) + 1) % 1, music: true };
+        }
+        return { period: OWN_BEAT, phase: (performance.now() % OWN_BEAT) / OWN_BEAT, music: false };
+    }
+
     function setSfx(on) { prefs.sfx = on; savePrefs(); if (sfxBus) sfxBus.gain.value = on ? 1 : 0; }
     // next song, and after the last one: off
     function nextMusic() {
@@ -367,5 +393,5 @@ const Sound = (() => {
 
     function setVoice(on) { prefs.voice = on; savePrefs(); }
 
-    return { unlock, play, setSfx, setVoice, nextMusic, songTitle, prefs: () => ({ ...prefs }) };
+    return { unlock, play, beat, setSfx, setVoice, nextMusic, songTitle, prefs: () => ({ ...prefs }) };
 })();
