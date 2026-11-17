@@ -30,7 +30,7 @@ HOW YOU PLAY
 • Squishy pops, sparkles and a cheerful narrator for every big combo: SWEET! JUICY! INCREDIBLE!
 
 12 GEM SETS TO COLLECT, 144 GEMS IN ALL
-Rocks & Gems, Crystal Cave, Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems, Pixel Treasure, Odd Shapes, Cyber Circuit, Neon Nights, Gem Pets and Spiral Atoms. Each set turns every gem in the jar into something new, and most of them play by a rule of their own: gems that float and sink under water, zero gravity, pairs of jewels, fire and stone, blasts, glitches, rubber that bounces, sparks, a beat to drop on, pets that jump to your finger, and atoms that swirl in ever new patterns. Open a set by making gems, by winning stars in the Gem Mine or by levelling up. Can you open them all?
+Rocks & Gems, Crystal Cave, Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems, Pixel Treasure, Odd Shapes, Cyber Circuit, Neon Nights, Gem Pets and Spiral Atoms. Each set turns every gem in the jar into something new, and most of them play by a rule of their own: gems that float and sink under water, zero gravity, pairs of jewels, a volcano to feed, blasts, glitches, rubber that bounces, sparks, a beat to drop on, pets that jump to your finger, and atoms that swirl in ever new patterns. Open a set by making gems, by winning stars in the Gem Mine or by levelling up. Can you open them all?
 
 THE GEM MINE
 • 20 puzzle stages deep under the ground, with crates to break, shelves, pegs, slopes and funnels in the jar.

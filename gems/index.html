@@ -149,6 +149,25 @@
             border: 3px solid rgba(125, 251, 255, calc(0.2 + (1 - var(--ring, 0)) * 0.6));
         }
         #board.beat #drop-guide.now::before { border-color: #fff; box-shadow: 0 0 12px 3px #ff4fd8, inset 0 0 8px 1px #ff4fd8; }
+        /* a lava set (game.js THE VOLCANO, the Volcano Gems): the stone the volcano asks for, on a badge at the left of
+           the jar just under the line, with how many drops are left for it; it pops when a new stone is asked and
+           throbs when there are 2 drops or fewer */
+        #lava-ask {
+            position: absolute; left: 1.6%; top: 24.6%; width: 13.4%; z-index: 13; pointer-events: none; box-sizing: border-box;
+            display: flex; flex-direction: column; align-items: center; padding: 3px 2px 5px; border-radius: 12px;
+            background: rgba(40, 12, 8, 0.72); box-shadow: inset 0 0 0 2px rgba(255, 150, 60, 0.75), 0 3px 8px rgba(0, 0, 0, 0.35);
+        }
+        #lava-ask b { font-size: 9px; letter-spacing: 1px; color: #ffcf8a; line-height: 1.3; }
+        #lava-ask img { width: 86%; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4)); }
+        #lava-ask i {
+            position: absolute; right: -7px; bottom: -7px; min-width: 22px; height: 22px; box-sizing: border-box; padding: 0 5px; border-radius: 11px;
+            background: #ff7a1a; color: #fff; font: 800 13px/22px Poppins, sans-serif; font-style: normal; text-align: center; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+        }
+        #lava-ask.last { animation: ask-last 0.55s ease-in-out infinite alternate; }
+        #lava-ask.last i { background: #e3261b; }
+        #lava-ask.new { animation: ask-new 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
+        @keyframes ask-new { from { transform: scale(1.7); } to { transform: scale(1); } }
+        @keyframes ask-last { from { box-shadow: inset 0 0 0 2px rgba(255, 150, 60, 0.75), 0 0 0 0 rgba(255, 70, 20, 0); } to { box-shadow: inset 0 0 0 2px #ff5a1f, 0 0 14px 3px rgba(255, 70, 20, 0.8); } }
         /* a volcano set (game.js LAVA BOMB, the Volcano Gems): the heat that merges build up, a bar at the side of the
            jar that fills from the bottom; it throbs when it is nearly full and glows while the lava bomb waits.
            The bomb in the hand glows, with a ring around it as wide as its blast */
@@ -1002,7 +1021,8 @@
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
                 // (erupt: true is the lava bomb: merges heat the volcano; full, it gives a bomb to drop. Off while clash is tried.)
-                { id: 'volcano', name: 'Volcano Gems', clash: true },   // two gems more than 4 levels apart burn each other up when they touch
+                // (clash: true is fire and stone: a gem let go onto one 5 or more levels from it burns up with it and leaves a cinder. Off while the lava is tried.)
+                { id: 'volcano', name: 'Volcano Gems', lava: true },   // the volcano asks for a stone; its lava rises with every drop until it is made, or it erupts
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
                 // (blocks: true is square blocks that fall straight and never roll. Off while glitch is tried.)

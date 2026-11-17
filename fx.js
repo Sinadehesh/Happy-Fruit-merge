@@ -121,6 +121,68 @@ const FX = (() => {
         effects.push({ kind: 'smoke', x, y, r, t: 0, dur: 0.75 });
     }
 
+    // The volcano (game.js LAVA). lava: a function giving where the lava's surface is now (y), where it erupts (mark),
+    // how near that is (hot: 0 to 1) and whether it is about to (soon); the lava is drawn every frame, glowing and
+    // heaving, with the mark as a dashed line that throbs as the lava nears it. calm: steam rises from the lava
+    // and the word says so. erupt: a fountain of lava from the whole surface, a flash, smoke, the word, a big shake.
+    let lavaOf = null;
+    function lava(fn) { lavaOf = fn; }
+    const lavaTop = (x, y, t) => y + 2.2 * Math.sin(x / 31 + t * 1.7) + 1.6 * Math.sin(x / 13 - t * 2.3);
+    function drawLava(t) {
+        let s = null;
+        try { s = lavaOf(); } catch (e) {}
+        if (!s) return;
+        ctx.save();
+        // the mark: as far as the lava may come
+        ctx.setLineDash([9, 8]); ctx.lineDashOffset = -t * 14;
+        ctx.lineWidth = 2.5 + (s.soon ? 1.5 * Math.abs(Math.sin(t * 9)) : 0);
+        ctx.strokeStyle = `rgba(255, ${Math.round(170 - 90 * s.hot)}, 60, ${0.3 + 0.5 * s.hot})`;
+        ctx.beginPath(); ctx.moveTo(0, s.mark); ctx.lineTo(W, s.mark); ctx.stroke();
+        ctx.setLineDash([]);
+        if (s.y < H - 0.5) {
+            // the glow over it
+            const glow = ctx.createLinearGradient(0, s.y - 34, 0, s.y);
+            glow.addColorStop(0, 'rgba(255, 120, 30, 0)'); glow.addColorStop(1, `rgba(255, 120, 30, ${0.22 + 0.2 * s.hot})`);
+            ctx.fillStyle = glow; ctx.fillRect(0, s.y - 34, W, 36);
+            // the lava itself
+            const body = ctx.createLinearGradient(0, s.y, 0, H);
+            body.addColorStop(0, 'rgba(255, 196, 70, 0.95)'); body.addColorStop(0.12, 'rgba(255, 122, 26, 0.93)'); body.addColorStop(1, 'rgba(190, 40, 12, 0.96)');
+            ctx.fillStyle = body;
+            ctx.beginPath(); ctx.moveTo(0, lavaTop(0, s.y, t));
+            for (let x = 6; x <= W + 6; x += 6) ctx.lineTo(x, lavaTop(x, s.y, t));
+            ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
+            // dark crust drifting on it, and its bright skin
+            ctx.fillStyle = 'rgba(90, 20, 10, 0.35)';
+            for (let i = 0; i < 6; i++) {
+                const cx = ((i * 83 + t * (9 + i * 2)) % (W + 60)) - 30, cy = s.y + 9 + (i * 37 % Math.max(6, H - s.y - 8));
+                if (cy < H - 3) { ctx.beginPath(); ctx.ellipse(cx, cy, 16 + i * 2, 3.5, 0, 0, Math.PI * 2); ctx.fill(); }
+            }
+            ctx.beginPath(); ctx.moveTo(0, lavaTop(0, s.y, t));
+            for (let x = 6; x <= W + 6; x += 6) ctx.lineTo(x, lavaTop(x, s.y, t));
+            ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(255, 240, 170, 0.95)'; ctx.shadowColor = '#ff7a1a'; ctx.shadowBlur = 10;
+            ctx.stroke();
+            // a bubble now and then, more the hotter it is
+            if (Math.random() < 0.015 + 0.05 * s.hot) effects.push({ kind: 'lava', x: rand(10, W - 10), y: s.y + 2, vx: rand(-25, 25), vy: -rand(90, 190 + 140 * s.hot), size: rand(2.5, 5), t: 0, dur: rand(0.4, 0.7) });
+        }
+        ctx.restore();
+    }
+    function calm(y) {
+        for (let i = 0; i < 9; i++) effects.push({ kind: 'steam', x: W * (i + 0.5) / 9 + rand(-14, 14), y: Math.min(H - 6, y) - rand(0, 10), r: rand(16, 30), t: -rand(0, 0.25), dur: rand(0.9, 1.4) });
+        effects = effects.filter(e => e.kind !== 'praise' && e.kind !== 'word');
+        effects.push({ kind: 'word', text: 'CALM', cool: true, t: 0, dur: 1.1 });
+    }
+    function erupt(y) {
+        effects.push({ kind: 'flash', x: W / 2, y, r: W * 0.75, t: 0, dur: 0.5 });
+        for (let i = 0; i < 70; i++) {
+            const x = rand(8, W - 8), a = rand(-0.5, 0.5);
+            effects.push({ kind: 'lava', x, y: y + rand(-4, 6), vx: Math.sin(a) * rand(120, 380), vy: -rand(380, 900), size: rand(3.5, 10), t: 0, dur: rand(0.8, 1.4) });
+        }
+        for (let i = 0; i < 4; i++) effects.push({ kind: 'smoke', x: W * (i + 0.5) / 4, y: y - 10, r: 70, t: -i * 0.05, dur: 1.1 });
+        effects = effects.filter(e => e.kind !== 'praise' && e.kind !== 'word');
+        effects.push({ kind: 'word', text: 'ERUPTION!', t: 0, dur: 1.3 });
+        quake(13, 0.9);
+    }
+
     // Fire and stone (game.js CLASH). clash: a big gem at (x, y) and a small one at (x2, y2) burn each other up: fire
     // at both, a flash between them, the jar shakes. dangerGlow: a function giving the gems the one in hand would
     // burn, [x, y, r], which are ringed in red.
@@ -490,6 +552,7 @@ const FX = (() => {
             ctx.restore();
         }
         if (sea) drawWater(now / 1000);
+        if (lavaOf) drawLava(now / 1000);
         for (const e of effects) {
             e.t += dt;
             const k = e.t / e.dur;
@@ -624,6 +687,14 @@ const FX = (() => {
                 ctx.strokeStyle = e.cold ? '#d6f6ff' : '#ffd27a';
                 ctx.beginPath(); ctx.arc(e.x, e.y, e.r * Math.min(1, 0.3 + 1.2 * k), 0, Math.PI * 2); ctx.stroke();
                 ctx.restore();
+            } else if (e.kind === 'steam') {
+                if (e.t >= 0) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.5 * (1 - k);
+                    ctx.fillStyle = '#eef3ff';
+                    ctx.beginPath(); ctx.arc(e.x + 10 * Math.sin(e.t * 3 + e.r), e.y - 150 * k, e.r * (0.6 + 1.1 * k), 0, Math.PI * 2); ctx.fill();
+                    ctx.restore();
+                }
             } else if (e.kind === 'smoke') {
                 ctx.save();
                 ctx.globalAlpha = 0.42 * (1 - k);
@@ -641,10 +712,11 @@ const FX = (() => {
                 ctx.font = "800 58px Poppins, 'Arial Black', sans-serif";
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.lineJoin = 'round';
-                ctx.lineWidth = 12; ctx.strokeStyle = '#4a1206';
+                ctx.lineWidth = 12; ctx.strokeStyle = e.cool ? '#0c2a4d' : '#4a1206';   // (cool: the volcano calmed; else fire)
                 ctx.strokeText(e.text, 0, 0);
                 const fill = ctx.createLinearGradient(0, -30, 0, 30);
-                fill.addColorStop(0, '#fff3a6'); fill.addColorStop(0.5, '#ffb02e'); fill.addColorStop(1, '#f0401c');
+                if (e.cool) { fill.addColorStop(0, '#f4fdff'); fill.addColorStop(0.5, '#a6e9ff'); fill.addColorStop(1, '#4aa6ee'); }
+                else { fill.addColorStop(0, '#fff3a6'); fill.addColorStop(0.5, '#ffb02e'); fill.addColorStop(1, '#f0401c'); }
                 ctx.fillStyle = fill;
                 ctx.fillText(e.text, 0, 0);
                 ctx.restore();
@@ -681,5 +753,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, lava, calm, erupt, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

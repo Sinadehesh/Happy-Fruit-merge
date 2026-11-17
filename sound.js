@@ -288,6 +288,12 @@ const Sound = (() => {
             sample('bubble_big', { gain: 0.45, rate: 0.55 });
             for (let i = 0; i < 6; i++) crackle(0.08 + i * 0.09 + Math.random() * 0.05, 0.15 - i * 0.018);
         },
+        // the volcano is calmed (game.js LAVA): the lava sinks with a long hiss of steam, and two soft notes
+        calm() {
+            wash(2600, 0.7, 0.16);
+            sample('chime', { gain: 0.24, rate: semitones(-3) });
+            sample('chime', { gain: 0.22, rate: semitones(4), when: 0.16 });
+        },
         // fire and stone (game.js CLASH): two gems burn each other up: a low thud, a hiss and crackles, deeper for a bigger gem
         clash(tier = 5) {
             thump(150 - tier * 6, 0.22 + tier * 0.012, 0.3 + tier * 0.02);

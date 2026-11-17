@@ -265,6 +265,27 @@ const CLASH = SKIN && SKIN.clash && !MINE ? Object.assign({
     points: 0,      // points for every level of each gem that burns
     broken: 60      // points for breaking a cinder
 }, SKIN.clash === true ? null : SKIN.clash) : null;
+// A lava set (GAME.skins lava: the Volcano Gems): the volcano asks for a stone, and its lava rises with every drop
+// until it is made, or it erupts, see THE VOLCANO below. Not in the Gem Mine, nor in the Daily Challenge (whose goal
+// is the day's own). (lava: true, or an object that changes these numbers)
+const LAVA = SKIN && SKIN.lava && !MINE && !FLOAT && !DAILY ? Object.assign({
+    top: 120,           // how high the lava can rise, px above the floor: there the volcano erupts
+    asks: [3, 4, 4, 5, 4, 5, 6, 5, 4, 6, 5, 6, 5, 7],   // the stones it asks for, by level, in this order...
+    again: 10,          // ...and when they are through, the last this many again, and again
+    drops: { 3: 4, 4: 5, 5: 7, 6: 9, 7: 12 },     // by the level asked: the lava is at the top after this many drops without it
+    wait: 110,          // physics steps from that last drop until it erupts (the stone may still be made meanwhile)
+    up: 0.5,            // how fast the lava rises to where it should be, px a step...
+    down: 2.5,          // ...and how fast it sinks
+    sunk: 7,            // the gems lie this deep in it (the picture only: the floor is that much under its surface)
+    bonus: 25,          // points for making the stone: this x its level
+    cinders: 3,         // an eruption throws this many cinders into the jar...
+    cinder: 32,         // ...of this size (their radius, px)
+    toss: 9             // ...and tosses the gems up this fast, px a step, for the smallest (less for bigger ones)
+}, SKIN.lava === true ? null : SKIN.lava) : null;
+let lavaAsk = 0;        // (THE VOLCANO) how many stones it has asked for before this one
+let lavaDrops = 0;      // ...how many gems have been let go since it asked
+let lavaY = 0;          // ...how high the lava stands now, px above the floor
+let eruptIn = -1;       // ...steps until it erupts (-1: it is not about to)
 // A glitch set (GAME.skins glitch: the Pixel Treasure): at every merge gems vanish and come back somewhere else, at
 // random, see GLITCH below. Not in the Gem Mine. (glitch: true, or an object that changes these numbers)
 const GLITCH = SKIN && SKIN.glitch && !MINE && !FLOAT ? Object.assign({
@@ -883,7 +904,7 @@ function breakCinder(c, scored) {
     Composite.remove(engine.world, c);
     FX.crumble(c.position.x, c.position.y, c.circleRadius);
     Sound.play('cinder', c.circleRadius);
-    if (!scored || !CLASH.broken) return;
+    if (!scored || !CLASH || !CLASH.broken) return;
     score += CLASH.broken;
     if (score > bestScore) { isNewBest = true; bestScore = score; try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {} }
     showPop(c.position.x, c.position.y, CLASH.broken);
@@ -916,6 +937,95 @@ if (CLASH) {
     FX.dangerGlow(() => isGameOver ? [] : Composite.allBodies(engine.world)
         .filter(b => b.tier !== undefined && !b.isMerging && !b.isDropping && Math.abs(b.tier - currentTier) > CLASH.apart)
         .map(b => [b.position.x, b.position.y, b.currentRadius]));
+}
+
+// --- THE VOLCANO --- (a set with lava in GAME.skins, the Volcano Gems)
+// The jar stands in the mouth of a volcano, and the volcano wants feeding. It asks for one stone at a time (the
+// badge at the left of the jar shows which, and how many drops are left). With every gem that is let go its lava
+// rises a step, lifting the whole pile toward the line; a dashed line across the jar marks how far it can come.
+//  - The asked stone is made (by a merge) in time: the volcano is calm. The lava sinks away, every cinder in the
+//    jar crumbles, there are LAVA.bonus points for each level of the stone, and it asks for the next one.
+//  - The lava reaches the mark first (and the stone is still not made a moment later): it erupts. The gems are
+//    tossed into the air, LAVA.cinders cinders are thrown in among them (dead black rocks that merge with nothing
+//    and only take up room, until the volcano is next calmed, or the Zap booster breaks one), the lava sinks, and
+//    it asks for the next stone.
+// What it asks for and how long it waits are fixed (LAVA.asks, LAVA.drops: a bigger stone gets more drops), the same
+// in every game: nothing here is left to chance, and nothing follows how the player is doing. Saved with the game;
+// Undo takes back a drop with all it did to the volcano.
+const askLevel = () => { const a = LAVA.asks, n = a.length; return a[lavaAsk < n ? lavaAsk : n - LAVA.again + (lavaAsk - n) % LAVA.again]; };   // the level it asks for now
+const askDrops = () => LAVA.drops[askLevel()] || 10;                                                     // ...and the drops it gives for it
+const lavaGoal = () => LAVA.top * Math.min(1, lavaDrops / askDrops());                                   // how high the lava should stand now
+function lavaFloor() {   // the floor is where the lava is (a little under its surface)
+    Body.setPosition(ground, { x: GAME_WIDTH / 2, y: GAME_HEIGHT + 25 - Math.max(0, lavaY - LAVA.sunk) });
+}
+const askBadge = LAVA ? (() => {
+    const el = document.createElement('div');
+    el.id = 'lava-ask';
+    el.innerHTML = '<b>MAKE</b><img alt=""><i></i>';
+    board.append(el);
+    return el;
+})() : null;
+function lavaUI(fresh) {
+    if (!askBadge) return;
+    const left = Math.max(0, askDrops() - lavaDrops);
+    askBadge.querySelector('img').src = SPRITES[askLevel() - 1];
+    askBadge.querySelector('i').textContent = left;
+    askBadge.classList.toggle('last', left <= 2);
+    if (fresh) { askBadge.classList.remove('new'); void askBadge.offsetWidth; askBadge.classList.add('new'); }
+}
+function lavaNext() {   // it asks for the next stone, and the lava goes down
+    lavaAsk++;
+    lavaDrops = 0;
+    eruptIn = -1;
+    lavaUI(true);
+}
+function lavaDropped() {   // a gem was let go: the lava comes up a step
+    lavaDrops++;
+    if (lavaDrops >= askDrops() && eruptIn < 0) { eruptIn = LAVA.wait; Sound.play('bombReady'); FX.rumble(); }
+    lavaUI(false);
+}
+function lavaCalm(x, y) {   // the asked stone was made
+    const points = LAVA.bonus * askLevel();
+    score += points;
+    if (score > bestScore) { isNewBest = true; bestScore = score; try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {} }
+    showPop(x, y - 30, points);
+    for (const c of cinders()) breakCinder(c, false);
+    FX.calm(GAME_HEIGHT - lavaY);
+    Sound.play('calm');
+    Haptics.play('praise', 1);
+    emitGame('volcano', 'calm', askLevel());
+    lavaNext();
+}
+function erupt() {
+    const y = GAME_HEIGHT - lavaY;
+    for (const b of Composite.allBodies(engine.world)) {
+        if (b.tier === undefined && !b.cinder) continue;
+        const k = 1 / (1 + 0.12 * (b.tier === undefined ? 3 : b.tier));
+        Body.setVelocity(b, { x: b.velocity.x + 2.2 * (b.position.x - GAME_WIDTH / 2) / (GAME_WIDTH / 2) * k, y: b.velocity.y - LAVA.toss * k });
+        if (b.tier !== undefined) b.hopLeft = 0;
+    }
+    for (let i = 0; i < LAVA.cinders; i++) {   // the cinders come up out of the lava, spread across the jar (not the same places every time)
+        const x = GAME_WIDTH * (i + 0.5 + 0.3 * Math.sin(lavaAsk * 2.4 + i)) / LAVA.cinders;
+        const c = makeCinder(Math.max(LAVA.cinder, Math.min(GAME_WIDTH - LAVA.cinder, x)), y - LAVA.cinder - 2, LAVA.cinder);
+        Body.setVelocity(c, { x: (GAME_WIDTH / 2 - x) / 90, y: -13 - i });
+    }
+    FX.erupt(y);
+    Sound.play('boom');
+    Haptics.play('eruption');
+    emitGame('volcano', 'erupt', askLevel());
+    lavaNext();
+    saveGame();
+}
+if (LAVA) {
+    board.classList.add('lava');
+    FX.lava(() => ({ y: GAME_HEIGHT - lavaY, mark: GAME_HEIGHT - LAVA.top, hot: Math.min(1, lavaDrops / askDrops()), soon: eruptIn >= 0 }));
+    Events.on(engine, 'beforeUpdate', () => {
+        const d = lavaGoal() - lavaY;
+        if (Math.abs(d) > 0.01) { lavaY += d > 0 ? Math.min(d, LAVA.up) : Math.max(d, -LAVA.down); lavaFloor(); }
+        if (isGameOver) return;
+        if (eruptIn > 0 && --eruptIn === 0) erupt();
+    });
+    lavaUI(false);
 }
 
 // --- GLITCH --- (a set with glitch in GAME.skins, the Pixel Treasure)
@@ -1177,7 +1287,7 @@ const render = Render.create({
     options: { width: GAME_WIDTH, height: GAME_HEIGHT, wireframes: false, background: '#00000000' }  // the board's grid shows through
 });
 if (ERUPT) { const art = bombArt(); render.textures[BOMB_ART] = art; bombUrl = art.toDataURL(); }   // (the lava bomb's picture)
-if (CLASH) render.textures[CINDER_ART] = cinderArt();                                                 // (a cinder's)
+if (CLASH || LAVA) render.textures[CINDER_ART] = cinderArt();                                         // (a cinder's)
 
 // --- THE CLOCK ---
 // The game runs at the same speed on every phone, whatever its screen: the physics moves in steps of 1/60 s of
@@ -1394,6 +1504,7 @@ function dropFruit() {
         }
     }
     if (SET_HINT) setHint();
+    if (LAVA) lavaDropped();
 
     currentTier = nextTier;
     if (MINE) { nextTier = afterTier; afterTier = randomDropTier(); }
@@ -1412,6 +1523,7 @@ function dropFruit() {
 const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
+    : LAVA ? ['told.lava', 'Make the stone the volcano asks for before the lava reaches the line!']
     : CLASH ? ['told.clash', CLASH.any ? `A small stone and a big one burn each other: ${CLASH.apart + 1} levels apart or more!`
         : `Drop a stone on one ${CLASH.apart + 1}+ levels bigger: both burn to a cinder!`]
     : GLITCH ? ['told.glitch', 'Glitch: at every merge a gem jumps somewhere else!']
@@ -1512,7 +1624,8 @@ function mergeGems(bodyA, bodyB, at) {
     if (call && bodyA.tier === call.tier && Math.abs(midX - call.x) < TIERS[mergedTier]) merged.sitFor = { x: call.x, tier: call.tier };   // (COME HERE: made where the pets are called to)
     if (WAVE) shatter(midX, midY, mergedTier, merged);
     if (GLITCH) for (let k = 0; k < GLITCH.gems; k++) glitches.push(glitchStep + GLITCH.wait + k * 5);
-    if (CLASH && mergedTier + 1 >= CLASH.breaks) merged.fresh = CLASH.fresh;   // (FIRE AND STONE: a big gem breaks the cinders beside it as it grows and settles)
+    if (CLASH && mergedTier + 1 >= CLASH.breaks) merged.fresh = CLASH.fresh;
+    if (LAVA && mergedTier + 1 === askLevel()) lavaCalm(midX, midY);   // (THE VOLCANO: the stone it asked for)   // (FIRE AND STONE: a big gem breaks the cinders beside it as it grows and settles)
     return merged;
 }
 // --- THE SWIRL --- (a set with swirl in GAME.skins, the Spiral Atoms)
@@ -1990,6 +2103,7 @@ function revive() {
         FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
         Composite.remove(engine.world, b);
     });
+    if (LAVA) { lavaDrops = 0; eruptIn = -1; lavaUI(false); }   // (THE VOLCANO: the lava goes down, the same stone is asked again)
     isGameOver = false;
     dangerTimer = 0;
     saving = !RUSH && !MINE;
@@ -2022,7 +2136,8 @@ function saveGame() {
     if (TWINS) { data.mate = currentMate; data.nextMate = nextMate; }   // (the other gem of the pair in hand, and of the next)
     if (SWIRL) data.swirl = [swirlMerges, swirlTop];                    // (how far the swirl has come: its pattern, and what is dropped)
     if (BEAT) data.sour = !inTune;                                      // (out of tune: alike gems hop apart)
-    if (CLASH) data.cinders = cinders().map(c => [+c.position.x.toFixed(1), +c.position.y.toFixed(1), +c.circleRadius.toFixed(1), +c.angle.toFixed(3)]);
+    if (LAVA) data.lava = [lavaAsk, lavaDrops];                         // (which stone the volcano asks for, and the drops since)
+    if (CLASH || LAVA) data.cinders = cinders().map(c => [+c.position.x.toFixed(1), +c.position.y.toFixed(1), +c.circleRadius.toFixed(1), +c.angle.toFixed(3)]);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
@@ -2053,7 +2168,13 @@ function loadGame() {
     if (okTier(data.current)) currentTier = data.current;
     if (okTier(data.next)) nextTier = data.next;
     if (BEAT) setTune(!data.sour);
-    if (CLASH && CLASH.cinder && Array.isArray(data.cinders)) {
+    if (LAVA && Array.isArray(data.lava)) {   // (the lava stands where it stood, with the pile on it)
+        lavaAsk = Math.max(0, data.lava[0] | 0); lavaDrops = Math.max(0, data.lava[1] | 0);
+        lavaY = lavaGoal(); lavaFloor();
+        if (lavaDrops >= askDrops()) eruptIn = LAVA.wait;
+        lavaUI(false);
+    }
+    if ((LAVA || CLASH && CLASH.cinder) && Array.isArray(data.cinders)) {
         for (const [x, y, r, angle] of data.cinders) if ([x, y, r].every(Number.isFinite) && r > 4 && r < 200) makeCinder(x, turn ? GAME_HEIGHT - y : y, r, angle || 0);
     }
     if (SWIRL) {   // (a game saved before the swirl kept count: it has long been through its first patterns)
@@ -2302,8 +2423,8 @@ function gemAt(e, withCrates) {
 
 // a tap on the board while the Zap is armed (in the Gem Mine, a crate can be zapped: it breaks)
 function zapAt(e) {
-    const target = gemAt(e, !!MINE || !!CLASH);
-    if (!target) { showToast(MINE ? 'Tap a gem or a crate to zap it' : CLASH ? 'Tap a gem or a cinder to zap it' : 'Tap a gem to zap it'); return; }
+    const target = gemAt(e, !!MINE || !!CLASH || !!LAVA);
+    if (!target) { showToast(MINE ? 'Tap a gem or a crate to zap it' : CLASH || LAVA ? 'Tap a gem or a cinder to zap it' : 'Tap a gem to zap it'); return; }
     if (target.crate) {
         FX.zap(target.position.x, target.position.y, 30);
         Mine.breakCrate(target);
@@ -2419,8 +2540,8 @@ function snapshot() {
             tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
             vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
         score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, mate: currentMate, nextMate, heat, bomb,
-        swirl: [swirlMerges, swirlTop], tune: inTune,
-        cinders: CLASH ? cinders().map(c => ({ x: c.position.x, y: c.position.y, r: c.circleRadius, angle: c.angle, vx: c.velocity.x, vy: c.velocity.y })) : [],
+        swirl: [swirlMerges, swirlTop], tune: inTune, lava: [lavaAsk, lavaDrops, lavaY, eruptIn],
+        cinders: CLASH || LAVA ? cinders().map(c => ({ x: c.position.x, y: c.position.y, r: c.circleRadius, angle: c.angle, vx: c.velocity.x, vy: c.velocity.y })) : [],
         daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
     };
 }
@@ -2453,6 +2574,7 @@ function undoLastDrop() {
     nextMate = s.nextMate;
     [swirlMerges, swirlTop] = s.swirl;   // (THE SWIRL: the pattern and the kinds that are dropped go back too)
     if (BEAT) setTune(s.tune);           // (THE BEAT: and whether the jar was in tune)
+    if (LAVA) { [lavaAsk, lavaDrops, lavaY, eruptIn] = s.lava; lavaFloor(); lavaUI(false); }   // (THE VOLCANO: its lava, and what it asked for)
     if (s.daily) {   // the Daily Challenge: the same drops come again, and what this drop made is taken back
         dropRandom.setState(s.daily.rng);
         s.daily.made.forEach((n, t) => { made[t] = n; });
@@ -2564,6 +2686,7 @@ function renderSets() {
             sk.twins && (sk.twins.same ? '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right'
                 : '♛ Royal pairs (not in the Gem Mine): two different jewels fall at once, mirrored left and right'),
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
+            sk.lava && '🌋 Feed the volcano (not in the Gem Mine): its lava rises with every drop; make the stone it asks for and the lava sinks and the cinders crumble; too late, and it erupts',
             sk.clash && '🌋 Fire and stone (not in the Gem Mine): a stone let go onto one 5 or more levels bigger burns up with it and leaves a cinder; only a big gem made beside a cinder breaks it',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);
         if (notes.length) {
