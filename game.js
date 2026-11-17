@@ -218,6 +218,16 @@ const ERUPT = SKIN && SKIN.erupt && !MINE ? Object.assign({
     burns: 5,     // ...of this many lowest levels (the ones that are dropped); the gems made by merging are too tough
     size: 24      // the bomb's own size (its radius, like TIERS)
 }, SKIN.erupt === true ? null : SKIN.erupt) : null;
+// A shock-wave set (GAME.skins wave: the Crystal Cave): every merge sends out a wave that shoves the gems near it
+// away, see SHATTER WAVE below. Not in the Gem Mine, whose stages are measured without it.
+// (wave: true, or an object that changes these numbers)
+const WAVE = SKIN && SKIN.wave && !MINE ? Object.assign({
+    reach: 2.2,     // how far the wave goes: this x the size of the gem that was made...
+    extra: 45,      // ...and this many px more
+    push: 3.2,      // how hard it shoves a gem right at the merge, px a step, for the smallest gem made...
+    more: 0.45,     // ...and this much harder for every level above it
+    most: 8.5       // no gem is shoved faster than this
+}, SKIN.wave === true ? null : SKIN.wave) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
 const TWINS = !!(SKIN && SKIN.twins) && !FLOAT && !MINE;
@@ -525,6 +535,24 @@ function splash(gem) {
     Sound.play('splash', gem.tier, impact);
     Haptics.play('land', gem.tier, impact * 0.6);
     FX.splash(gem.position.x, TIERS[gem.tier], gem.tier, impact);
+}
+
+// --- SHATTER WAVE --- (a set with wave in GAME.skins, the Crystal Cave)
+// Every merge sends a shock wave out from where it happened: each gem within its reach is shoved straight away
+// from it, harder the nearer it is, and a light gem more than a heavy one. The bigger the gem that was made,
+// the further the wave goes and the harder it shoves. It shakes stuck gems loose and throws alike gems together
+// (or apart). The gem that was made stays where it is.
+function shatter(x, y, tier, made) {
+    const reach = TIERS[tier] * WAVE.reach + WAVE.extra, hard = WAVE.push + WAVE.more * (tier - 1);
+    for (const o of Composite.allBodies(engine.world)) {
+        if (o.tier === undefined || o === made || o.isMerging) continue;
+        const dx = o.position.x - x, dy = o.position.y - y, d = Math.hypot(dx, dy) || 1;
+        if (d >= reach) continue;
+        const v = Math.min(WAVE.most, hard * (1 - d / reach) * Math.pow((tier + 1) / (o.tier + 1), 0.5));
+        Body.setVelocity(o, { x: o.velocity.x + dx / d * v, y: o.velocity.y + dy / d * v });
+    }
+    FX.wave(x, y, reach, tier);
+    Sound.play('shatter', tier);
 }
 
 // --- LAVA BOMB --- (a set with erupt in GAME.skins, the Volcano Gems)
@@ -1091,6 +1119,7 @@ function dropFruit() {
 const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
+    : WAVE ? ['told.wave', 'Every merge sends out a shock wave!']
     : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
@@ -1168,6 +1197,7 @@ function handleCollisions(event) {
         const merged = spawnItem(midX, midY, mergedTier, true);
         if (seeded) merged.seeded = true;
         if (call && bodyA.tier === call.tier && Math.abs(midX - call.x) < TIERS[mergedTier]) merged.sitFor = { x: call.x, tier: call.tier };   // (COME HERE: made where the pets are called to)
+        if (WAVE) shatter(midX, midY, mergedTier, merged);
     }
 }
 // collisionActive too: two drops that met in mid-air may merge once they're resting on the pile
@@ -1761,6 +1791,7 @@ function renderSets() {
         card.append(head, gems);
         const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in',
             sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink',
+            sk.wave && '💎 Shatter wave (not in the Gem Mine): every merge shoves the gems around it away, a bigger gem harder',
             sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);

@@ -121,6 +121,20 @@ const FX = (() => {
         effects.push({ kind: 'smoke', x, y, r, t: 0, dur: 0.75 });
     }
 
+    // The shatter wave of a merge (game.js WAVE) at (x, y), going out as far as `reach`: a bright ring that grows to
+    // that size, a fainter one behind it, and splinters of crystal flying out; a big gem's wave shakes the jar.
+    function wave(x, y, reach, tier) {
+        effects.push({ kind: 'wavering', x, y, r: reach, t: 0, dur: 0.45, w: 5 + tier * 0.8, glow: true });
+        effects.push({ kind: 'wavering', x, y, r: reach * 0.8, t: -0.08, dur: 0.45, w: 2.5 + tier * 0.4 });
+        const n = Math.min(16, 5 + tier * 2);
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), sp = rand(0.9, 1.6) * reach * 2;
+            effects.push({ kind: 'shard', x: x + Math.cos(a) * 8, y: y + Math.sin(a) * 8, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: a, vr: rand(-9, 9),
+                len: rand(7, 12) + tier, t: 0, dur: rand(0.3, 0.5) });
+        }
+        if (tier >= 4) quake(Math.min(8, 1.5 + tier * 0.7), 0.25);
+    }
+
     // Calling the pets (game.js CALL). calling: a ring spreading from the held pet. hop: a little dust where a pet
     // jumped, and now and then a heart over it.
     function calling(x, y, r) { effects.push({ kind: 'callring', x, y, r, t: 0, dur: 0.75 }); }
@@ -419,6 +433,34 @@ const FX = (() => {
                 ctx.fillStyle = '#efe6ff';
                 ctx.beginPath(); ctx.arc(e.x, e.y, e.size * (0.6 + 0.9 * k), 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
+            } else if (e.kind === 'wavering') {
+                if (e.t >= 0) {
+                    const rr = Math.max(1, e.r * Math.sqrt(k));
+                    ctx.save();
+                    if (e.glow) {   // the air inside the wave lights up for a moment
+                        const g = ctx.createRadialGradient(e.x, e.y, rr * 0.5, e.x, e.y, rr);
+                        g.addColorStop(0, 'rgba(170, 236, 255, 0)');
+                        g.addColorStop(1, `rgba(170, 236, 255, ${0.3 * (1 - k)})`);
+                        ctx.fillStyle = g;
+                        ctx.beginPath(); ctx.arc(e.x, e.y, rr, 0, Math.PI * 2); ctx.fill();
+                    }
+                    ctx.globalAlpha = (1 - k) * (1.6 - k) / 1.6;
+                    ctx.lineWidth = e.w * (1 - 0.5 * k) + 1.5;
+                    ctx.strokeStyle = '#f2fdff';
+                    ctx.shadowColor = '#6fe0ff'; ctx.shadowBlur = 14;
+                    ctx.beginPath(); ctx.arc(e.x, e.y, rr, 0, Math.PI * 2); ctx.stroke();
+                    ctx.restore();
+                }
+            } else if (e.kind === 'shard') {
+                e.vx *= 1 - 3.2 * dt; e.vy *= 1 - 3.2 * dt;
+                e.x += e.vx * dt; e.y += e.vy * dt; e.rot += e.vr * dt;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - k * k);
+                ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+                ctx.fillStyle = '#f4fdff'; ctx.strokeStyle = 'rgba(120, 220, 255, 0.9)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(e.len, 0); ctx.lineTo(0, e.len * 0.28); ctx.lineTo(-e.len * 0.6, 0); ctx.lineTo(0, -e.len * 0.28); ctx.closePath();
+                ctx.fill(); ctx.stroke();
+                ctx.restore();
             } else if (e.kind === 'callring') {
                 ctx.save();
                 ctx.globalAlpha = 0.7 * (1 - k);
@@ -507,5 +549,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, wave, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

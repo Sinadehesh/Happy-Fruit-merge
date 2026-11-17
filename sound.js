@@ -216,6 +216,13 @@ const Sound = (() => {
             sfx.hop.last = now;
             bloop(Math.max(260, 640 - tier * 70), 0.06, 0.035);
         },
+        // the shatter wave of a merge (game.js WAVE): a crack of breaking glass and a glassy ring, deeper for a bigger gem
+        shatter(tier = 1) {
+            crackle(0, 0.2 + tier * 0.015);
+            crackle(0.03 + Math.random() * 0.02, 0.12);
+            sample('chime', { gain: 0.16 + tier * 0.01, rate: jitter(semitones(19 - tier * 1.5), 0.02) });
+            if (tier >= 4) thump(150 - tier * 8, 0.18, 0.12 + tier * 0.02);
+        },
         // the lava bomb (game.js LAVA BOMB). Ready: a short growl of the volcano and two low chimes. Going off: a
         // deep boom, a burst of grit, a thick bubble and crackles.
         bombReady() {

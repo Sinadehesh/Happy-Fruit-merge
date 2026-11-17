@@ -50,12 +50,12 @@ swap('    <script src="config.js"></script>', '''    <script>
             // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },
-                { id: 'crystal', name: 'Crystal Cave' },
+                { id: 'crystal', name: 'Crystal Cave', wave: true },   // every merge sends out a shock wave that shoves the gems near it
                 { id: 'ocean', name: 'Ocean Jewels', water: true },   // under water: small gems float, big ones sink
                 { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of twins, mirrored left and right
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
-                { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; an eruption burns the smallest gems
+                { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; full, it gives a lava bomb to drop
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
                 { id: 'pixel', name: 'Pixel Treasure', mineStars: 18 },
