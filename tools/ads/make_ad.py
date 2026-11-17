@@ -47,7 +47,11 @@ for i, src in enumerate(sprites):
     cx = 180 + (i % 4) * 240; cy = 790 + (i // 4) * 215
     card.paste(g, (cx - sz // 2, cy - sz // 2), g)
 text(1440, set_name.upper(), 58, fill=(255, 228, 120))
-text(1510, '+ 10 more gem sets to collect', 44)
+# how many sets there are: the game page's own list
+import re
+page = open(f'{REPO}/gems/index.html', encoding='utf-8').read()
+n_sets = len(re.findall(r"\{ id: '", page[page.index('skins: ['):page.index(']', page.index('skins: ['))]))
+text(1510, f'+ {n_sets - 1} more gem sets to collect', 44)
 # the button
 bx0, by0, bx1, by1 = 170, 1610, W - 170, 1745
 d.rounded_rectangle([bx0, by0 + 10, bx1, by1 + 10], radius=68, fill=(40, 110, 30))
