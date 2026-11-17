@@ -107,6 +107,7 @@ function startBot() {
       }
       return clampX(best.position.x + (Math.random() - 0.5) * 8, currentTier);
     }
+    if (typeof TWINS !== 'undefined' && TWINS && Math.random() < 0.6) return GAME_WIDTH / 2;   // (Royal twins: in the middle they merge at once)
     const r = TIERS[currentTier];
     let bx = 225, bsc = -Infinity;
     for (let k = 0; k < 15; k++) {
@@ -125,14 +126,15 @@ function startBot() {
   function cycle() {
     if (isGameOver) return;
     const tx = target(), x0 = dropX, t0 = performance.now();
-    // (Gem Pets: with a pet of this kind in the jar the bot holds on for a second, so the pets are seen coming)
-    const calls = typeof CALL !== 'undefined' && CALL && bodies().some(b => b.tier === currentTier && !b.isDropping && Math.abs(b.position.x - tx) > 30);
-    const T = calls ? 950 + Math.random() * 350 : 300 + Math.random() * 160;
+    // (Gem Pets: with a pet of this kind in the jar the bot holds on at its place now and then, so the pets are
+    // seen coming to the finger; the other times it just drops, and they come to the drop)
+    const calls = typeof CALL !== 'undefined' && CALL && Math.random() < 0.5 && bodies().some(b => b.tier === currentTier && !b.isDropping && Math.abs(b.position.x - tx) > 30);
+    const T = 300 + Math.random() * 160;
     setHeld(true); place(); dot.className = 'on';
     (function move() {
       const k = Math.min(1, (performance.now() - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       dropX = clampX(x0 + (tx - x0) * e, currentTier); updateUI(); place();
-      if (k < 1) requestAnimationFrame(move); else setTimeout(release, 110);
+      if (k < 1) requestAnimationFrame(move); else setTimeout(release, calls ? 700 + Math.random() * 250 : 110);
     })();
   }
   function release() {

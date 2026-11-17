@@ -87,7 +87,7 @@
             position: absolute; top: 23.4375%; width: 100%;
             border-top: 3px dashed rgba(255, 99, 99, 0.55); pointer-events: none; z-index: 10;
         }
-        #drop-guide {
+        #drop-guide, #drop-guide2 {
             position: absolute; top: 0; left: 50%; aspect-ratio: 1;
             transform: translateX(-50%) scale(1);
             background: center/contain no-repeat;
@@ -96,13 +96,13 @@
             transition: transform 0.25s cubic-bezier(0.34, 1.8, 0.64, 1), opacity 0.15s;
         }
         /* while your finger holds it: pops bigger and fully visible */
-        #drop-guide.held { transform: translateX(-50%) scale(1.2); opacity: 1; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); }
+        #drop-guide.held, #drop-guide2.held { transform: translateX(-50%) scale(1.2); opacity: 1; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); }
         /* dashed line from the held fruit down to where it will fall */
-        #aim-line {
+        #aim-line, #aim-line2 {
             position: absolute; bottom: 0; width: 0; pointer-events: none; z-index: 10; display: none;
             border-left: 2px dashed rgba(255, 255, 255, 0.35); transform: translateX(-1px);
         }
-        #aim-line.show { display: block; }
+        #aim-line.show, #aim-line2.show { display: block; }
         /* a floating set (game.js FLOAT, the Cosmic Gems): gems are let go at the bottom and float up, so the line
            is near the bottom ((640 - DANGER_Y) / 640), the held gem grows upward, its guide line goes up, and
            messages sit lower, in the empty part of the jar */
@@ -118,6 +118,12 @@
             background: linear-gradient(rgba(96, 196, 255, 0.24), rgba(46, 124, 235, 0.26) 45%, rgba(16, 50, 150, 0.4));
         }
         #board.water #toast { top: 57%; }   /* (not over the water's surface, nor where the praise words pop) */
+        /* a twins set (game.js TWINS, the Royal Treasury): a faint line down the middle of the jar, the mirror the
+           twins fall on either side of (#drop-guide2 and #aim-line2 are the twin's picture and guide line) */
+        #board.twins::before {
+            content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 0; z-index: 9; pointer-events: none;
+            border-left: 2px dotted rgba(255, 214, 110, 0.3); transform: translateX(-1px);
+        }
         /* a volcano set (game.js ERUPT, the Volcano Gems): the heat that merges build up, a bar at the side of the jar
            that fills from the bottom; it throbs when it is nearly full */
         #heat {
@@ -959,7 +965,7 @@
                 { id: 'rocks', name: 'Rocks & Gems' },
                 { id: 'crystal', name: 'Crystal Cave' },
                 { id: 'ocean', name: 'Ocean Jewels', water: true },   // under water: small gems float, big ones sink
-                { id: 'royal', name: 'Royal Treasury', scales: true },   // the floor is a pair of scales: it leans to the heavier side
+                { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of twins, mirrored left and right
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
                 { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; an eruption burns the smallest gems
@@ -969,7 +975,7 @@
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30 },
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40 },
                 { id: 'neon', name: 'Neon Nights', mineStars: 48 },
-                { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // hold a pet and the same pets hop to your finger
+                { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // the same pets leap to your finger, held or dropped
             ],
             // what to make to open each next set: [level, how many], counted from when the set before it opened.
             // Measured (22 hours of simulated play): about 49 Gold Nuggets (7), 13 Rubies (8) and 1 Opal (9)

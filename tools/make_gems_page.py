@@ -52,7 +52,7 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'rocks', name: 'Rocks & Gems' },
                 { id: 'crystal', name: 'Crystal Cave' },
                 { id: 'ocean', name: 'Ocean Jewels', water: true },   // under water: small gems float, big ones sink
-                { id: 'royal', name: 'Royal Treasury', scales: true },   // the floor is a pair of scales: it leans to the heavier side
+                { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of twins, mirrored left and right
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
                 { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; an eruption burns the smallest gems
@@ -62,7 +62,7 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30 },
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40 },
                 { id: 'neon', name: 'Neon Nights', mineStars: 48 },
-                { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // hold a pet and the same pets hop to your finger
+                { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // the same pets leap to your finger, held or dropped
             ],
             // what to make to open each next set: [level, how many], counted from when the set before it opened.
             // Measured (22 hours of simulated play): about 49 Gold Nuggets (7), 13 Rubies (8) and 1 Opal (9)

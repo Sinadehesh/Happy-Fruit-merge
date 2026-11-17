@@ -215,26 +215,20 @@ const ERUPT = SKIN && SKIN.erupt && !MINE ? Object.assign({
     full: 70,     // how much heat fills the bar; a merge adds the level of the gem it makes
     burn: 2       // an eruption burns the gems of this many lowest levels
 }, SKIN.erupt === true ? null : SKIN.erupt) : null;
-// A scales set (GAME.skins scales: the Royal Treasury): the jar's floor is the beam of a pair of scales and leans
-// to the heavier side, see SCALES below. Not in the Gem Mine, whose stages are built on a level floor.
-// (scales: true, or an object that changes these numbers)
-const SCALES = SKIN && SKIN.scales && !FLOAT && !MINE ? Object.assign({
-    max: 5,         // how far the floor leans, in degrees
-    level: 6,       // it stays level while the gems' centre of weight is within this many px of the middle,
-    reach: 20,      // and leans all the way when it is this many px further off...
-    steady: 100,    // ...counting a weight like this in the middle too, so a few small gems barely tip it
-    speed: 0.05     // how fast it turns, degrees a physics step (3 degrees a second)
-}, SKIN.scales === true ? null : SKIN.scales) : null;
-// A calling set (GAME.skins call: the Gem Pets): while a gem is held, the same gems in the jar hop toward the
-// finger, see COME HERE below. In every mode. (call: true, or an object that changes these numbers)
-const CALL = SKIN && SKIN.call ? Object.assign({
-    wait: 12,       // physics steps a gem is held before the others answer (a quick tap calls nobody)
-    every: 32,      // steps from one hop of a pet to its next
-    hop: 3.1,       // how hard it jumps, px a step...
-    stride: 1.6     // ...and how fast it goes sideways while in the air
+// A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
+// right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
+const TWINS = !!(SKIN && SKIN.twins) && !FLOAT && !MINE;
+// A calling set (GAME.skins call: the Gem Pets): the same gems in the jar leap to the finger, while a gem is held
+// and when it is dropped, see COME HERE below. In every mode. (call: true, or an object that changes these numbers)
+const CALL = SKIN && SKIN.call && !FLOAT ? Object.assign({
+    wait: 12,       // physics steps a gem is held before the others answer
+    after: 30,      // steps the call lasts after the finger let go, the dropped gem landed and the last pet came down
+    longest: 150,   // ...but never more than this many steps after the finger let go
+    apart: 5,       // steps between one pet setting off and the next
+    rest: 10,       // steps a pet waits after it has landed before it may jump again
+    over: 14,       // a jump clears what lies in its way by this many px...
+    least: 34       // ...and is never lower than this
 }, SKIN.call === true ? null : SKIN.call) : null;
-// the level floor is this far above a plain jar's, so the low end of the leaning beam stays in sight
-const SCALES_RISE = SCALES ? Math.round(GAME_WIDTH / 2 * Math.tan(SCALES.max * Math.PI / 180) + 10) : 0;
 
 // Reverse size (?size=reverse): the higher the level, the smaller the item.
 // (Not in the Daily Challenge, which is the same game for everyone, nor in Gem Rush or the Gem Mine.)
@@ -389,16 +383,50 @@ function updateUI() {
     dropGuide.style.backgroundImage = `url('${SPRITES[currentTier]}')`;
     dropGuide.style.width = `${r * 2 * scale}px`;
     dropGuide.style.top = `${(spawnY(currentTier) - r) * scale}px`;
-    dropGuide.style.left = `${dropX * scale}px`;
-    aimLine.style.left = `${dropX * scale}px`;
+    const [x, x2] = TWINS ? twinSpots(dropX, currentTier) : [dropX];
+    dropGuide.style.left = `${x * scale}px`;
+    aimLine.style.left = `${x * scale}px`;
     // the guide line: from the gem to the far end of the jar
     if (FLOAT) aimLine.style.height = `${Math.max(0, spawnY(currentTier) - r) * scale}px`;
     else aimLine.style.top = `${(spawnY(currentTier) + r) * scale}px`;
+    if (TWINS) {   // the twin, mirrored
+        for (const k of ['backgroundImage', 'width', 'top']) dropGuide2.style[k] = dropGuide.style[k];
+        dropGuide2.style.left = aimLine2.style.left = `${x2 * scale}px`;
+        aimLine2.style.top = aimLine.style.top;
+    }
 }
 
 function spawnY(tier) {
     return flipY(TIERS[tier] + 10);
 }
+
+// --- ROYAL TWINS --- (a set with twins in GAME.skins, the Royal Treasury)
+// Every gem comes as a pair of twins: one falls where the finger is, the other as far from the other wall,
+// mirrored about the middle of the jar. Held near the middle, where the two would overlap, they hang side by
+// side and touch, so they merge with each other as they land: a drop in the middle is one gem of the next level,
+// a drop at the side two gems, one each side. It is the same for every drop: nothing here is left to chance.
+function twinSpots(x, tier) {   // where the two fall: [the finger's gem, its twin]
+    const mid = GAME_WIDTH / 2, side = x <= mid ? -1 : 1;
+    const off = Math.max(Math.abs(x - mid), TIERS[tier] + 0.5);   // (never closer than touching)
+    return [mid + side * off, mid - side * off];
+}
+function dropTwins() {
+    const [x, x2] = twinSpots(dropX, currentTier);
+    const a = spawnItem(x, spawnY(currentTier), currentTier, false), b = spawnItem(x2, spawnY(currentTier), currentTier, false);
+    if (Math.abs(x - x2) > 2 * TIERS[currentTier] + 1.5) return;
+    // side by side in the middle: set edge to edge (a gem's outline is seldom as wide as its size) and pressed
+    // gently together, so the two are touching when they land and merge there
+    const [l, r] = a.position.x < b.position.x ? [a, b] : [b, a];
+    const gap = r.bounds.min.x - l.bounds.max.x;
+    Body.translate(l, { x: gap / 2, y: 0 });
+    Body.translate(r, { x: -gap / 2, y: 0 });
+    Body.setVelocity(l, { x: 0.7, y: 0 });
+    Body.setVelocity(r, { x: -0.7, y: 0 });
+}
+// the twin's own picture and guide line, beside the finger's
+const dropGuide2 = TWINS ? board.insertBefore(Object.assign(dropGuide.cloneNode(), { id: 'drop-guide2' }), dropGuide) : null;
+const aimLine2 = TWINS ? board.insertBefore(Object.assign(aimLine.cloneNode(), { id: 'aim-line2' }), aimLine) : null;
+if (TWINS) { board.classList.add('twins'); document.querySelectorAll('.tray-label').forEach(l => { l.textContent = 'NEXT ×2'; }); }
 
 function clampX(x, tier) {
     return Math.max(TIERS[tier], Math.min(GAME_WIDTH - TIERS[tier], x));
@@ -522,34 +550,111 @@ if (ERUPT) Events.on(engine, 'beforeUpdate', () => {
 });
 
 // --- COME HERE --- (a set with call in GAME.skins, the Gem Pets)
-// While a gem is held over the jar, every gem of its level that has landed hops toward the finger: a small jump
-// every half second or so, until it is under it. Only a pet that stands still with nothing on its back can jump,
-// and a jump is too low to climb over another gem, so pets come only where the way is free. Letting go ends
-// the call. Small hops for the small pets, a little less for the bigger ones.
+// The gems of the level in hand that have landed and have nothing on their back leap to the finger: while a gem
+// is held over the jar, and again when it is dropped (so a quick tap calls them too). A leap is a high jump over
+// whatever lies between, onto the pile under the finger. On the way up a pet passes the gems beside it (so it
+// gets out of a hollow); from the top of the jump it is solid again, and it lands on its feet. The nearest sets
+// off first, the others a moment apart. Pets that arrive merge with each other and with the gem that is dropped.
+// The call goes on while the finger is down, while the dropped gem falls and while a pet is in the air on its
+// way; all that time a pet that is there sits still (it only moves up and down), even on the round back of a big
+// one, so the next to arrive and the dropped gem meet it. One that lands short (something was in the way)
+// jumps again.
 let held = false;      // a gem is being held over the jar (setHeld)
 let heldSteps = 0;     // ...for this many physics steps
+let call = null;       // what the pets answer: { x, tier, left, busy, drop } (left: the steps it lasts once nothing
+                       // is on its way any more; busy: the steps it may go on after the finger; drop: the gem dropped)
+let callStep = 0;      // physics steps counted
+let hopAt = 0;         // ...and the step from which the next pet may set off
+function callPets(x, tier, drop) {   // a drop calls them (dropFruit)
+    if (!CALL) return;
+    if (heldSteps < CALL.wait) FX.calling(x, spawnY(tier), TIERS[tier]);   // (a held gem has its rings already)
+    call = { x, tier, left: CALL.after, busy: CALL.longest, drop };
+}
 if (CALL) Events.on(engine, 'beforeUpdate', () => {
-    if (!held || isGameOver) { heldSteps = 0; return; }
-    if (++heldSteps < CALL.wait) return;
-    if ((heldSteps - CALL.wait) % 40 === 0) FX.calling(dropX, spawnY(currentTier), TIERS[currentTier]);
-    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined);
-    // o stands or lies on b
-    const onBack = (o, b) => o !== b && (b.position.y - o.position.y) * DOWN > b.currentRadius * 0.25
-        && Math.abs(o.position.x - b.position.x) < (o.currentRadius + b.currentRadius) * 0.85
-        && Math.hypot(o.position.x - b.position.x, o.position.y - b.position.y) < o.currentRadius + b.currentRadius + 3;
+    const g = engine.gravity.y * engine.gravity.scale * (1000 / 60) ** 2;   // gravity, px a step each step
+    const all = Composite.allBodies(engine.world);
+    const gems = all.filter(b => b.tier !== undefined);
+    callStep++;
+    // a pet in its jump: on the way up it touches nothing; from the top it is solid again, as soon as it is clear
+    // of the others. The air doesn't slow it, so it comes down where it aimed; there it lands on its feet (it
+    // loses its sideways speed and its spin, so it doesn't bounce off or roll away)
     for (const b of gems) {
-        if (b.tier !== currentTier || b.isDropping || b.isMerging || b.isGrowing) continue;
-        const dx = dropX - b.position.x;
-        if (Math.abs(dx) < b.currentRadius * 0.6) continue;                       // it is here already
-        b.hopIn = (b.hopIn === undefined ? Math.floor(Math.random() * 12) : b.hopIn) - 1;   // (not all in step)
-        if (b.hopIn > 0) continue;
-        if (Math.abs(b.velocity.y) > 0.6 || gems.some(o => onBack(o, b))) { b.hopIn = 6; continue; }
-        b.hopIn = CALL.every;
-        const k = 1 - 0.06 * b.tier;
-        Body.setVelocity(b, { x: Math.sign(dx) * Math.min(CALL.stride, Math.abs(dx) / 18) * k, y: -CALL.hop * k * DOWN });
-        Sound.play('hop', b.tier);
-        FX.hop(b.position.x, b.position.y + b.currentRadius * DOWN, b.currentRadius);
+        const j = b.leap;
+        if (!j) continue;
+        j.t++;
+        if (j.ghost && j.t >= j.up) {
+            const clear = gems.every(o => o === b || (o.leap && o.leap.ghost) || Math.hypot(o.position.x - b.position.x, o.position.y - b.position.y) > (o.currentRadius + b.currentRadius) * 0.94);
+            if (clear || b.bounds.max.y > GAME_HEIGHT - 3 || j.t > j.up + 90) { b.collisionFilter.mask = j.mask; j.ghost = false; }
+        }
+        if (j.t >= j.time && !j.ghost) {
+            Body.setVelocity(b, { x: 0, y: b.velocity.y });
+            Body.setAngularVelocity(b, 0);
+            b.frictionAir = j.air;
+            b.leap = null;
+            b.restUntil = callStep + CALL.rest;
+        }
     }
+    // the call: where the held gem is, from a moment after it was picked up; or where a gem was dropped (callPets)
+    const holding = held && !isGameOver && ++heldSteps >= CALL.wait;
+    if (!held) heldSteps = 0;
+    if (holding) {
+        call = { x: dropX, tier: currentTier, left: CALL.after, busy: CALL.longest };
+        if ((heldSteps - CALL.wait) % 40 === 0) FX.calling(dropX, spawnY(currentTier), TIERS[currentTier]);
+    }
+    if (isGameOver) call = null;
+    let busy = holding;
+    if (call && !holding) {
+        busy = call.busy > 0 && ((call.drop && call.drop.isDropping) || gems.some(o => o.leap && o.leap.x === call.x));
+        if (busy) call.busy--;
+        else if (--call.left < 0) call = null;
+    }
+    // a pet that is there sits still while something is on its way
+    for (const b of gems) {
+        if (b.sitAt !== undefined && !(busy && b.tier === call.tier && !b.isMerging && Math.abs(call.x - b.sitAt) < b.currentRadius * 0.6)) b.sitAt = undefined;
+        if (b.sitAt === undefined && busy && b.tier === call.tier && !b.leap && !b.isDropping && !b.isMerging && !b.isGrowing
+            && Math.abs(call.x - b.position.x) < b.currentRadius * 0.6) b.sitAt = b.position.x;
+        if (b.sitAt === undefined) continue;
+        Body.setPosition(b, { x: b.sitAt, y: b.position.y });
+        Body.setVelocity(b, { x: 0, y: b.velocity.y });
+        Body.setAngularVelocity(b, 0);
+    }
+    if (!call || callStep < hopAt) return;
+    for (const pr of engine.pairs.list) if (pr.isActive) pr.bodyA.parent.touched = pr.bodyB.parent.touched = callStep;   // what stands on something
+    // o lies on b's back
+    const onBack = (o, b) => o !== b && !(o.leap && o.leap.ghost) && b.position.y - o.position.y > b.currentRadius * 0.4
+        && Math.abs(o.position.x - b.position.x) < (o.currentRadius + b.currentRadius) * 0.6
+        && Math.hypot(o.position.x - b.position.x, o.position.y - b.position.y) < o.currentRadius + b.currentRadius + 3;
+    // the nearest pet that is free to jump sets off
+    let b = null, away = Infinity;
+    for (const o of gems) {
+        if (o.tier !== call.tier || o.isDropping || o.isMerging || o.isGrowing || o.leap || callStep < (o.restUntil || 0)) continue;
+        const d = Math.abs(call.x - o.position.x);
+        if (d < o.currentRadius * 0.6 || d >= away) continue;                 // (it is here already)
+        if (o.touched !== callStep || o.speed > 3 || gems.some(x => onBack(x, o))) continue;   // in the air, tumbling, or held down
+        b = o; away = d;
+    }
+    if (!b) return;
+    // the top of whatever lies between it and the finger, and of the pile under the finger
+    const r = b.currentRadius, dx = call.x - b.position.x;
+    const x0 = Math.min(b.position.x, call.x) - r, x1 = Math.max(b.position.x, call.x) + r;
+    let top = b.bounds.min.y, land = GAME_HEIGHT;
+    for (const o of all) {
+        if (o === b || o.leap || o.isDropping || !(o.tier !== undefined || o.crate || o.jarPart)) continue;   // (gems in the air are not in the way)
+        if (o.bounds.max.x > x0 && o.bounds.min.x < x1) top = Math.min(top, o.bounds.min.y);
+        if (o.bounds.max.x > call.x - r * 0.9 && o.bounds.min.x < call.x + r * 0.9) land = Math.min(land, o.bounds.min.y);
+    }
+    const peak = Math.min(top - r - CALL.over, b.position.y - CALL.least);   // where the jump turns
+    if (peak < r + 4) { b.restUntil = callStep + 30; return; }               // (no room to jump over: the way is full to the top)
+    const rise = Math.max(8, b.position.y - peak), fall = Math.max(6, land - r - peak);
+    const up = Math.sqrt(2 * g * rise), t1 = up / g, time = Math.max(2, Math.round(t1 + Math.sqrt(2 * fall / g)));   // in physics steps
+    hopAt = callStep + CALL.apart;
+    b.leap = { t: 0, up: Math.ceil(t1), time, x: call.x, ghost: true, mask: b.collisionFilter.mask, air: b.frictionAir };
+    b.collisionFilter.mask = 0;
+    b.frictionAir = 0;
+    Body.setVelocity(b, { x: dx / time, y: -(up + g / 2) });   // (g / 2: the engine moves in steps)
+    Body.setAngularVelocity(b, 0);
+    Sound.play('hop', b.tier);
+    FX.hop(b.position.x, b.position.y + r, r);
 });
 
 // --- PULL --- (a set with pull: true in GAME.skins, the Cosmic Gems)
@@ -616,72 +721,10 @@ const runner = Runner.create();
 Runner.run(runner, engine);
 
 const wallOptions = { isStatic: true, render: { fillStyle: '#34495e' } };
-// (floating: the floor is the ceiling; scales: a wider beam, higher up, that turns about the middle of its top)
-const ground = SCALES ? Bodies.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - SCALES_RISE + 25, GAME_WIDTH + 190, 50, { isStatic: true, friction: 0.5 })
-    : Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);
+const ground = Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);   // (floating: the ceiling)
 const leftWall = Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 const rightWall = Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT * 2, wallOptions);
 Composite.add(engine.world, [ground, leftWall, rightWall]);
-
-// --- SCALES --- (a set with scales in GAME.skins, the Royal Treasury)
-// The jar's floor is the beam of a pair of scales, resting on a pivot in the middle, and it leans to the side
-// where more weight lies. How far follows from where the centre of weight of all the landed gems is: within
-// SCALES.level px of the middle the beam is level (so a balanced jar stays balanced: on a level floor nothing
-// rolls), and SCALES.reach px beyond that it leans all the way (SCALES.max degrees). A steadying weight in the
-// middle (SCALES.steady) keeps a few small gems from tipping it. The beam turns slowly and the gems on it slide
-// and roll with it, which shifts the weight further: once it leans, it takes weight on the high side to bring
-// it back. Nothing but the gems' weights moves it.
-const PIVOT = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - SCALES_RISE };   // the middle of the beam's top
-let tilt = 0;   // the beam's angle now, in radians; above 0: the right side is down
-function placeBeam(moving) {   // (moving: the gems on it feel it turn)
-    Body.setPosition(ground, { x: PIVOT.x - Math.sin(tilt) * 25, y: PIVOT.y + Math.cos(tilt) * 25 }, moving);
-    Body.setAngle(ground, tilt, moving);
-}
-if (SCALES) {
-    // the beam's picture: a gold bar along the top of its body, with a ruby over the pivot; and the stand under it
-    const T = 12, w = GAME_WIDTH + 190;
-    const bar = document.createElement('canvas');
-    bar.width = w; bar.height = 50;
-    let c = bar.getContext('2d');
-    const gold = c.createLinearGradient(0, 0, 0, T);
-    gold.addColorStop(0, '#fff3b0'); gold.addColorStop(0.35, '#ffcf4a'); gold.addColorStop(1, '#b9791a');
-    c.fillStyle = gold; c.strokeStyle = '#5a3208'; c.lineWidth = 2;
-    c.fillRect(1, 1, w - 2, T - 2); c.strokeRect(1, 1, w - 2, T - 2);   // (its ends are outside the jar)
-    c.fillStyle = 'rgba(255, 255, 255, 0.5)'; c.fillRect(2, 2.5, w - 4, 2);
-    c.fillStyle = 'rgba(90, 50, 8, 0.55)';
-    for (let x = w / 2 % 45; x < w; x += 45) { if (Math.abs(x - w / 2) > 20) { c.beginPath(); c.arc(x, T / 2, 2, 0, Math.PI * 2); c.fill(); } }
-    c.fillStyle = '#e0245e'; c.strokeStyle = '#5a3208';
-    c.beginPath(); c.arc(w / 2, T / 2, 7, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.fillStyle = 'rgba(255, 255, 255, 0.75)';
-    c.beginPath(); c.arc(w / 2 - 2, T / 2 - 2.5, 2, 0, Math.PI * 2); c.fill();
-    ground.render.sprite.texture = bar.toDataURL();
-    const h = SCALES_RISE - T + 3, sw = 52;
-    const stand = document.createElement('canvas');
-    stand.width = sw; stand.height = h;
-    c = stand.getContext('2d');
-    const sg = c.createLinearGradient(0, 0, sw, 0);
-    sg.addColorStop(0, '#b9791a'); sg.addColorStop(0.5, '#ffd866'); sg.addColorStop(1, '#a5670f');
-    c.fillStyle = sg; c.strokeStyle = '#5a3208'; c.lineWidth = 2;
-    c.beginPath(); c.moveTo(sw / 2, 1); c.lineTo(sw - 1, h); c.lineTo(1, h); c.closePath(); c.fill(); c.stroke();
-    // (nothing collides with the stand; it is added first so the beam is drawn over its tip)
-    Composite.remove(engine.world, ground);
-    Composite.add(engine.world, [Bodies.rectangle(PIVOT.x, GAME_HEIGHT - h / 2, sw, h, { isStatic: true, collisionFilter: { mask: 0 },
-        render: { sprite: { texture: stand.toDataURL(), xScale: 1, yScale: 1 } } }), ground]);
-    Events.on(engine, 'beforeUpdate', () => {
-        let mass = SCALES.steady, turn = 0;
-        if (!isGameOver) for (const b of Composite.allBodies(engine.world)) {
-            if (b.tier === undefined || b.isDropping) continue;
-            mass += b.mass;
-            turn += b.mass * (b.position.x - PIVOT.x);
-        }
-        const lean = turn / mass;   // how far off the middle the weight sits, px
-        const want = isGameOver ? tilt
-            : Math.sign(lean) * Math.min(1, Math.max(0, Math.abs(lean) - SCALES.level) / SCALES.reach) * SCALES.max * Math.PI / 180;
-        const step = SCALES.speed * Math.PI / 180, gap = want - tilt;
-        if (Math.abs(gap) > step * 0.3) tilt += Math.abs(gap) < step ? gap : Math.sign(gap) * step;   // (no trembling)
-        placeBeam(true);
-    });
-}
 // a Gem Mine stage adds its beams, pegs, crates and starting gems
 if (MINE) Mine.setupWorld();
 
@@ -717,7 +760,7 @@ Events.on(engine, 'beforeUpdate', () => {
 
         // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
         // entirely above it (its lowest point is above the line; floating: entirely below it)
-        if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping) {
+        if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping && body.sitAt === undefined) {   // (nor a pet that sits waiting, COME HERE)
             if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
@@ -779,6 +822,7 @@ function setHeld(on) {
     held = on;   // (COME HERE: the Gem Pets answer)
     dropGuide.classList.toggle('held', on);
     aimLine.classList.toggle('show', on);
+    if (TWINS) { dropGuide2.classList.toggle('held', on); aimLine2.classList.toggle('show', on); }
 }
 
 // sound can only start after the first tap
@@ -825,7 +869,8 @@ function dropFruit() {
     if (UNDO_HERE) lastDrop = snapshot();   // the Undo booster can take this drop back
     if (++dropsWithoutMerge > COMBO_BREAK) combo = 0;
 
-    spawnItem(dropX, spawnY(currentTier), currentTier, false);
+    if (TWINS) dropTwins();
+    else callPets(dropX, currentTier, spawnItem(dropX, spawnY(currentTier), currentTier, false));
     if (SET_HINT) setHint();
 
     currentTier = nextTier;
@@ -843,8 +888,8 @@ function dropFruit() {
 const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano until it erupts!']
-    : SCALES ? ['told.scales', 'The floor is a pair of scales: balance it!']
-    : CALL ? ['told.call', 'Hold your finger: the same pets hop to it!'] : null;
+    : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
+    : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
 function setHint() {
     if (setHinted) return;
@@ -1005,7 +1050,6 @@ function saveGame() {
         .filter(b => b.tier !== undefined && !b.isMerging)
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
     const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items, float: FLOAT };
-    if (SCALES) Object.assign(data, { scales: true, tilt: +tilt.toFixed(4) });
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
     if (ERUPT) data.heat = Math.min(heat, ERUPT.full - 1);   // (an eruption on its way is not saved)
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
@@ -1025,16 +1069,9 @@ function loadGame() {
     const okTier = t => Number.isInteger(t) && t >= 0 && t < TIERS.length;
     // saved with a set that falls the other way (the set was changed): the pile is turned upside down
     const turn = !!data.float !== FLOAT;
-    // scales: the beam as it was; a pile saved on a plain floor (the set was changed) is lifted onto the beam
-    const lift = SCALES && !data.scales ? SCALES_RISE : 0;
-    if (SCALES && data.scales) {
-        const most = SCALES.max * Math.PI / 180;
-        tilt = Math.max(-most, Math.min(most, +data.tilt || 0));
-        placeBeam(false);
-    }
     for (const [tier, x, y, angle] of data.items) {
         if (!okTier(tier)) continue;
-        const body = spawnItem(x, (turn ? GAME_HEIGHT - y : y) - lift, tier, false);
+        const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
         Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
     }
@@ -1393,7 +1430,7 @@ function snapshot() {
         items: Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging).map(b => ({
             tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
             vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
-        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, heat, tilt,
+        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, heat,
         daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
     };
 }
@@ -1428,7 +1465,7 @@ function undoLastDrop() {
         updateGoal();
     }
     if (ERUPT) { heat = s.heat || 0; eruptIn = -1; heatUI(); }   // (an eruption the drop set off is taken back too)
-    if (SCALES) { tilt = s.tilt || 0; placeBeam(false); }
+    call = null;                                                  // (and the pets are not called to it any more)
     dangerTimer = 0;
     dropX = clampX(dropX, currentTier);
     updateUI();
@@ -1516,9 +1553,9 @@ function renderSets() {
         card.append(head, gems);
         const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in',
             sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink',
-            sk.scales && '⚖ The floor is a pair of scales (not in the Gem Mine): it leans to the heavier side',
+            sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it erupts, the smallest gems burn',
-            sk.call && '🐾 Hold your finger down and the same pets hop to it'].filter(Boolean);
+            sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);
         if (notes.length) {
             const note = document.createElement('div');
             note.className = 'set-note';
