@@ -242,6 +242,22 @@ const BLOCKS = SKIN && SKIN.blocks && !MINE && !FLOAT ? Object.assign({
     side: 1.6,      // a block's side, x the gem's size (its radius): a little less room than the round gem takes
     drops: 5        // how many of the smallest kinds are dropped
 }, SKIN.blocks === true ? null : SKIN.blocks) : null;
+// A wired set (GAME.skins wires: the Cyber Circuit): touching gems are wires, and a spark merges two alike gems that
+// a short chain of them links, see WIRES below. Not in the Gem Mine, whose stages are measured without it.
+// (wires: true, or an object that changes these numbers)
+const WIRES = SKIN && SKIN.wires && !MINE ? Object.assign({
+    links: 2,       // how many gems may lie between the two (they touch each other in a row)
+    live: 45,       // physics steps a gem that has just landed can send its spark...
+    chain: false,   // ...and whether a gem that has just been made can too (with it a test bot's score triples)
+    every: 4,       // steps between two looks for a pair to link
+    hop: 5          // steps the spark takes from one gem to the next
+}, SKIN.wires === true ? null : SKIN.wires) : null;
+// A beat set (GAME.skins beat: the Neon Nights): the jar pulses to a beat, and a gem let go on the beat doubles the
+// points of the merge it makes, see THE BEAT below. Not in the Gem Mine. (beat: true, or an object that changes these)
+const BEAT = SKIN && SKIN.beat && !MINE ? Object.assign({
+    within: 95,     // how close to a beat the gem must be let go, ms either side
+    times: 2        // the points of its merge are multiplied by this
+}, SKIN.beat === true ? null : SKIN.beat) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
 const TWINS = !!(SKIN && SKIN.twins) && !FLOAT && !MINE;
@@ -380,8 +396,8 @@ const praiseFor = n => GAME.praiseAt.includes(n) ? GAME.praiseAt.indexOf(n)
     : (n > LAST_PRAISE && (n - LAST_PRAISE) % 5 === 0 ? GAME.praise.length - 1 : undefined);
 const comboMultiplier = () => 1 + 0.2 * (Math.min(combo, 11) - 1);   // x1, x1.2 ... x3
 
-function addScore(tier) {
-    const points = Math.round((tier * (tier + 1) / 2) * 10 * comboMultiplier());
+function addScore(tier, times = 1) {   // (times: 2 for a merge made on the beat, BEAT)
+    const points = Math.round((tier * (tier + 1) / 2) * 10 * comboMultiplier()) * times;
     score += points;
     if (score > bestScore) {
         isNewBest = true;
@@ -1155,6 +1171,8 @@ const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WAVE ? ['told.wave', 'Every merge sends out a shock wave!']
     : RUBBER ? ['told.rubber', 'Rubber: everything bounces!']
     : BLOCKS ? ['told.blocks', 'Blocks: they fall straight and never roll!']
+    : WIRES ? ['told.wires', 'Touching gems are wires: a spark finds its like!']
+    : BEAT ? ['told.beat', 'Let go on the beat: the merge counts double!']
     : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
@@ -1200,41 +1218,117 @@ function handleCollisions(event) {
         if (bodyA.tier === undefined || bodyB.tier === undefined) continue;
         if (bodyA.tier !== bodyB.tier || bodyA.tier >= TIERS.length - 1) continue;
         if (bodyA.isMerging || bodyB.isMerging) continue;
-        bodyA.isMerging = true;
-        bodyB.isMerging = true;
-
-        const mergedTier = bodyA.tier + 1;
-        combo++;
-        dropsWithoutMerge = 0;
-        const points = addScore(mergedTier);
-        // made from a gem a Gem Mine stage started with: counts for the stage, not for gem sets or quests
-        const seeded = !!(bodyA.seeded || bodyB.seeded);
-        dailyOnMerge(mergedTier);
-        if (!seeded) countForNextSet(mergedTier);
-        emitGame('merge', mergedTier, points, combo, seeded);
-        if (ERUPT) addHeat(mergedTier + 1);
-
-        const midX = (bodyA.position.x + bodyB.position.x) / 2;
-        const midY = (bodyA.position.y + bodyB.position.y) / 2;
-        if (MINE) Mine.onMerge(midX, midY, mergedTier, bodyA, bodyB);   // goals, and the crates it touches
-        showPop(midX, midY, points);
-        FX.merge(midX, midY, TIERS[mergedTier], combo);
-        Sound.play('pop', mergedTier);
-        if (combo >= 2) Sound.play('combo', combo - 2);
-        Haptics.play('merge', mergedTier, combo);
-        // the praise word, its voice and its buzz come together; the narrator says one line at a time,
-        // so in a fast chain a word may wait for the one before it to finish (see Sound)
-        const level = praiseFor(combo);
-        if (mergedTier === TIERS.length - 1) Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
-        else if (level !== undefined) Sound.play('praise', level, () => { FX.praise(level); Haptics.play('praise', level); });
-
-        Composite.remove(engine.world, [bodyA, bodyB]);
-        const merged = spawnItem(midX, midY, mergedTier, true);
-        if (seeded) merged.seeded = true;
-        if (call && bodyA.tier === call.tier && Math.abs(midX - call.x) < TIERS[mergedTier]) merged.sitFor = { x: call.x, tier: call.tier };   // (COME HERE: made where the pets are called to)
-        if (WAVE) shatter(midX, midY, mergedTier, merged);
+        mergeGems(bodyA, bodyB);
     }
 }
+// Two gems of one level become one of the next, with its points, its place in the combo and everything that
+// follows from a merge. It appears between the two, or at `at` ({ x, y }: a spark's merge, WIRES).
+function mergeGems(bodyA, bodyB, at) {
+    bodyA.isMerging = true;
+    bodyB.isMerging = true;
+
+    const mergedTier = bodyA.tier + 1;
+    combo++;
+    dropsWithoutMerge = 0;
+    const beat = !!BEAT && (bodyA.onBeat || bodyB.onBeat);   // (one of them was dropped on the beat)
+    const points = addScore(mergedTier, beat ? BEAT.times : 1);
+    // made from a gem a Gem Mine stage started with: counts for the stage, not for gem sets or quests
+    const seeded = !!(bodyA.seeded || bodyB.seeded);
+    dailyOnMerge(mergedTier);
+    if (!seeded) countForNextSet(mergedTier);
+    emitGame('merge', mergedTier, points, combo, seeded);
+    if (ERUPT) addHeat(mergedTier + 1);
+
+    const midX = at ? at.x : (bodyA.position.x + bodyB.position.x) / 2;
+    const midY = at ? at.y : (bodyA.position.y + bodyB.position.y) / 2;
+    if (MINE) Mine.onMerge(midX, midY, mergedTier, bodyA, bodyB);   // goals, and the crates it touches
+    showPop(midX, midY, points);
+    if (beat) { FX.onBeat(midX, midY - TIERS[mergedTier] - 16, `×${BEAT.times}`); Sound.play('beatHit', 1); }
+    FX.merge(midX, midY, TIERS[mergedTier], combo);
+    Sound.play('pop', mergedTier);
+    if (combo >= 2) Sound.play('combo', combo - 2);
+    Haptics.play('merge', mergedTier, combo);
+    // the praise word, its voice and its buzz come together; the narrator says one line at a time,
+    // so in a fast chain a word may wait for the one before it to finish (see Sound)
+    const level = praiseFor(combo);
+    if (mergedTier === TIERS.length - 1) Sound.play('maxMerge', () => { FX.praise(4, true); Haptics.play('maxMerge'); });
+    else if (level !== undefined) Sound.play('praise', level, () => { FX.praise(level); Haptics.play('praise', level); });
+
+    Composite.remove(engine.world, [bodyA, bodyB]);
+    const merged = spawnItem(midX, midY, mergedTier, true);
+    merged.made = true;
+    if (seeded) merged.seeded = true;
+    if (call && bodyA.tier === call.tier && Math.abs(midX - call.x) < TIERS[mergedTier]) merged.sitFor = { x: call.x, tier: call.tier };   // (COME HERE: made where the pets are called to)
+    if (WAVE) shatter(midX, midY, mergedTier, merged);
+    return merged;
+}
+// --- WIRES --- (a set with wires in GAME.skins, the Cyber Circuit)
+// Gems that touch are wired together. A gem that has just landed is live for a moment: if a gem of its level
+// that it doesn't touch is linked to it by a short chain of touching gems (WIRES.links of them at most between
+// the two), a spark runs along the chain from the upper one to the lower one, and when it gets there the two
+// merge at the lower one's place, as if they had touched. The merge counts as always, and the gem it makes
+// merges on with whatever like it touches. Only gems that have landed are wires. Nothing here is left to
+// chance: the nearest pair goes first.
+const sparks = [];    // the sparks on their way: { a, b, t, time }: from gem a to gem b, steps gone, steps it takes
+let wireStep = 0;
+if (WIRES) Events.on(engine, 'beforeUpdate', () => {
+    if (isGameOver) { sparks.length = 0; return; }
+    const live = new Set(Composite.allBodies(engine.world));
+    for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i], there = live.has(s.a) && live.has(s.b) && !s.a.isMerging && !s.b.isMerging;
+        if (there && ++s.t < s.time) continue;
+        sparks.splice(i, 1);
+        s.a.sparking = s.b.sparking = false;
+        if (there) mergeGems(s.a, s.b, { x: s.b.position.x, y: s.b.position.y });   // (else one of them merged some other way meanwhile)
+    }
+    wireStep++;
+    // a gem is live from the moment it has landed, or has grown to its size
+    const wired = b => b.tier !== undefined && !b.isDropping && !b.isMerging && !b.isGrowing;
+    for (const b of live) if (b.liveUntil === undefined && wired(b)) b.liveUntil = b.old || (b.made && !WIRES.chain) ? 0 : wireStep + WIRES.live;
+    if (wireStep % WIRES.every) return;
+    // who touches whom, among the gems that have landed
+    const next = new Map();
+    const link = (a, b) => { if (!next.has(a)) next.set(a, []); next.get(a).push(b); };
+    for (const pr of engine.pairs.list) {
+        const a = pr.bodyA.parent, b = pr.bodyB.parent;
+        if (pr.isActive && wired(a) && wired(b)) { link(a, b); link(b, a); }
+    }
+    // for each gem: the nearest gem of its level along the wires that it doesn't touch, with the chain between them
+    const found = [];
+    for (const a of next.keys()) {
+        if (a.sparking || a.tier >= TIERS.length - 1 || wireStep > a.liveUntil) continue;
+        const from = new Map([[a, null]]);
+        let ring = [a], hit = null;
+        for (let far = 1; far <= WIRES.links + 1 && !hit; far++) {
+            const out = [];
+            for (const u of ring) {
+                for (const v of next.get(u)) {
+                    if (from.has(v)) continue;
+                    from.set(v, u);
+                    out.push(v);
+                    if (!hit && far >= 2 && v.tier === a.tier && !v.sparking) hit = v;
+                }
+            }
+            ring = out;
+        }
+        if (!hit) continue;
+        const chain = [];
+        for (let u = hit; u; u = from.get(u)) chain.push(u);   // (from the one found back to a)
+        found.push(chain);
+    }
+    found.sort((p, q) => p.length - q.length);
+    for (const chain of found) {
+        if (chain[0].sparking || chain[chain.length - 1].sparking) continue;        // (already in a spark of this round)
+        if (chain[0].position.y < chain[chain.length - 1].position.y) chain.reverse();   // it runs from the upper one down to the lower
+        const a = chain[chain.length - 1], b = chain[0], time = (chain.length - 1) * WIRES.hop;
+        a.sparking = b.sparking = true;
+        sparks.push({ a, b, t: 0, time });
+        FX.spark(chain.slice().reverse().map(g => [g.position.x, g.position.y]), time * STEP / SPEED / 1000);
+        Sound.play('zap');
+        Haptics.play('pickup');
+    }
+});
+
 // collisionActive too: two drops that met in mid-air may merge once they're resting on the pile
 Events.on(engine, 'collisionStart', handleCollisions);
 Events.on(engine, 'collisionActive', handleCollisions);
@@ -1415,6 +1509,7 @@ function loadGame() {
         const body = spawnItem(x, turn ? GAME_HEIGHT - y : y, tier, false);
         if (!BLOCKS) Body.setAngle(body, (turn ? -1 : 1) * (angle || 0));
         body.isDropping = false;   // it was already in the pile
+        body.old = true;           // (WIRES: so it sends no spark)
     }
     score = shownScore = Math.max(0, data.score | 0);
     scoreEl.textContent = score;
@@ -1786,6 +1881,7 @@ function undoLastDrop() {
         if (!BLOCKS) { Body.setAngle(body, it.angle); Body.setAngularVelocity(body, it.spin); }
         Body.setVelocity(body, { x: it.vx, y: it.vy });
         body.isDropping = it.dropping;
+        body.old = !it.dropping;   // (WIRES: a gem put back in the pile sends no spark)
     }
     score = shownScore = s.score;
     scoreEl.textContent = score;
@@ -1896,6 +1992,8 @@ function renderSets() {
             sk.wave && '💎 Shatter wave (not in the Gem Mine): every merge shoves the gems around it away, a bigger gem harder',
             sk.rubber && '🏀 Rubber (not in the Gem Mine): everything bounces a few times before it lies still',
             sk.blocks && '🧱 Blocks (not in the Gem Mine): square blocks that fall straight down and never roll',
+            sk.wires && '⚡ Wired (not in the Gem Mine): a gem that lands sends a spark through the gems it touches to its like, and the two merge',
+            sk.beat && '🎵 The beat (not in the Gem Mine): let a gem go on the beat and the merge it makes counts double',
             sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);

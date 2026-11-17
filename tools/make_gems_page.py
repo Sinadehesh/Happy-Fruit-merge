@@ -60,7 +60,7 @@ swap('    <script src="config.js"></script>', '''    <script>
                 // then more and more 3-star clears
                 { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, blocks: true },   // square blocks that fall straight and never roll
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30, rubber: true },   // made of rubber: everything bounces
-                { id: 'cyber', name: 'Cyber Circuit', mineStars: 40 },
+                { id: 'cyber', name: 'Cyber Circuit', mineStars: 40, wires: true },   // touching gems are wires: a spark merges alike gems they link
                 { id: 'neon', name: 'Neon Nights', mineStars: 48 },
                 { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // the same pets leap to your finger, held or dropped
             ],

@@ -234,6 +234,14 @@ const Sound = (() => {
             o.connect(g); g.connect(sfxBus);
             o.start(now); o.stop(now + 0.3 + tier * 0.012);
         },
+        // a spark running along a chain of gems (game.js WIRES): a short electric fizz, never many at once
+        zap() {
+            const now = ac.currentTime;
+            if (now - (sfx.zap.last || 0) < 0.07) return;
+            sfx.zap.last = now;
+            wash(3800, 0.16, 0.11);
+            for (let i = 0; i < 3; i++) crackle(i * 0.035 + Math.random() * 0.02, 0.13 - i * 0.03);
+        },
         // the shatter wave of a merge (game.js WAVE): a crack of breaking glass and a glassy ring, deeper for a bigger gem
         shatter(tier = 1) {
             crackle(0, 0.2 + tier * 0.015);

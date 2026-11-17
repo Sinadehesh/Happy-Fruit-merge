@@ -135,6 +135,25 @@ const FX = (() => {
         if (tier >= 4) quake(Math.min(8, 1.5 + tier * 0.7), 0.25);
     }
 
+    // A spark along a chain of gems (game.js WIRES): a jagged bolt through their middles (pts), which takes `secs`
+    // to run from the first to the last and then fades.
+    function spark(pts, secs) {
+        const line = [];
+        for (let i = 0; i < pts.length - 1; i++) {
+            const [x1, y1] = pts[i], [x2, y2] = pts[i + 1], n = 4;
+            for (let k = i ? 1 : 0; k <= n; k++) {
+                const f = k / n, j = k === 0 || k === n ? 0 : 1;
+                line.push([x1 + (x2 - x1) * f + rand(-8, 8) * j, y1 + (y2 - y1) * f + rand(-8, 8) * j]);
+            }
+        }
+        effects.push({ kind: 'sparkline', pts: line, t: 0, dur: secs + 0.28, run: Math.max(0.02, secs) });
+    }
+    // The beat (game.js BEAT). onBeat: a short word (ON BEAT!, x2) popping at (x, y). beatGlow: a function giving
+    // the gems that were let go on the beat, [x, y, r], which glow until they merge.
+    function onBeat(x, y, text) { effects.push({ kind: 'tag', x: Math.max(60, Math.min(W - 60, x)), y: Math.max(30, y), text, t: 0, dur: 0.8 }); }
+    let glowsOf = null;
+    function beatGlow(fn) { glowsOf = fn; }
+
     // Calling the pets (game.js CALL). calling: a ring spreading from the held pet. hop: a little dust where a pet
     // jumped, and now and then a heart over it.
     function calling(x, y, r) { effects.push({ kind: 'callring', x, y, r, t: 0, dur: 0.75 }); }
@@ -406,6 +425,16 @@ const FX = (() => {
         ctx.clearRect(0, 0, W, H);
         shakeStep(dt);
         if (threadsOf) drawThreads(now / 1000);
+        if (glowsOf) {   // the gems let go on the beat: a neon ring that breathes
+            let list = [];
+            try { list = glowsOf(); } catch (e) {}
+            ctx.save();
+            ctx.shadowColor = '#ff4fd8'; ctx.shadowBlur = 14;
+            ctx.strokeStyle = `rgba(125, 251, 255, ${0.65 + 0.3 * Math.sin(now / 90)})`;
+            ctx.lineWidth = 3;
+            for (const [x, y, r] of list) { ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.stroke(); }
+            ctx.restore();
+        }
         if (sea) drawWater(now / 1000);
         for (const e of effects) {
             e.t += dt;
@@ -460,6 +489,39 @@ const FX = (() => {
                 ctx.fillStyle = '#f4fdff'; ctx.strokeStyle = 'rgba(120, 220, 255, 0.9)'; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(e.len, 0); ctx.lineTo(0, e.len * 0.28); ctx.lineTo(-e.len * 0.6, 0); ctx.lineTo(0, -e.len * 0.28); ctx.closePath();
                 ctx.fill(); ctx.stroke();
+                ctx.restore();
+            } else if (e.kind === 'sparkline') {
+                const run = Math.min(1, e.t / e.run), fade = e.t <= e.run ? 1 : Math.max(0, 1 - (e.t - e.run) / (e.dur - e.run));
+                const upTo = run * (e.pts.length - 1), whole = Math.floor(upTo), part = upTo - whole;
+                ctx.save();
+                ctx.lineJoin = ctx.lineCap = 'round';
+                ctx.shadowColor = 'rgba(80, 230, 255, 0.95)'; ctx.shadowBlur = 16;
+                let hx = e.pts[0][0], hy = e.pts[0][1];
+                for (const [width, color] of [[9, `rgba(70, 210, 255, ${0.75 * fade})`], [3.2, `rgba(255, 255, 255, ${fade * (Math.sin(e.t * 90) > -0.4 ? 1 : 0.6)})`]]) {
+                    ctx.beginPath(); ctx.moveTo(e.pts[0][0], e.pts[0][1]);
+                    for (let i = 1; i <= whole; i++) ctx.lineTo(e.pts[i][0], e.pts[i][1]);
+                    if (whole < e.pts.length - 1) {
+                        hx = e.pts[whole][0] + (e.pts[whole + 1][0] - e.pts[whole][0]) * part; hy = e.pts[whole][1] + (e.pts[whole + 1][1] - e.pts[whole][1]) * part;
+                        ctx.lineTo(hx, hy);
+                    } else { hx = e.pts[whole][0]; hy = e.pts[whole][1]; }
+                    ctx.lineWidth = width; ctx.strokeStyle = color; ctx.stroke();
+                }
+                ctx.fillStyle = `rgba(255, 255, 255, ${fade})`;
+                ctx.beginPath(); ctx.arc(hx, hy, 6 + 2 * Math.sin(e.t * 60), 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            } else if (e.kind === 'tag') {
+                const s = elastic(Math.min(1, e.t / 0.35)), fade = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+                ctx.save();
+                ctx.globalAlpha = fade;
+                ctx.translate(e.x, e.y - 26 * k);
+                ctx.scale(s, s); ctx.rotate(-0.07);
+                ctx.font = "800 26px Poppins, 'Arial Black', sans-serif";
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+                ctx.lineWidth = 7; ctx.strokeStyle = '#2a0b4a';
+                ctx.strokeText(e.text, 0, 0);
+                ctx.shadowColor = '#ff4fd8'; ctx.shadowBlur = 12;
+                ctx.fillStyle = '#7dfbff';
+                ctx.fillText(e.text, 0, 0);
                 ctx.restore();
             } else if (e.kind === 'callring') {
                 ctx.save();
@@ -549,5 +611,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, wave, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();
