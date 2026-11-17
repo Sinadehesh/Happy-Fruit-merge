@@ -121,18 +121,50 @@ const FX = (() => {
         effects.push({ kind: 'smoke', x, y, r, t: 0, dur: 0.75 });
     }
 
-    // The shatter wave of a merge (game.js WAVE) at (x, y), going out as far as `reach`: a bright ring that grows to
-    // that size, a fainter one behind it, and splinters of crystal flying out; a big gem's wave shakes the jar.
-    function wave(x, y, reach, tier) {
-        effects.push({ kind: 'wavering', x, y, r: reach, t: 0, dur: 0.45, w: 5 + tier * 0.8, glow: true });
-        effects.push({ kind: 'wavering', x, y, r: reach * 0.8, t: -0.08, dur: 0.45, w: 2.5 + tier * 0.4 });
-        const n = Math.min(16, 5 + tier * 2);
-        for (let i = 0; i < n; i++) {
-            const a = rand(0, Math.PI * 2), sp = rand(0.9, 1.6) * reach * 2;
-            effects.push({ kind: 'shard', x: x + Math.cos(a) * 8, y: y + Math.sin(a) * 8, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: a, vr: rand(-9, 9),
-                len: rand(7, 12) + tier, t: 0, dur: rand(0.3, 0.5) });
+    // Fire and stone (game.js CLASH). clash: a big gem at (x, y) and a small one at (x2, y2) burn each other up: fire
+    // at both, a flash between them, the jar shakes. dangerGlow: a function giving the gems the one in hand would
+    // burn, [x, y, r], which are ringed in red.
+    function clash(x, y, r, x2, y2, r2) {
+        burn(x, y, r); burn(x2, y2, r2);
+        effects.push({ kind: 'flash', x: (x * r2 + x2 * r) / (r + r2), y: (y * r2 + y2 * r) / (r + r2), r: r * 1.3 + 20, t: 0, dur: 0.3 });
+        for (let i = 0; i < 12; i++) {
+            const a = rand(0, Math.PI * 2), sp = rand(120, 380);
+            effects.push({ kind: 'lava', x: x + Math.cos(a) * r * 0.5, y: y + Math.sin(a) * r * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 140, size: rand(3, 7), t: 0, dur: rand(0.5, 0.9) });
         }
-        if (tier >= 4) quake(Math.min(8, 1.5 + tier * 0.7), 0.25);
+        quake(Math.min(7, 2 + r / 22), 0.3);
+    }
+    let dangerOf = null;
+    function dangerGlow(fn) { dangerOf = fn; }
+
+    // The glitch (game.js GLITCH): a gem of size r breaks up into pixels at (x, y) (together: false), or comes
+    // together out of them there (true): little squares in the colours of an old screen, and a square frame.
+    const PIXEL_COLOURS = ['#7dfbff', '#ff4fd8', '#fff36b', '#ffffff', '#6bff8f'];
+    function pixels(x, y, r, together) {
+        const n = Math.round(Math.min(26, 10 + r / 4));
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), d = rand(0.2, 1) * r, sp = rand(60, 220), s = Math.max(3, Math.round(rand(3, 7)));
+            effects.push(together
+                ? { kind: 'pixel', x: x + Math.cos(a) * (d + sp * 0.3), y: y + Math.sin(a) * (d + sp * 0.3), vx: -Math.cos(a) * sp, vy: -Math.sin(a) * sp, size: s, col: PIXEL_COLOURS[i % 5], t: 0, dur: 0.3 }
+                : { kind: 'pixel', x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, size: s, col: PIXEL_COLOURS[i % 5], t: 0, dur: rand(0.3, 0.5) });
+        }
+        effects.push({ kind: 'frame', x, y, r, t: 0, dur: 0.3, together });
+    }
+
+    // The blast of a merge (game.js WAVE) at (x, y), going out as far as `reach`: a cold white flash, a bright ring
+    // that grows to that size with two fainter ones behind it, and splinters of crystal flying out; the jar shakes,
+    // harder for a bigger gem.
+    function wave(x, y, reach, tier) {
+        effects.push({ kind: 'flash', x, y, r: reach * 0.55, t: 0, dur: 0.32, cold: true });
+        effects.push({ kind: 'wavering', x, y, r: reach, t: 0, dur: 0.5, w: 7 + tier * 1.1, glow: true });
+        effects.push({ kind: 'wavering', x, y, r: reach * 0.82, t: -0.07, dur: 0.5, w: 3.5 + tier * 0.5 });
+        effects.push({ kind: 'wavering', x, y, r: reach * 0.6, t: -0.15, dur: 0.5, w: 2 + tier * 0.3 });
+        const n = Math.min(34, 12 + tier * 3);
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), sp = rand(0.9, 1.9) * reach * 2;
+            effects.push({ kind: 'shard', x: x + Math.cos(a) * 8, y: y + Math.sin(a) * 8, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: a, vr: rand(-9, 9),
+                len: rand(8, 14) + tier * 1.3, t: 0, dur: rand(0.35, 0.6) });
+        }
+        quake(Math.min(11, 2.5 + tier), 0.3);
     }
 
     // A spark along a chain of gems (game.js WIRES): a jagged bolt through their middles (pts), which takes `secs`
@@ -435,6 +467,17 @@ const FX = (() => {
             for (const [x, y, r] of list) { ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.stroke(); }
             ctx.restore();
         }
+        if (dangerOf) {   // the gems the one in hand would burn: a red ring that throbs
+            let list = [];
+            try { list = dangerOf(); } catch (e) {}
+            ctx.save();
+            ctx.shadowColor = '#ff3b1f'; ctx.shadowBlur = 16;
+            ctx.strokeStyle = `rgba(255, 96, 48, ${0.55 + 0.35 * Math.sin(now / 140)})`;
+            ctx.lineWidth = 3.5;
+            ctx.setLineDash([10, 7]); ctx.lineDashOffset = -now / 40;
+            for (const [x, y, r] of list) { ctx.beginPath(); ctx.arc(x, y, r + 4, 0, Math.PI * 2); ctx.stroke(); }
+            ctx.restore();
+        }
         if (sea) drawWater(now / 1000);
         for (const e of effects) {
             e.t += dt;
@@ -490,6 +533,21 @@ const FX = (() => {
                 ctx.beginPath(); ctx.moveTo(e.len, 0); ctx.lineTo(0, e.len * 0.28); ctx.lineTo(-e.len * 0.6, 0); ctx.lineTo(0, -e.len * 0.28); ctx.closePath();
                 ctx.fill(); ctx.stroke();
                 ctx.restore();
+            } else if (e.kind === 'pixel') {
+                e.x += e.vx * dt; e.y += e.vy * dt;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - k * k);
+                ctx.fillStyle = e.col;
+                ctx.fillRect(Math.round(e.x - e.size / 2), Math.round(e.y - e.size / 2), e.size, e.size);   // (on whole pixels, like an old screen)
+                ctx.restore();
+            } else if (e.kind === 'frame') {
+                const s = e.r * (e.together ? 2.4 - 1.3 * k : 1.1 + 1.3 * k);
+                ctx.save();
+                ctx.globalAlpha = 0.85 * (1 - k);
+                ctx.strokeStyle = e.together ? '#7dfbff' : '#ff4fd8';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(Math.round(e.x - s), Math.round(e.y - s), Math.round(2 * s), Math.round(2 * s));
+                ctx.restore();
             } else if (e.kind === 'sparkline') {
                 const run = Math.min(1, e.t / e.run), fade = e.t <= e.run ? 1 : Math.max(0, 1 - (e.t - e.run) / (e.dur - e.run));
                 const upTo = run * (e.pts.length - 1), whole = Math.floor(upTo), part = upTo - whole;
@@ -544,14 +602,15 @@ const FX = (() => {
             } else if (e.kind === 'flash') {
                 ctx.save();
                 const rr = e.r * (0.5 + 0.7 * k), g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, rr);
-                g.addColorStop(0, `rgba(255, 250, 210, ${0.95 * (1 - k)})`);
-                g.addColorStop(0.5, `rgba(255, 170, 50, ${0.7 * (1 - k)})`);
-                g.addColorStop(1, 'rgba(255, 90, 20, 0)');
+                // (cold: the white and ice blue of a crystal's blast; else a lava bomb's fire)
+                g.addColorStop(0, e.cold ? `rgba(250, 254, 255, ${0.95 * (1 - k)})` : `rgba(255, 250, 210, ${0.95 * (1 - k)})`);
+                g.addColorStop(0.5, e.cold ? `rgba(130, 222, 255, ${0.6 * (1 - k)})` : `rgba(255, 170, 50, ${0.7 * (1 - k)})`);
+                g.addColorStop(1, e.cold ? 'rgba(90, 170, 255, 0)' : 'rgba(255, 90, 20, 0)');
                 ctx.fillStyle = g;
                 ctx.beginPath(); ctx.arc(e.x, e.y, rr, 0, Math.PI * 2); ctx.fill();
                 ctx.globalAlpha = 0.9 * (1 - k);
                 ctx.lineWidth = 5 * (1 - k) + 1;
-                ctx.strokeStyle = '#ffd27a';
+                ctx.strokeStyle = e.cold ? '#d6f6ff' : '#ffd27a';
                 ctx.beginPath(); ctx.arc(e.x, e.y, e.r * Math.min(1, 0.3 + 1.2 * k), 0, Math.PI * 2); ctx.stroke();
                 ctx.restore();
             } else if (e.kind === 'smoke') {
@@ -611,5 +670,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, clash, dangerGlow, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

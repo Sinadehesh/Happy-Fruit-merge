@@ -50,15 +50,17 @@ swap('    <script src="config.js"></script>', '''    <script>
             // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },
-                { id: 'crystal', name: 'Crystal Cave', wave: true },   // every merge sends out a shock wave that shoves the gems near it
+                { id: 'crystal', name: 'Crystal Cave', wave: true },   // every merge goes off with a blast that throws the gems near it away
                 { id: 'ocean', name: 'Ocean Jewels', water: true },   // under water: small gems float, big ones sink
-                { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of twins, mirrored left and right
+                { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of two different jewels, mirrored left and right
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
-                { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; full, it gives a lava bomb to drop
+                // (erupt: true is the lava bomb: merges heat the volcano; full, it gives a bomb to drop. Off while clash is tried.)
+                { id: 'volcano', name: 'Volcano Gems', clash: true },   // two gems more than 4 levels apart burn each other up when they touch
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
-                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, blocks: true },   // square blocks that fall straight and never roll
+                // (blocks: true is square blocks that fall straight and never roll. Off while glitch is tried.)
+                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, glitch: true },   // at every merge a gem vanishes and comes back somewhere else, at random
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30, rubber: true },   // made of rubber: everything bounces
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40, wires: true },   // touching gems are wires: a spark merges alike gems they link
                 { id: 'neon', name: 'Neon Nights', mineStars: 48, beat: true },   // the jar pulses to the beat: a gem let go on it counts double

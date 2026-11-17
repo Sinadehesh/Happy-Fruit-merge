@@ -447,7 +447,7 @@
         $('menu-xp-fill').parentNode.classList.toggle('near', pct >= 80 && n < MAX_LEVEL);
         $('menu-xp-text').textContent = n >= MAX_LEVEL ? 'Max level' : `${fmt(P.xp - lo)} / ${fmt(hi - lo)} XP`;
         let best = 0, rushBest = 0;
-        try { best = parseInt(localStorage.getItem(`${GAME.id}.best`), 10) || 0; rushBest = parseInt(localStorage.getItem(`${GAME.id}.best.rush`), 10) || 0; } catch (e) {}
+        try { best = parseInt(localStorage.getItem(SET_BEST), 10) || 0; rushBest = parseInt(localStorage.getItem(`${GAME.id}.best.rush`), 10) || 0; } catch (e) {}
         $('menu-best-val').textContent = fmt(best);
         const daily = doneToday();
         tile('tile-daily', 'daily', daily ? 'Done today ✓' : goalText(GOAL), !daily);

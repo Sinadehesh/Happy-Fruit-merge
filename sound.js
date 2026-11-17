@@ -250,12 +250,15 @@ const Sound = (() => {
             wash(3800, 0.16, 0.11);
             for (let i = 0; i < 3; i++) crackle(i * 0.035 + Math.random() * 0.02, 0.13 - i * 0.03);
         },
-        // the shatter wave of a merge (game.js WAVE): a crack of breaking glass and a glassy ring, deeper for a bigger gem
+        // the blast of a merge (game.js WAVE): a deep thud, a crack of breaking glass with its splinters and a glassy
+        // ring, deeper and louder for a bigger gem
         shatter(tier = 1) {
-            crackle(0, 0.2 + tier * 0.015);
-            crackle(0.03 + Math.random() * 0.02, 0.12);
-            sample('chime', { gain: 0.16 + tier * 0.01, rate: jitter(semitones(19 - tier * 1.5), 0.02) });
-            if (tier >= 4) thump(150 - tier * 8, 0.18, 0.12 + tier * 0.02);
+            thump(170 - tier * 9, 0.2 + tier * 0.02, 0.2 + tier * 0.035);
+            grit(Math.max(1500, 4200 - tier * 260), 0.12 + tier * 0.012, 0.1 + tier * 0.014);
+            crackle(0, 0.24 + tier * 0.015);
+            crackle(0.03 + Math.random() * 0.02, 0.16);
+            crackle(0.08 + Math.random() * 0.03, 0.1);
+            sample('chime', { gain: 0.18 + tier * 0.012, rate: jitter(semitones(19 - tier * 1.5), 0.02) });
         },
         // the lava bomb (game.js LAVA BOMB). Ready: a short growl of the volcano and two low chimes. Going off: a
         // deep boom, a burst of grit, a thick bubble and crackles.
@@ -269,6 +272,31 @@ const Sound = (() => {
             grit(1100, 0.3, 0.4);
             sample('bubble_big', { gain: 0.45, rate: 0.55 });
             for (let i = 0; i < 6; i++) crackle(0.08 + i * 0.09 + Math.random() * 0.05, 0.15 - i * 0.018);
+        },
+        // fire and stone (game.js CLASH): two gems burn each other up: a low thud, a hiss and crackles, deeper for a bigger gem
+        clash(tier = 5) {
+            thump(150 - tier * 6, 0.22 + tier * 0.012, 0.3 + tier * 0.02);
+            wash(2200, 0.3, 0.16);
+            grit(1300, 0.18, 0.2);
+            for (let i = 0; i < 3; i++) crackle(0.05 + i * 0.07 + Math.random() * 0.03, 0.14 - i * 0.03);
+        },
+        // the glitch (game.js GLITCH): a gem jumps somewhere else: three quick square-wave blips, an old machine's
+        // hiccup, a little lower for a bigger gem; never many at once
+        glitch(tier = 0) {
+            const now = ac.currentTime;
+            if (now - (sfx.glitch.last || 0) < 0.06) return;
+            sfx.glitch.last = now;
+            const base = Math.max(260, 880 - tier * 45);
+            [1, 1.5, 0.75].forEach((m, i) => {
+                const o = ac.createOscillator(), g = ac.createGain(), at = now + i * 0.045;
+                o.type = 'square';
+                o.frequency.setValueAtTime(base * m * (0.94 + Math.random() * 0.12), at);
+                g.gain.setValueAtTime(0.0001, at);
+                g.gain.exponentialRampToValueAtTime(0.05, at + 0.004);
+                g.gain.exponentialRampToValueAtTime(0.0001, at + 0.04);
+                o.connect(g); g.connect(sfxBus);
+                o.start(at); o.stop(at + 0.05);
+            });
         },
         // into the water: a splash and a bloop or two, deeper, longer and louder for a heavier gem and a harder fall
         splash(tier, impact = 1) {

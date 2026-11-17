@@ -228,6 +228,7 @@
         }
         .tray-label { color: var(--gear); font-weight: 700; font-size: 15px; letter-spacing: 1px; }
         #next-img { width: 68px; height: 68px; object-fit: contain; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }
+        #next-mate { width: 68px; height: 68px; object-fit: contain; margin-left: -6px; filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25)); }   /* a pairs set (game.js TWINS): the next gem's partner */
 
         /* Settings and game over use the wood panel from the UI kit */
         .overlay {
@@ -674,7 +675,7 @@
             #score-val { font-size: 44px; margin: 2px 0 8px; }
             .game-board { width: min(100%, 450px, calc((100vh - 176px) * 450 / 640)); }
             .tray { min-height: 60px; }
-            #next-img { width: 52px; height: 52px; }
+            #next-img, #next-mate { width: 52px; height: 52px; }
             .booster { width: 50px; height: 50px; }
             #menu { padding-top: 8px; }
             #menu-logo { width: min(61.8%, 280px); }
@@ -991,15 +992,17 @@
             // gem sets to pick from (Settings > Gems), in the order they open
             skins: [
                 { id: 'rocks', name: 'Rocks & Gems' },
-                { id: 'crystal', name: 'Crystal Cave', wave: true },   // every merge sends out a shock wave that shoves the gems near it
+                { id: 'crystal', name: 'Crystal Cave', wave: true },   // every merge goes off with a blast that throws the gems near it away
                 { id: 'ocean', name: 'Ocean Jewels', water: true },   // under water: small gems float, big ones sink
-                { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of twins, mirrored left and right
+                { id: 'royal', name: 'Royal Treasury', twins: true },   // every drop is a pair of two different jewels, mirrored left and right
                 // zero gravity (float): dropped at the bottom, they float up; and gems of one level pull each other in (pull)
                 { id: 'cosmic', name: 'Cosmic Gems', float: true, pull: true },
-                { id: 'volcano', name: 'Volcano Gems', erupt: true },   // merges heat the volcano; full, it gives a lava bomb to drop
+                // (erupt: true is the lava bomb: merges heat the volcano; full, it gives a bomb to drop. Off while clash is tried.)
+                { id: 'volcano', name: 'Volcano Gems', clash: true },   // two gems more than 4 levels apart burn each other up when they touch
                 // these open with stars in the Gem Mine (60 in all for now): about half the stages, all of them,
                 // then more and more 3-star clears
-                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, blocks: true },   // square blocks that fall straight and never roll
+                // (blocks: true is square blocks that fall straight and never roll. Off while glitch is tried.)
+                { id: 'pixel', name: 'Pixel Treasure', mineStars: 18, glitch: true },   // at every merge a gem vanishes and comes back somewhere else, at random
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30, rubber: true },   // made of rubber: everything bounces
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40, wires: true },   // touching gems are wires: a spark merges alike gems they link
                 { id: 'neon', name: 'Neon Nights', mineStars: 48, beat: true },   // the jar pulses to the beat: a gem let go on it counts double
