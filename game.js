@@ -228,6 +228,13 @@ const WAVE = SKIN && SKIN.wave && !MINE ? Object.assign({
     more: 0.45,     // ...and this much harder for every level above it
     most: 8.5       // no gem is shoved faster than this
 }, SKIN.wave === true ? null : SKIN.wave) : null;
+// A rubber set (GAME.skins rubber: the Odd Shapes): everything is bouncy, see RUBBER below. Not in the Gem Mine,
+// whose stages are measured without it. (rubber: true, or an object that changes these numbers)
+const RUBBER = SKIN && SKIN.rubber && !MINE ? Object.assign({
+    bounce: 0.9,    // how much of its speed the smallest gem keeps when it bounces...
+    less: 0.03,     // ...each level above it keeps this much less...
+    least: 0.55     // ...but never less than this
+}, SKIN.rubber === true ? null : SKIN.rubber) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
 const TWINS = !!(SKIN && SKIN.twins) && !FLOAT && !MINE;
@@ -485,7 +492,8 @@ engine.gravity.y = DOWN;   // (floating sets: up)
 // already in the jar that falls into a gap lands the same way. In a floating set all of it works upward: the
 // pull follows gravity, so the higher the level, the harder a gem shoots up.
 const fallPull = tier => 0.8 + 0.1 * tier;                       // x gravity while a dropped gem is falling
-const bounceOf = tier => Math.max(0.04, 0.24 - 0.018 * tier);     // how much it bounces (restitution)
+// how much it bounces (restitution); a rubber set: a lot (RUBBER)
+const bounceOf = tier => RUBBER ? Math.max(RUBBER.least, RUBBER.bounce - RUBBER.less * tier) : Math.max(0.04, 0.24 - 0.018 * tier);
 const FULL_DROP_SPEED = 14;   // how fast a gem dropped from the top hits the floor of an empty jar, px per step
 const impactOf = speed => Math.min(1.2, speed / FULL_DROP_SPEED);   // 1: a drop from the top to the floor
 const KNOCK_SPEED = 3.5;      // a gem already in the jar knocking into something slower than this makes no sound
@@ -880,11 +888,26 @@ function meetSpeed(pair) {
     const n = pair.collision.normal, a = pair.bodyA.velocity, b = pair.bodyB.velocity;
     return Math.abs((a.x - b.x) * n.x + (a.y - b.y) * n.y);
 }
+// --- RUBBER --- (a set with rubber in GAME.skins, the Odd Shapes)
+// Every gem is made of rubber: it keeps most of its speed when it hits something (bounceOf), so a dropped gem
+// bounces a few times before it lies still, the small ones longest, and a pile is never quite at rest while gems
+// are landing on it. Each bounce has its boing and the gem swells for a moment (the picture only: its outline
+// stays as it is). The rest of the game is the same: a gem counts as landed from its first touch, and it merges
+// with its like whenever the two touch, in the air or not.
+if (RUBBER) Events.on(engine, 'beforeUpdate', () => {
+    for (const b of Composite.allBodies(engine.world)) {
+        if (!b.boing || b.isGrowing) continue;
+        b.boing--;
+        const k = spriteScale(b.currentRadius) * (1 + 0.14 * Math.sin(Math.PI * b.boing / 9));
+        b.render.sprite.xScale = b.render.sprite.yScale = k;
+    }
+});
 // a gem landing: the sound, buzz and dust follow its level (its weight) and how hard it hit
 function thud(gem, speed, scale = 1) {
     const impact = impactOf(speed) * scale;
     gem.lastThud = performance.now();
-    Sound.play('land', gem.tier, impact);
+    if (RUBBER) { gem.boing = 9; Sound.play('boing', gem.tier, impact); }
+    else Sound.play('land', gem.tier, impact);
     Haptics.play('land', gem.tier, impact);
     FX.thud(gem.position.x, FLOAT ? gem.bounds.min.y : gem.bounds.max.y, TIERS[gem.tier], gem.tier, impact);
 }
@@ -1120,6 +1143,7 @@ const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
     : WAVE ? ['told.wave', 'Every merge sends out a shock wave!']
+    : RUBBER ? ['told.rubber', 'Rubber: everything bounces!']
     : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
@@ -1792,6 +1816,7 @@ function renderSets() {
         const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in',
             sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink',
             sk.wave && '💎 Shatter wave (not in the Gem Mine): every merge shoves the gems around it away, a bigger gem harder',
+            sk.rubber && '🏀 Rubber (not in the Gem Mine): everything bounces a few times before it lies still',
             sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);

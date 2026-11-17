@@ -216,6 +216,24 @@ const Sound = (() => {
             sfx.hop.last = now;
             bloop(Math.max(260, 640 - tier * 70), 0.06, 0.035);
         },
+        // a rubber gem bouncing (game.js RUBBER): a boing, a note that dips and comes back up, lower for a bigger gem
+        // and louder for a harder bounce; never many at once
+        boing(tier = 0, impact = 1) {
+            const now = ac.currentTime;
+            if (now - (sfx.boing.last || 0) < 0.05) return;
+            sfx.boing.last = now;
+            const k = Math.max(0.15, Math.min(1.2, impact)), f = jitter(Math.max(150, 520 - tier * 34), 0.05);
+            const o = ac.createOscillator(), g = ac.createGain();
+            o.type = 'triangle';
+            o.frequency.setValueAtTime(f, now);
+            o.frequency.exponentialRampToValueAtTime(f * 0.55, now + 0.05);
+            o.frequency.exponentialRampToValueAtTime(f * 0.95, now + 0.17);
+            g.gain.setValueAtTime(0.0001, now);
+            g.gain.exponentialRampToValueAtTime(0.11 * k + 0.01 * tier, now + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, now + 0.22 + tier * 0.012);
+            o.connect(g); g.connect(sfxBus);
+            o.start(now); o.stop(now + 0.3 + tier * 0.012);
+        },
         // the shatter wave of a merge (game.js WAVE): a crack of breaking glass and a glassy ring, deeper for a bigger gem
         shatter(tier = 1) {
             crackle(0, 0.2 + tier * 0.015);
