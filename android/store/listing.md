@@ -13,7 +13,7 @@ Gem Jar: Merge Puzzle
 ## Short description (76/80)
 
 ```text
-Drop gems, merge two of a kind and make the Diamond. 11 gem sets to collect.
+Drop gems, merge two of a kind and make the Diamond. 12 gem sets to collect.
 ```
 
 ## Full description (2034/4000)
@@ -29,8 +29,8 @@ HOW YOU PLAY
 • Plan ahead: you can see the next gem coming.
 • Squishy pops, sparkles and a cheerful narrator for every big combo: SWEET! JUICY! INCREDIBLE!
 
-11 GEM SETS TO COLLECT, 132 GEMS IN ALL
-Rocks & Gems, Crystal Cave, Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems, Pixel Treasure, Odd Shapes, Cyber Circuit, Neon Nights and Gem Pets. Each set turns every gem in the jar into something new, from glowing neon shapes to cute pets made of crystal. Open a set by making gems, or by winning stars in the Gem Mine. Can you open them all?
+12 GEM SETS TO COLLECT, 144 GEMS IN ALL
+Rocks & Gems, Crystal Cave, Ocean Jewels, Royal Treasury, Cosmic Gems, Volcano Gems, Pixel Treasure, Odd Shapes, Cyber Circuit, Neon Nights, Gem Pets and Spiral Atoms. Each set turns every gem in the jar into something new, and most of them play by a rule of their own: gems that float and sink under water, zero gravity, twins, a lava bomb, shock waves, square blocks, rubber that bounces, sparks, a beat to drop on, pets that jump to your finger, and atoms that swirl round the biggest one. Open a set by making gems, by winning stars in the Gem Mine or by levelling up. Can you open them all?
 
 THE GEM MINE
 • 20 puzzle stages deep under the ground, with crates to break, shelves, pegs, slopes and funnels in the jar.

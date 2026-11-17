@@ -280,7 +280,10 @@ const SWIRL = SKIN && SKIN.swirl && !MINE && !FLOAT ? Object.assign({
     pull: 0.045,      // how hard a gem is drawn to its own ring: px a step for each px it is off it
     steer: 0.12,      // how fast a gem takes up the speed the swirl gives it (the part of the difference it makes up each step)
     drop: 5.5,        // how fast a gem that was let go falls into it, px a step
-    blend: 94         // steps over which the swirl goes from one figure to the next when a new biggest gem is made (1.2 s)
+    blend: 94,        // steps over which the swirl goes from one figure to the next when a new biggest gem is made (1.2 s)
+    apart: 8,         // soft, like candy: unlike gems nearer than this (px between them) push each other off...
+    shove: 0.1,       // ...this hard at most (px a step, each step, shared out by their weights)
+    breath: 0.025     // how much the one in the middle swells and shrinks as it turns (the picture only)
 }, SKIN.swirl === true ? null : SKIN.swirl) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
@@ -1365,7 +1368,10 @@ function swirlAt(fig, b, top, t) {
     if (fig === 0) { cx += 10 * Math.sin(t * 0.0105); cy += 10 * Math.sin(t * 0.021); }           // (the quark's middle drifts in a figure of eight)
     else if (fig === 3) { cx += 14 * Math.cos(t * 0.0175); cy += 14 * Math.sin(t * 0.0175); }      // (the neutron's goes in a small circle)
     const dx = b.position.x - cx, dy = b.position.y - cy;
-    if (b.tier === top) return [-dx * 0.08, -dy * 0.08];                                           // the biggest: to the middle
+    if (b.tier === top) {                                                                          // the biggest: to the middle, unhurried
+        const k = Math.min(0.06, 2.6 / (Math.hypot(dx, dy) || 1));
+        return [-dx * k, -dy * k];
+    }
     const r = Math.hypot(dx, dy) || 1, a = Math.atan2(dy, dx);
     let [out, round] = FIGURES[fig](r, a, t, ringOf(b.tier, top), TIERS[top], b);
     const far = r + TIERS[b.tier] - SWIRL.rim;
@@ -1391,7 +1397,31 @@ if (SWIRL) Events.on(engine, 'beforeUpdate', () => {
     // from the old figure to the new one, with no jolt at either end (6u^5 - 15u^4 + 10u^3)
     const u = Math.min(1, (swirlStep - figureSince) / SWIRL.blend), mix = figureWas === figure ? 1 : u * u * u * (u * (6 * u - 15) + 10);
     const push = 1 / (STEP * STEP);   // (a force that changes the speed by 1 px a step)
+    // soft, like candy: unlike gems that come near push each other off gently before they touch, so they glide
+    // round each other in place of knocking (alike ones are let through: they are to meet and merge)
+    if (SWIRL.shove) for (let i = 0; i < gems.length; i++) {
+        const a = gems[i];
+        if (a.isDropping) continue;
+        for (let j = i + 1; j < gems.length; j++) {
+            const b = gems[j];
+            if (b.isDropping || b.tier === a.tier) continue;
+            const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y, d = Math.hypot(dx, dy) || 1;
+            const gap = d - a.currentRadius - b.currentRadius;
+            if (gap >= SWIRL.apart) continue;
+            const f = SWIRL.shove * Math.min(1, 1 - gap / SWIRL.apart) * a.mass * b.mass / (a.mass + b.mass) * push;
+            a.force.x -= f * dx / d; a.force.y -= f * dy / d;
+            b.force.x += f * dx / d; b.force.y += f * dy / d;
+        }
+    }
     for (const b of gems) {
+        // the one in the middle breathes (its picture swells and shrinks a little; its outline stays as it is)
+        if (SWIRL.breath && !b.isGrowing && !b.isDropping) {
+            const mid = b.tier === top;
+            if (mid || b.breathes) {
+                b.breathes = mid;
+                b.render.sprite.xScale = b.render.sprite.yScale = spriteScale(b.currentRadius) * (mid ? 1 + SWIRL.breath * Math.sin(swirlStep * 0.045) : 1);
+            }
+        }
         let vx = 0, vy = SWIRL.drop, gain = 0.3;
         if (!b.isDropping) {
             [vx, vy] = swirlAt(figure, b, top, swirlStep);
@@ -1406,6 +1436,7 @@ if (SWIRL) Events.on(engine, 'beforeUpdate', () => {
         }
         b.force.x += b.mass * gain * (vx - b.velocity.x) * push;
         b.force.y += b.mass * gain * (vy - b.velocity.y) * push;
+        if (b.speed > 9) Body.setVelocity(b, { x: b.velocity.x * 9 / b.speed, y: b.velocity.y * 9 / b.speed });   // (a gem knocked hard in a crowd: no wild flights)
     }
 });
 

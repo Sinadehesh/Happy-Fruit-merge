@@ -3,11 +3,13 @@
 // Sounds go into an OfflineAudioContext at their virtual times and are rendered at the end.
 //   node record.js explore <set> <seed> <seconds>              -> the merges, and the best 20-second window
 //   node record.js capture <set> <seed> <start> <end> <outdir> -> outdir/f00001.jpg... and outdir/sfx.wav
+// AD_BEAT=<beats a minute>,<first beat s>: a set with a beat (Neon Nights) keeps the beat of the song the ad will have, from the game's start
 const { chromium } = require('playwright');
 const fs = require('fs');
 const [mode, SET, SEED] = process.argv.slice(2, 5);
 const BASE = process.env.BASE || 'http://localhost:8765';
 const FPS = 30, STEP = 1000 / 60;
+const SONG_BEAT = process.env.AD_BEAT ? process.env.AD_BEAT.split(',').map(Number) : null;   // the ad's song: beats a minute, its first beat (s), for a set with a beat
 const W = 432, H = 768, DPR = 2.5;   // 1080 x 1920
 
 function init([seed, set, audioSeconds]) {
@@ -74,7 +76,11 @@ function init([seed, set, audioSeconds]) {
 }
 
 // in the page, after the game has started: the touch dot, the bot and the event log
-function startBot() {
+function startBot(songBeat) {
+  if (songBeat && typeof BEAT !== 'undefined' && BEAT) {   // (the jar keeps the beat of the ad's song, as it does when the game's music plays: no drum of its own)
+    const period = 60000 / songBeat[0], zero = performance.now();
+    Sound.beat = () => ({ period, phase: (((performance.now() - zero - songBeat[1] * 1000) / period) % 1 + 1) % 1, music: true });
+  }
   Render.setPixelRatio(render, 3);   // sharp gems in the video (the game draws the jar at 450 px)
   render.canvas.style.width = '100%'; render.canvas.style.height = '100%';   // (setPixelRatio pins it to 450 css px)
   const st = document.createElement('style');
@@ -107,6 +113,35 @@ function startBot() {
         if (s > bs) { bs = s; bx = cx; }
       }
       return bx;
+    }
+    if (typeof SWIRL !== 'undefined' && SWIRL) {   // (Spiral Atoms: where a gem of this kind will be when this one gets there; else onto the middle)
+      let best = null, bs = Infinity;
+      for (const q of items) {
+        if (q.tier !== currentTier) continue;
+        const dx = q.position.x - SWIRL.x, dy = q.position.y - SWIRL.y, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+        const steps = Math.max(0, (q.position.y - 40) / SWIRL.drop) + 30, a2 = a + steps * SWIRL.turn / (r + SWIRL.soft);
+        const y = SWIRL.y + r * Math.sin(a2);
+        if (y < SWIRL.y && y < bs) { bs = y; best = SWIRL.x + r * Math.cos(a2); }
+      }
+      return clampX(best !== null ? best : SWIRL.x + (Math.random() - 0.5) * 120, currentTier);
+    }
+    if (typeof BLOCKS !== 'undefined' && BLOCKS) {   // (Pixel Treasure: onto a block of this kind whose top is free, or right beside one; else the lowest place)
+      const h = TIERS[currentTier] * BLOCKS.side / 2;
+      const rest = x => { let top = GAME_HEIGHT; for (const q of items) if (q.bounds.max.x > x - h + 0.5 && q.bounds.min.x < x + h - 0.5) top = Math.min(top, q.bounds.min.y); return top; };
+      let best = null, bs = -Infinity;
+      for (const q of items) {
+        if (q.tier !== currentTier) continue;
+        for (const x of [q.position.x, q.bounds.min.x - h - 0.5, q.bounds.max.x + h + 0.5]) {
+          if (x < h || x > GAME_WIDTH - h) continue;
+          const foot = rest(x), onTop = Math.abs(foot - q.bounds.min.y) < 2 && Math.abs(x - q.position.x) < 1;
+          if (!onTop && !(foot > q.bounds.min.y + 2 && foot - 2 * h < q.bounds.max.y - 2)) continue;
+          const s = foot + (onTop ? 20 : 0) + Math.random() * 10;
+          if (s > bs) { bs = s; best = x; }
+        }
+      }
+      if (best !== null) return best;
+      for (let k = 0; k <= 40; k++) { const x = h + (GAME_WIDTH - 2 * h) * k / 40, s = rest(x) + Math.random() * 6; if (s > bs) { bs = s; best = x; } }
+      return best;
     }
     const same = items.filter(b => b.tier === currentTier);
     if (same.length) {
@@ -145,7 +180,11 @@ function startBot() {
     (function move() {
       const k = Math.min(1, (performance.now() - t0) / T), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
       dropX = clampX(x0 + (tx - x0) * e, currentTier); updateUI(); place();
-      if (k < 1) requestAnimationFrame(move); else setTimeout(release, calls ? 700 + Math.random() * 250 : 110);
+      if (k < 1) { requestAnimationFrame(move); return; }
+      // (Neon Nights: most of the time it lets go on the beat, as a player who has the knack would)
+      let wait = calls ? 700 + Math.random() * 250 : 110;
+      if (typeof BEAT !== 'undefined' && BEAT && Math.random() < 0.75) { const b = Sound.beat(); wait = (1 - b.phase) * b.period; if (wait < 90) wait += b.period; }
+      setTimeout(release, wait);
     })();
   }
   function release() {
@@ -171,7 +210,7 @@ function startBot() {
   await p.evaluate(() => Sound.unlock());
   await new Promise(r => setTimeout(r, 2500));
   const zero = await p.evaluate(() => __vt());
-  await p.evaluate(startBot);
+  await p.evaluate(startBot, SONG_BEAT);
   if (mode === 'explore') {
     const secs = total;
     for (let done = 0; done < secs * 60; done += 600) {

@@ -10,7 +10,8 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 FONT = os.path.join(HERE, 'TitanOne-Regular.ttf')   # Titan One, SIL Open Font License (TitanOne-OFL.txt)
 SETS = [('rocks', 'Rocks & Gems'), ('crystal', 'Crystal Cave'), ('ocean', 'Ocean Jewels'), ('royal', 'Royal Treasury'), ('cosmic', 'Cosmic Gems'), ('volcano', 'Volcano Gems'),
-        ('pixel', 'Pixel Treasure'), ('odd', 'Odd Shapes'), ('cyber', 'Cyber Circuit'), ('neon', 'Neon Nights'), ('pets', 'Gem Pets')]
+        ('pixel', 'Pixel Treasure'), ('odd', 'Odd Shapes'), ('cyber', 'Cyber Circuit'), ('neon', 'Neon Nights'), ('pets', 'Gem Pets'),
+        ('atoms', 'Spiral Atoms')]
 SEG, XF, END = 2.5, 0.25, 3.0
 W, H = 1080, 1920
 music = f'{REPO}/assets/music/easy_lemon.mp3'
@@ -63,7 +64,7 @@ for i, (sid, name, _) in enumerate(segs):
     row = segs[(i // per) * per:(i // per + 1) * per]
     cx = W // 2 + ((i % per) - (len(row) - 1) / 2) * (174 if per == 6 else 200); cy = 860 + (i // per) * 230
     card.paste(g, (int(cx - 75), int(cy - 75)), g)
-text(1300, '11 GEM SETS', 70, fill=(255, 228, 120)); text(1390, '20 Gem Mine stages, daily gifts', 44)
+text(1300, f'{len(segs)} GEM SETS', 70, fill=(255, 228, 120)); text(1390, '20 Gem Mine stages, daily gifts', 44)
 bx0, by0, bx1, by1 = 170, 1560, W - 170, 1695
 d.rounded_rectangle([bx0, by0 + 10, bx1, by1 + 10], radius=68, fill=(40, 110, 30)); d.rounded_rectangle([bx0, by0, bx1, by1], radius=68, fill=(124, 194, 66))
 d.rounded_rectangle([bx0 + 14, by0 + 10, bx1 - 14, by0 + 52], radius=30, fill=(160, 222, 104))
