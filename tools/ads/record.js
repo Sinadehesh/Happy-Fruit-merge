@@ -97,6 +97,17 @@ function startBot() {
   const bodies = () => Composite.allBodies(engine.world);
   function target() {
     const items = bodies().filter(b => b.tier !== undefined && !b.isDropping && !b.isMerging);
+    if (typeof bomb !== 'undefined' && bomb === 2) {   // (Volcano Gems: a lava bomb in the hand goes where it burns the most small gems)
+      let bx = 225, bs = -Infinity;
+      for (let k = 0; k < 21; k++) {
+        const cx = clampX(25 + k * 20, 0); let top = GAME_HEIGHT;
+        for (const q of items) if (q.bounds.max.x > cx - ERUPT.size && q.bounds.min.x < cx + ERUPT.size) top = Math.min(top, q.bounds.min.y);
+        const cy = top - ERUPT.size; let s = (GAME_HEIGHT - top) / 40 + Math.random() * 0.5;
+        for (const q of items) if (q.tier < ERUPT.burns && Math.hypot(q.position.x - cx, q.position.y - cy) <= ERUPT.blast) s += 2 + q.tier * 0.4;
+        if (s > bs) { bs = s; bx = cx; }
+      }
+      return bx;
+    }
     const same = items.filter(b => b.tier === currentTier);
     if (same.length) {
       let best = null, bs = Infinity;

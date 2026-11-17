@@ -92,23 +92,26 @@ const FX = (() => {
         effects.push({ kind: 'bubble', x, y, v: rand(45, 95), ph: rand(0, 6.3), size, t: 0, dur: 6 });
     }
 
-    // The volcano (game.js ERUPT). rumble: the jar trembles while the eruption is on its way. eruption: lava
-    // bursts up from the floor, the jar glows and shakes, and the word pops. burn: one gem burning away.
+    // The volcano (game.js LAVA BOMB). rumble: the jar trembles when the lava bomb is ready. blast: the bomb goes
+    // off at (x, y): a flash and a ring as wide as the blast (r), lava flying out, smoke, the word, and the jar
+    // shakes. burn: one gem burning away.
     function quake(amp, dur) {
         if (!boardEl || (lessMotion && lessMotion.matches)) return;
         const left = shake ? shake.amp * (1 - shake.t / shake.dur) : 0;
         if (amp > left) shake = { amp, t: 0, dur };
     }
     function rumble() { quake(3.5, 0.5); }
-    function eruption() {
-        for (let i = 0; i < 80; i++) {
-            effects.push({ kind: 'lava', x: rand(8, W - 8), y: H + rand(0, 26), vx: rand(-110, 110), vy: -rand(430, 1080),
-                size: rand(4, 11), t: 0, dur: rand(0.9, 1.6) });
+    function blast(x, y, r) {
+        effects.push({ kind: 'flash', x, y, r, t: 0, dur: 0.4 });
+        for (let i = 0; i < 46; i++) {
+            const a = rand(0, Math.PI * 2), sp = rand(160, 560);
+            effects.push({ kind: 'lava', x: x + Math.cos(a) * r * 0.2, y: y + Math.sin(a) * r * 0.2, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 180,
+                size: rand(3.5, 9), t: 0, dur: rand(0.6, 1.1) });
         }
-        effects.push({ kind: 'heatglow', t: 0, dur: 1.0 });
+        effects.push({ kind: 'smoke', x, y, r: r * 0.8, t: 0, dur: 0.9 });
         effects = effects.filter(e => e.kind !== 'praise' && e.kind !== 'word');
-        effects.push({ kind: 'word', text: 'ERUPTION!', t: 0, dur: 1.6 });
-        quake(10, 0.85);
+        effects.push({ kind: 'word', text: 'BOOM!', t: 0, dur: 1.1 });
+        quake(10, 0.7);
     }
     function burn(x, y, r) {
         for (let i = 0; i < 8; i++) {
@@ -434,12 +437,19 @@ const FX = (() => {
                 ctx.fillStyle = '#ff7a1a';
                 ctx.beginPath(); ctx.arc(e.x, e.y, e.size * 1.9, 0, Math.PI * 2); ctx.fill();
                 ctx.restore();
-            } else if (e.kind === 'heatglow') {
-                const g = ctx.createLinearGradient(0, H * 0.3, 0, H);
-                g.addColorStop(0, 'rgba(255, 120, 30, 0)');
-                g.addColorStop(1, `rgba(255, 96, 20, ${0.55 * (1 - k) * (1 - k)})`);
+            } else if (e.kind === 'flash') {
+                ctx.save();
+                const rr = e.r * (0.5 + 0.7 * k), g = ctx.createRadialGradient(e.x, e.y, 0, e.x, e.y, rr);
+                g.addColorStop(0, `rgba(255, 250, 210, ${0.95 * (1 - k)})`);
+                g.addColorStop(0.5, `rgba(255, 170, 50, ${0.7 * (1 - k)})`);
+                g.addColorStop(1, 'rgba(255, 90, 20, 0)');
                 ctx.fillStyle = g;
-                ctx.fillRect(0, H * 0.3, W, H * 0.7);
+                ctx.beginPath(); ctx.arc(e.x, e.y, rr, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 0.9 * (1 - k);
+                ctx.lineWidth = 5 * (1 - k) + 1;
+                ctx.strokeStyle = '#ffd27a';
+                ctx.beginPath(); ctx.arc(e.x, e.y, e.r * Math.min(1, 0.3 + 1.2 * k), 0, Math.PI * 2); ctx.stroke();
+                ctx.restore();
             } else if (e.kind === 'smoke') {
                 ctx.save();
                 ctx.globalAlpha = 0.42 * (1 - k);
@@ -497,5 +507,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, eruption, burn, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

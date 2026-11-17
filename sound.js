@@ -122,7 +122,7 @@ const Sound = (() => {
         o.connect(g); g.connect(sfxBus);
         o.start(t); o.stop(t + dur + 0.03);
     }
-    // The volcano (game.js ERUPT). growl: a long low roar of noise that swells and dies away; crackle: one
+    // The volcano (game.js LAVA BOMB). growl: a long low roar of noise that swells and dies away; crackle: one
     // short bright snap of it, a moment from now.
     function growl(dur, gain) {
         const t = ac.currentTime, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
@@ -216,12 +216,18 @@ const Sound = (() => {
             sfx.hop.last = now;
             bloop(Math.max(260, 640 - tier * 70), 0.06, 0.035);
         },
-        // the volcano erupts: a roar that swells for a moment, a deep boom as the lava bursts, a thick bubble and crackles
-        eruption() {
-            growl(1.7, 0.5);
-            sample('bubble_big', { gain: 0.5, rate: 0.5, when: 0.4 });
-            setTimeout(() => { if (ac) thump(84, 0.7, 0.6); }, 430);
-            for (let i = 0; i < 7; i++) crackle(0.5 + i * 0.13 + Math.random() * 0.07, 0.16 - i * 0.015);
+        // the lava bomb (game.js LAVA BOMB). Ready: a short growl of the volcano and two low chimes. Going off: a
+        // deep boom, a burst of grit, a thick bubble and crackles.
+        bombReady() {
+            growl(0.7, 0.3);
+            sample('chime', { gain: 0.28, rate: semitones(-5), when: 0.12 });
+            sample('chime', { gain: 0.28, rate: semitones(2), when: 0.26 });
+        },
+        boom() {
+            thump(96, 0.6, 0.75);
+            grit(1100, 0.3, 0.4);
+            sample('bubble_big', { gain: 0.45, rate: 0.55 });
+            for (let i = 0; i < 6; i++) crackle(0.08 + i * 0.09 + Math.random() * 0.05, 0.15 - i * 0.018);
         },
         // into the water: a splash and a bloop or two, deeper, longer and louder for a heavier gem and a harder fall
         splash(tier, impact = 1) {

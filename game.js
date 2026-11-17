@@ -209,11 +209,14 @@ const WATER = SKIN && SKIN.water && !FLOAT && !MINE ? Object.assign({
     drag: 0.016,       // how much the water slows a gem (added to its air friction), and
     dragFast: 0.003    // ... how much more for every px a step it moves, so a gem that plunges in is braked hard
 }, SKIN.water === true ? null : SKIN.water) : null;
-// A volcano set (GAME.skins erupt: the Volcano Gems): merges heat the volcano until it erupts, see ERUPTION below.
-// Not in the Gem Mine, whose stages are measured without it. (erupt: true, or an object that changes these numbers)
+// A volcano set (GAME.skins erupt: the Volcano Gems): merges heat the volcano, and when it is full the player gets a
+// lava bomb to drop, see LAVA BOMB below. Not in the Gem Mine, whose stages are measured without it.
+// (erupt: true, or an object that changes these numbers)
 const ERUPT = SKIN && SKIN.erupt && !MINE ? Object.assign({
     full: 70,     // how much heat fills the bar; a merge adds the level of the gem it makes
-    burn: 2       // an eruption burns the gems of this many lowest levels
+    blast: 110,   // the bomb burns the gems whose middle is within this many px of where it goes off...
+    burns: 5,     // ...of this many lowest levels (the ones that are dropped); the gems made by merging are too tough
+    size: 24      // the bomb's own size (its radius, like TIERS)
 }, SKIN.erupt === true ? null : SKIN.erupt) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
@@ -401,10 +404,12 @@ function updateUI() {
 
     // The fruit you're about to drop hangs at the top (a floating set: at the bottom), following the pointer
     const scale = board.clientWidth / GAME_WIDTH;
-    const r = TIERS[currentTier] * SPRITE_FIT;
-    dropGuide.style.backgroundImage = `url('${SPRITES[currentTier]}')`;
+    const inHand = bomb === 2;   // (a lava bomb, LAVA BOMB)
+    const r = inHand ? ERUPT.size * BOMB_GLOW : TIERS[currentTier] * SPRITE_FIT;
+    dropGuide.style.backgroundImage = `url('${inHand ? bombUrl : SPRITES[currentTier]}')`;
     dropGuide.style.width = `${r * 2 * scale}px`;
-    dropGuide.style.top = `${(spawnY(currentTier) - r) * scale}px`;
+    dropGuide.style.top = `${((inHand ? ERUPT.size + 10 : spawnY(currentTier)) - r) * scale}px`;
+    if (ERUPT) { dropGuide.classList.toggle('bomb', inHand); dropGuide.style.setProperty('--blast', ERUPT.blast / r); }
     const [x, x2] = TWINS ? twinSpots(dropX, currentTier) : [dropX];
     dropGuide.style.left = `${x * scale}px`;
     aimLine.style.left = `${x * scale}px`;
@@ -451,7 +456,8 @@ const aimLine2 = TWINS ? board.insertBefore(Object.assign(aimLine.cloneNode(), {
 if (TWINS) { board.classList.add('twins'); document.querySelectorAll('.tray-label').forEach(l => { l.textContent = 'NEXT ×2'; }); }
 
 function clampX(x, tier) {
-    return Math.max(TIERS[tier], Math.min(GAME_WIDTH - TIERS[tier], x));
+    const r = bomb === 2 ? ERUPT.size : TIERS[tier];   // (a lava bomb in the hand, not the gem)
+    return Math.max(r, Math.min(GAME_WIDTH - r, x));
 }
 
 // --- WORLD ---
@@ -521,14 +527,18 @@ function splash(gem) {
     FX.splash(gem.position.x, TIERS[gem.tier], gem.tier, impact);
 }
 
-// --- ERUPTION --- (a set with erupt in GAME.skins, the Volcano Gems)
+// --- LAVA BOMB --- (a set with erupt in GAME.skins, the Volcano Gems)
 // Every merge heats the volcano: the gem it makes adds its level to the heat, shown by the bar at the side of the
-// jar. When the bar is full the volcano erupts: the jar rumbles, lava bursts up from the floor, every gem jumps
-// a little (the light ones more), and each gem of the lowest levels (ERUPT.burn of them) lying in the jar burns
-// away. Then the heat starts again from nothing. It follows only from the merges: nothing here depends on time
-// or on how the player is doing.
+// jar. When the bar is full the player gets a lava bomb: it comes into the hand in place of the gem (which waits
+// its turn), is aimed and dropped like one, and where it lands it goes off: every gem of the lowest levels
+// (ERUPT.burns of them: the kinds that are dropped) whose middle is within ERUPT.blast of it burns away, for
+// 10 points a level; the bigger gems, and the ones just outside, are only shoved back. Then the heat starts
+// again from nothing. The bomb comes only from the
+// merges: nothing here depends on time or on how the player is doing. It is saved with the game, and Undo takes
+// a bomb back like any drop.
 let heat = 0;
-let eruptIn = -1;   // physics steps until the lava bursts (-1: no eruption on its way)
+let bomb = 0;   // 0: none. 1: earned while a gem was being held, it comes when the finger lets go. 2: in the hand. 3: falling
+const BOMB_ART = 'lava-bomb';   // its picture, drawn here (bombArt), as Matter's texture of this name and as the guide's
 const heatFill = ERUPT ? (() => {
     const bar = document.createElement('div');
     bar.id = 'heat';
@@ -540,36 +550,124 @@ function heatUI() {
     if (!heatFill) return;
     const k = Math.min(1, heat / ERUPT.full);
     heatFill.style.height = `${k * 100}%`;
-    heatFill.parentNode.classList.toggle('hot', k >= 0.8);
+    heatFill.parentNode.classList.toggle('hot', k >= 0.8 && k < 1);
+    heatFill.parentNode.classList.toggle('full', k >= 1);
 }
-function addHeat(level) {
-    if (!ERUPT || isGameOver) return;
-    heat += level;
-    heatUI();
-    if (heat >= ERUPT.full && eruptIn < 0) {   // full: a rumble first, the lava a moment later
-        eruptIn = 26;
-        Sound.play('eruption');
-        Haptics.play('eruption');
-        FX.rumble();
-    }
-}
-if (ERUPT) Events.on(engine, 'beforeUpdate', () => {
-    if (eruptIn < 0 || isGameOver || --eruptIn > 0) return;
-    eruptIn = -1;
-    heat = 0;
-    heatUI();
-    FX.eruption();
-    emitGame('erupt');
-    for (const b of Composite.allBodies(engine.world)) {
-        if (b.tier === undefined || b.isMerging) continue;
-        if (b.tier < ERUPT.burn && !b.isDropping && !b.isGrowing) {
-            FX.burn(b.position.x, b.position.y, TIERS[b.tier]);
-            Composite.remove(engine.world, b);
-        } else {
-            Body.setVelocity(b, { x: b.velocity.x, y: b.velocity.y - 2.4 * (1 - b.tier / TIERS.length) });   // the jump
+// a ball of dark rock with glowing cracks, a hot heart and a glow round it; the rock fills 1 / BOMB_GLOW of the picture
+const BOMB_GLOW = 1.5;
+let bombUrl = '';
+function bombArt() {
+    const S = 192, c = document.createElement('canvas'), R = S / 2 / BOMB_GLOW;
+    c.width = c.height = S;
+    const x = c.getContext('2d');
+    x.translate(S / 2, S / 2);
+    let glow = x.createRadialGradient(0, 0, R * 0.7, 0, 0, S / 2);
+    glow.addColorStop(0, 'rgba(255, 150, 40, 0.75)'); glow.addColorStop(0.45, 'rgba(255, 90, 20, 0.3)'); glow.addColorStop(1, 'rgba(255, 60, 0, 0)');
+    x.fillStyle = glow; x.beginPath(); x.arc(0, 0, S / 2, 0, Math.PI * 2); x.fill();
+    const rock = x.createRadialGradient(-R * 0.3, -R * 0.35, R * 0.1, 0, 0, R);
+    rock.addColorStop(0, '#6b2a16'); rock.addColorStop(0.55, '#33120b'); rock.addColorStop(1, '#170705');
+    x.fillStyle = rock; x.beginPath(); x.arc(0, 0, R, 0, Math.PI * 2); x.fill();
+    // the cracks: the same every time (a seeded walk out from near the middle)
+    const rnd = seededRandom(7);
+    x.save(); x.beginPath(); x.arc(0, 0, R - 1, 0, Math.PI * 2); x.clip();
+    x.lineCap = x.lineJoin = 'round';
+    for (const [w, col, blur] of [[9, 'rgba(255, 96, 20, 0.55)', 10], [4.5, '#ffb02e', 4], [1.8, '#fff3a6', 0]]) {
+        const walk = seededRandom(11);
+        x.strokeStyle = col; x.lineWidth = w; x.shadowColor = '#ff7a1a'; x.shadowBlur = blur;
+        for (let k = 0; k < 7; k++) {
+            let a = k * 0.9 + walk() * 0.5, px = Math.cos(a) * R * 0.12, py = Math.sin(a) * R * 0.12;
+            x.beginPath(); x.moveTo(px, py);
+            for (let s = 0; s < 5; s++) { a += (walk() - 0.5) * 1.1; px += Math.cos(a) * R * 0.24; py += Math.sin(a) * R * 0.24; x.lineTo(px, py); }
+            x.stroke();
         }
     }
-});
+    x.restore();
+    const heart = x.createRadialGradient(0, 0, 0, 0, 0, R * 0.5);
+    heart.addColorStop(0, 'rgba(255, 244, 170, 0.95)'); heart.addColorStop(0.5, 'rgba(255, 150, 40, 0.5)'); heart.addColorStop(1, 'rgba(255, 90, 20, 0)');
+    x.fillStyle = heart; x.beginPath(); x.arc(0, 0, R * 0.5, 0, Math.PI * 2); x.fill();
+    const shine = x.createRadialGradient(-R * 0.4, -R * 0.45, 0, -R * 0.4, -R * 0.45, R * 0.4);
+    shine.addColorStop(0, 'rgba(255, 220, 190, 0.5)'); shine.addColorStop(1, 'rgba(255, 220, 190, 0)');
+    x.fillStyle = shine; x.beginPath(); x.arc(-R * 0.4, -R * 0.45, R * 0.4, 0, Math.PI * 2); x.fill();
+    void rnd;
+    return c;
+}
+function addHeat(level) {
+    if (!ERUPT || isGameOver || bomb) return;   // (with a bomb earned the bar stays full until it has gone off)
+    heat = Math.min(ERUPT.full, heat + level);
+    heatUI();
+    if (heat >= ERUPT.full) bombReady();
+}
+function bombReady() {   // full: the bomb comes into the hand, or waits for the finger to let go of the gem it holds
+    bomb = held ? 1 : 2;
+    Sound.play('bombReady');
+    Haptics.play('praise', 2);
+    FX.rumble();
+    let told = 0;
+    try { told = +localStorage.getItem(`${GAME.id}.told.bomb`) || 0; localStorage.setItem(`${GAME.id}.told.bomb`, told + 1); } catch (e) {}
+    if (told < 4) showToast('Lava bomb! Drop it on what you want gone');
+    updateUI();
+}
+function bombToHand() {   // the finger let go: a bomb that waited comes into the hand
+    if (bomb !== 1) return;
+    bomb = 2;
+    dropX = clampX(dropX, currentTier);
+    updateUI();
+}
+function dropBomb() {
+    Sound.play('drop', 6);
+    Haptics.play('drop', 6);
+    if (UNDO_HERE) lastDrop = snapshot();
+    const k = ERUPT.size * 2 * BOMB_GLOW / 192;
+    const b = Bodies.circle(dropX, spawnY(0) - TIERS[0] + ERUPT.size, ERUPT.size, {
+        restitution: 0, friction: 0.6, density: 0.006, slop: 0.01, render: { sprite: { texture: BOMB_ART, xScale: k, yScale: k } }, bomb: true });
+    b.isDropping = true;
+    Composite.add(engine.world, b);
+    bomb = 3;
+    dropX = clampX(dropX, currentTier);
+    updateUI();
+}
+// it goes off where it first touches the floor, a gem that has landed, a crate or a part of the jar
+function explode(b) {
+    if (b.gone) return;
+    b.gone = true;
+    const { x, y } = b.position;
+    Composite.remove(engine.world, b);
+    let burned = 0, points = 0;
+    for (const o of Composite.allBodies(engine.world)) {
+        if (o.tier === undefined || o.isMerging) continue;
+        const dx = o.position.x - x, dy = o.position.y - y, d = Math.hypot(dx, dy) || 1;
+        if (d <= ERUPT.blast && o.tier < ERUPT.burns) {
+            FX.burn(o.position.x, o.position.y, TIERS[o.tier]);
+            Composite.remove(engine.world, o);
+            burned++;
+            points += 10 * (o.tier + 1);
+        } else if (d < ERUPT.blast * 1.8) {   // too tough, or just outside: shoved back, the light ones more
+            const push = 5 * Math.min(1, 1.8 - d / ERUPT.blast) / (1 + o.tier * 0.35);
+            Body.setVelocity(o, { x: o.velocity.x + dx / d * push, y: o.velocity.y + dy / d * push - 1 });
+        }
+    }
+    if (points) {
+        score += points;
+        if (score > bestScore) { isNewBest = true; bestScore = score; try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {} }
+        showPop(x, y, points);
+    }
+    heat = 0;
+    bomb = 0;
+    heatUI();
+    FX.blast(x, y, ERUPT.blast);
+    Sound.play('boom');
+    Haptics.play('eruption');
+    emitGame('erupt', burned);
+    saveGame();
+}
+if (ERUPT) {
+    // a bomb wedged somewhere without landing goes off there all the same
+    Events.on(engine, 'beforeUpdate', () => {
+        for (const b of Composite.allBodies(engine.world)) {
+            if (b.bomb && !b.gone && (b.dropAge > 60 && b.speed < 0.3 || b.dropAge > 300)) explode(b);
+        }
+    });
+}
 
 // --- COME HERE --- (a set with call in GAME.skins, the Gem Pets)
 // The gems of the level in hand that have landed jump to the finger: while a gem is held over the jar, and again
@@ -775,6 +873,7 @@ const render = Render.create({
     engine: engine,
     options: { width: GAME_WIDTH, height: GAME_HEIGHT, wireframes: false, background: '#00000000' }  // the board's grid shows through
 });
+if (ERUPT) { const art = bombArt(); render.textures[BOMB_ART] = art; bombUrl = art.toDataURL(); }   // (the lava bomb's picture)
 
 // --- THE CLOCK ---
 // The game runs at the same speed on every phone, whatever its screen: the physics moves in steps of 1/60 s of
@@ -960,11 +1059,12 @@ playArea.addEventListener('pointerup', (e) => {
 });
 
 playArea.addEventListener('pointercancel', (e) => {
-    if (e.pointerId === holding) { holding = null; setHeld(false); }
+    if (e.pointerId === holding) { holding = null; setHeld(false); bombToHand(); }
 });
 
 function dropFruit() {
     if (MINE && !Mine.canDrop()) return;
+    if (bomb === 2) { dropBomb(); return; }   // (the lava bomb is not a gem: the gem in hand comes after it)
     emitGame('drop', currentTier, dropX);
     Sound.play('drop', currentTier);   // (higher and lighter for a small gem, lower for a heavy one)
     Haptics.play('drop', currentTier);
@@ -981,6 +1081,7 @@ function dropFruit() {
     dropX = clampX(dropX, currentTier);
     updateUI();
     if (MINE) Mine.afterDrop();
+    bombToHand();
 
     if (!MINE) Ads.onDrop();   // (never an ad in the middle of a stage)
 }
@@ -989,7 +1090,7 @@ function dropFruit() {
 // ([where it is counted, what it says])
 const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
-    : ERUPT ? ['told.erupt', 'Merges heat the volcano until it erupts!']
+    : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
     : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
@@ -1022,6 +1123,10 @@ function handleCollisions(event) {
         const bodyA = pairs[i].bodyA;
         const bodyB = pairs[i].bodyB;
 
+        if (bodyA.bomb || bodyB.bomb) {   // a lava bomb goes off on what it lands on (LAVA BOMB)
+            if (isLanded(bodyA.bomb ? bodyB : bodyA)) explode(bodyA.bomb ? bodyA : bodyB);
+            continue;
+        }
         const speed = meetSpeed(pairs[i]);
         if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA, speed);
         if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB, speed);
@@ -1154,7 +1259,7 @@ function saveGame() {
         .map(b => [b.tier, +b.position.x.toFixed(1), +b.position.y.toFixed(1), +b.angle.toFixed(3)]);
     const data = { v: 1, score, current: currentTier, next: nextTier, combo, dropsWithoutMerge, revived: revives, items, float: FLOAT };
     if (DAILY) Object.assign(data, { date: TODAY, rng: dropRandom.getState(), made, maxCombo });
-    if (ERUPT) data.heat = Math.min(heat, ERUPT.full - 1);   // (an eruption on its way is not saved)
+    if (ERUPT) data.heat = heat;   // (full: a lava bomb is in the hand, or on its way down)
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
@@ -1186,7 +1291,7 @@ function loadGame() {
     combo = data.combo | 0;
     dropsWithoutMerge = data.dropsWithoutMerge | 0;
     revives = data.revived === true ? 1 : Math.max(0, data.revived | 0);   // (older saves: true or false)
-    if (ERUPT) { heat = Math.max(0, Math.min(ERUPT.full - 1, +data.heat || 0)); heatUI(); }
+    if (ERUPT) { heat = Math.max(0, Math.min(ERUPT.full, +data.heat || 0)); bomb = heat >= ERUPT.full ? 2 : 0; heatUI(); }
     if (DAILY) {
         if (Number.isInteger(data.rng)) dropRandom.setState(data.rng);
         if (Array.isArray(data.made)) data.made.forEach((n, t) => { if (t < made.length) made[t] = n | 0; });
@@ -1533,7 +1638,7 @@ function snapshot() {
         items: Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging).map(b => ({
             tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
             vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
-        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, heat,
+        score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, heat, bomb,
         daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
     };
 }
@@ -1542,7 +1647,7 @@ function undoLastDrop() {
     const s = lastDrop;
     if (!s || isGameOver) return;
     lastDrop = null;
-    Composite.allBodies(engine.world).filter(b => b.tier !== undefined).forEach(b => Composite.remove(engine.world, b));
+    Composite.allBodies(engine.world).filter(b => b.tier !== undefined || b.bomb).forEach(b => { b.gone = true; Composite.remove(engine.world, b); });
     for (const it of s.items) {
         const body = spawnItem(it.x, it.y, it.tier, false);
         Body.setAngle(body, it.angle);
@@ -1567,7 +1672,7 @@ function undoLastDrop() {
         maxCombo = s.daily.maxCombo;
         updateGoal();
     }
-    if (ERUPT) { heat = s.heat || 0; eruptIn = -1; heatUI(); }   // (an eruption the drop set off is taken back too)
+    if (ERUPT) { heat = s.heat || 0; bomb = s.bomb || 0; heatUI(); }   // (a lava bomb the drop earned or set off is taken back too)
     call = null;                                                  // (and the pets are not called to it any more)
     dangerTimer = 0;
     dropX = clampX(dropX, currentTier);
@@ -1657,7 +1762,7 @@ function renderSets() {
         const notes = [sk.float && '⬆ Zero gravity: drop them from the bottom and they float up', sk.pull && 'alike gems pull each other in',
             sk.water && '🌊 Under water (not in the Gem Mine): the small gems float, the big ones sink',
             sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',
-            sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it erupts, the smallest gems burn',
+            sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);
         if (notes.length) {
             const note = document.createElement('div');
