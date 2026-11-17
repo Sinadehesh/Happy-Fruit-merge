@@ -135,6 +135,17 @@ const FX = (() => {
     }
     let dangerOf = null;
     function dangerGlow(fn) { dangerOf = fn; }
+    // a cinder of size r breaking up at (x, y): black and grey bits flying, a few last sparks, a puff of smoke
+    function crumble(x, y, r) {
+        const n = Math.round(Math.min(22, 8 + r / 5));
+        for (let i = 0; i < n; i++) {
+            const a = rand(0, Math.PI * 2), d = rand(0.1, 0.9) * r, sp = rand(70, 260);
+            effects.push({ kind: 'pixel', x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, size: Math.round(rand(3, 8)),
+                col: i % 5 === 0 ? '#ff9a3c' : i % 2 ? '#3a3440' : '#6d6675', t: 0, dur: rand(0.35, 0.6) });
+        }
+        effects.push({ kind: 'smoke', x, y, r: r * 0.9, t: 0, dur: 0.7 });
+        quake(Math.min(5, 1.5 + r / 30), 0.2);
+    }
 
     // The glitch (game.js GLITCH): a gem of size r breaks up into pixels at (x, y) (together: false), or comes
     // together out of them there (true): little squares in the colours of an old screen, and a square frame.
@@ -182,7 +193,7 @@ const FX = (() => {
     }
     // The beat (game.js BEAT). onBeat: a short word (ON BEAT!, x2) popping at (x, y). beatGlow: a function giving
     // the gems that were let go on the beat, [x, y, r], which glow until they merge.
-    function onBeat(x, y, text) { effects.push({ kind: 'tag', x: Math.max(60, Math.min(W - 60, x)), y: Math.max(30, y), text, t: 0, dur: 0.8 }); }
+    function onBeat(x, y, text, sour) { effects.push({ kind: 'tag', x: Math.max(60, Math.min(W - 60, x)), y: Math.max(30, y), text, sour, t: 0, dur: 0.8 }); }   // (sour: off the beat, in dull orange)
     let glowsOf = null;
     function beatGlow(fn) { glowsOf = fn; }
 
@@ -577,8 +588,8 @@ const FX = (() => {
                 ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
                 ctx.lineWidth = 7; ctx.strokeStyle = '#2a0b4a';
                 ctx.strokeText(e.text, 0, 0);
-                ctx.shadowColor = '#ff4fd8'; ctx.shadowBlur = 12;
-                ctx.fillStyle = '#7dfbff';
+                ctx.shadowColor = e.sour ? '#ff5a1f' : '#ff4fd8'; ctx.shadowBlur = 12;
+                ctx.fillStyle = e.sour ? '#ffb27a' : '#7dfbff';
                 ctx.fillText(e.text, 0, 0);
                 ctx.restore();
             } else if (e.kind === 'callring') {
@@ -670,5 +681,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, clash, dangerGlow, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

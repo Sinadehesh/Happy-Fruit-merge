@@ -242,6 +242,21 @@ const Sound = (() => {
             sample('chime', { gain: 0.24, rate: semitones(strong ? 24 : 19), when: 0.07 });
             if (strong) sample('praise', { gain: 0.16, rate: semitones(7), when: 0.03 });
         },
+        // let go off the beat (game.js BEAT): the jar goes out of tune: two low notes a semitone apart, sliding down
+        offBeat() {
+            const now = ac.currentTime;
+            [196, 207.65].forEach(f => {
+                const o = ac.createOscillator(), g = ac.createGain();
+                o.type = 'sawtooth';
+                o.frequency.setValueAtTime(f, now);
+                o.frequency.exponentialRampToValueAtTime(f * 0.8, now + 0.22);
+                g.gain.setValueAtTime(0.0001, now);
+                g.gain.exponentialRampToValueAtTime(0.05, now + 0.015);
+                g.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+                o.connect(g); g.connect(sfxBus);
+                o.start(now); o.stop(now + 0.26);
+            });
+        },
         // a spark running along a chain of gems (game.js WIRES): a short electric fizz, never many at once
         zap() {
             const now = ac.currentTime;
@@ -279,6 +294,13 @@ const Sound = (() => {
             wash(2200, 0.3, 0.16);
             grit(1300, 0.18, 0.2);
             for (let i = 0; i < 3; i++) crackle(0.05 + i * 0.07 + Math.random() * 0.03, 0.14 - i * 0.03);
+        },
+        // a cinder breaking (game.js CLASH): a dull crack and a rattle of grit, deeper for a bigger one (size: its radius, px)
+        cinder(size = 40) {
+            const k = Math.max(0, Math.min(1, (size - 20) / 100));
+            thump(170 - 70 * k, 0.12 + 0.1 * k, 0.26 + 0.14 * k);
+            grit(1700 - 700 * k, 0.16 + 0.1 * k, 0.24);
+            crackle(0.02, 0.16); crackle(0.07 + Math.random() * 0.03, 0.1);
         },
         // the glitch (game.js GLITCH): a gem jumps somewhere else: three quick square-wave blips, an old machine's
         // hiccup, a little lower for a bigger gem; never many at once

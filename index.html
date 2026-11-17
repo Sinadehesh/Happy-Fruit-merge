@@ -136,6 +136,10 @@
             box-shadow: 0 0 calc(var(--pulse, 0) * 24px) calc(var(--pulse, 0) * 5px) rgba(255, 79, 216, 0.9),
                 inset 0 0 calc(var(--pulse, 0) * 46px) rgba(0, 229, 255, calc(var(--pulse, 0) * 0.45));
         }
+        #board.beat.sour {   /* out of tune (the last gem was let go off the beat): a sour orange in place of pink and blue */
+            box-shadow: 0 0 calc(var(--pulse, 0) * 20px) calc(var(--pulse, 0) * 4px) rgba(255, 110, 40, 0.85),
+                inset 0 0 calc(var(--pulse, 0) * 46px) rgba(255, 60, 30, calc(var(--pulse, 0) * 0.4));
+        }
         #board.beat #drop-guide::before {
             content: ''; position: absolute; left: 50%; top: 50%; width: 100%; aspect-ratio: 1; border-radius: 50%; pointer-events: none;
             box-sizing: border-box; transform: translate(-50%, -50%) scale(calc(1.04 + var(--ring, 0) * 1.1));

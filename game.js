@@ -253,11 +253,17 @@ const BLOCKS = SKIN && SKIN.blocks && !MINE && !FLOAT ? Object.assign({
     side: 1.6,      // a block's side, x the gem's size (its radius): a little less room than the round gem takes
     drops: 5        // how many of the smallest kinds are dropped
 }, SKIN.blocks === true ? null : SKIN.blocks) : null;
-// A clash set (GAME.skins clash: the Volcano Gems): two gems far apart in level burn each other up when they touch,
-// see FIRE AND STONE below. Not in the Gem Mine. (clash: true, or an object that changes these numbers)
+// A clash set (GAME.skins clash: the Volcano Gems): a gem let go onto one far above it in level burns up with it and
+// leaves a cinder, see FIRE AND STONE below. Not in the Gem Mine. (clash: true, or an object that changes these numbers)
 const CLASH = SKIN && SKIN.clash && !MINE ? Object.assign({
-    apart: 4,       // two gems whose levels are more than this apart destroy each other when they touch
-    points: 10      // points for every level of each gem that burns
+    apart: 4,       // the two burn when their levels are more than this apart
+    any: false,     // false: only a gem that is let go burns, with the gem it lands on. true: any two such gems that touch
+    cinder: 1,      // what is left is a cinder as big as a gem this many levels under the bigger one (0: nothing is left)
+    breaks: 7,      // a cinder breaks when a gem of this level or more is made right beside it:
+    fresh: 70,      // ...within this many steps of being made (it grows for 30 and settles),
+    beside: 10,     // ...with no more than this many px between the two
+    points: 0,      // points for every level of each gem that burns
+    broken: 60      // points for breaking a cinder
 }, SKIN.clash === true ? null : SKIN.clash) : null;
 // A glitch set (GAME.skins glitch: the Pixel Treasure): at every merge gems vanish and come back somewhere else, at
 // random, see GLITCH below. Not in the Gem Mine. (glitch: true, or an object that changes these numbers)
@@ -276,12 +282,20 @@ const WIRES = SKIN && SKIN.wires && !MINE ? Object.assign({
     every: 4,       // steps between two looks for a pair to link
     hop: 5          // steps the spark takes from one gem to the next
 }, SKIN.wires === true ? null : SKIN.wires) : null;
-// A beat set (GAME.skins beat: the Neon Nights): the jar pulses to a beat, and a gem let go on the beat doubles the
-// points of the merge it makes, see THE BEAT below. Not in the Gem Mine. (beat: true, or an object that changes these)
+// A beat set (GAME.skins beat: the Neon Nights): the jar pulses to a beat and the gems dance to it: on every beat
+// alike gems hop toward each other, or apart when the last gem was let go off the beat; a gem let go on the beat also
+// doubles the points of the merge it makes, see THE BEAT below. Not in the Gem Mine.
+// (beat: true, or an object that changes these numbers)
 const BEAT = SKIN && SKIN.beat && !MINE ? Object.assign({
     within: 95,     // how close to a beat the gem must be let go, ms either side
-    times: 2        // the points of its merge are multiplied by this
+    times: 2,       // the points of its merge are multiplied by this
+    hop: 1.8,       // on every beat a gem with a like in the jar hops toward it: this fast, px a step, for the smallest gem...
+    up: 2.6,        // ...and this fast up, so it clears the bumps of the pile...
+    less: 0.2,      // ...a bigger gem less: both divided by 1 + this x the levels it is above the smallest
+    reach: 300,     // a like further off than this does not call it (px between their middles)
+    apart: 170      // out of tune, a gem hops away only from a like nearer than this
 }, SKIN.beat === true ? null : SKIN.beat) : null;
+let inTune = true;   // (THE BEAT) the last gem was let go on the beat (or none has been yet): alike gems hop together; false: apart
 // A swirl set (GAME.skins swirl: the Spiral Atoms): there is no pile: the gems swirl in the middle of the jar round
 // the biggest one, in a pattern that every merge changes, see THE SWIRL below. Not in the Gem Mine.
 // (swirl: true, or an object that changes these numbers)
@@ -817,26 +831,92 @@ if (ERUPT) {
 }
 
 // --- FIRE AND STONE --- (a set with clash in GAME.skins, the Volcano Gems)
-// A small gem and a big one cannot bear each other: when two gems whose levels are more than CLASH.apart apart
-// touch (a level 1 and a level 6, a level 3 and a level 8), both burn up. A gem that is let go burns what it lands
-// on, and a gem that has just been made burns with a small one it touches. Each gives CLASH.points for every level
-// it had. So a small gem is a way to be rid of a big one that is in the way, and a danger to a big one that is
-// wanted; the gems that the one in hand would burn are ringed in red. Nothing here is left to chance.
+// A small stone is fire to a big one. When a gem that is let go lands on a gem more than CLASH.apart levels from its
+// own (a level 1 on a level 6, a level 3 on a level 8), both burn up. Only the gem it first comes down on, and only
+// as it lands: gems lying in the jar do each other nothing, so it is always the player's doing (CLASH.any: any two
+// such gems that touch, as it was first tried: then no big gem lasts and a jar never fills).
+// What is left is a cinder, where the bigger one was: a dead black rock, as big as a gem CLASH.cinder levels under
+// it. A cinder merges with nothing and burns nothing; it just takes up room. It breaks only when a big gem (of
+// level CLASH.breaks or more) is made right beside it, or comes to lie beside it as it settles (for about a
+// second after it was made), for CLASH.broken points; the Zap booster breaks one too.
+// So fire is a way to be rid of a big gem that is in the way, at a price: the gem, and a rock in its place. And it
+// is a danger: the bigger the gems on top of the pile, the fewer safe places there are for the small ones in
+// hand. The gems that the one in hand would burn are ringed in red. Nothing here is left to chance.
+const CINDER_ART = 'cinder';   // its picture, drawn here (cinderArt), as Matter's texture of this name
+function cinderArt() {   // a ball of black rock, cracked, with a last dull glow in the cracks
+    const S = 192, c = document.createElement('canvas'), R = S / 2 - 3, x = c.getContext('2d');
+    c.width = c.height = S;
+    x.translate(S / 2, S / 2);
+    const rock = x.createRadialGradient(-R * 0.35, -R * 0.4, R * 0.1, 0, 0, R);
+    rock.addColorStop(0, '#4a4350'); rock.addColorStop(0.55, '#26212b'); rock.addColorStop(1, '#0f0c13');
+    x.fillStyle = rock; x.beginPath();
+    const bump = seededRandom(23);   // (not quite round)
+    for (let k = 0; k <= 24; k++) { const a = k / 24 * Math.PI * 2, rr = R * (0.93 + 0.07 * (k === 24 ? 0 : bump())); k ? x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : x.moveTo(R * 0.93, 0); }
+    x.closePath(); x.fill();
+    x.save(); x.clip(); x.lineCap = x.lineJoin = 'round';
+    for (const [w, col, blur] of [[7, 'rgba(160, 44, 14, 0.5)', 8], [3, 'rgba(255, 120, 40, 0.75)', 3], [1.2, 'rgba(255, 214, 140, 0.8)', 0]]) {
+        const walk = seededRandom(31);
+        x.strokeStyle = col; x.lineWidth = w; x.shadowColor = '#c2410c'; x.shadowBlur = blur;
+        for (let k = 0; k < 5; k++) {
+            let a = k * 1.26 + walk() * 0.6, px = Math.cos(a) * R * 0.15, py = Math.sin(a) * R * 0.15;
+            x.beginPath(); x.moveTo(px, py);
+            for (let s = 0; s < 4; s++) { a += (walk() - 0.5) * 1.3; px += Math.cos(a) * R * 0.25; py += Math.sin(a) * R * 0.25; x.lineTo(px, py); }
+            x.stroke();
+        }
+    }
+    x.restore();
+    const shine = x.createRadialGradient(-R * 0.4, -R * 0.45, 0, -R * 0.4, -R * 0.45, R * 0.45);
+    shine.addColorStop(0, 'rgba(210, 200, 225, 0.28)'); shine.addColorStop(1, 'rgba(210, 200, 225, 0)');
+    x.fillStyle = shine; x.beginPath(); x.arc(-R * 0.4, -R * 0.45, R * 0.45, 0, Math.PI * 2); x.fill();
+    return c;
+}
+const cinders = () => Composite.allBodies(engine.world).filter(b => b.cinder);
+function makeCinder(x, y, r, angle = 0) {
+    const k = r * 2 / 186, c = Bodies.circle(x, y, r, { restitution: 0.05, friction: 0.7, density: 0.004, slop: 0.01, angle,
+        render: { sprite: { texture: CINDER_ART, xScale: k, yScale: k } }, cinder: true });
+    Composite.add(engine.world, c);
+    return c;
+}
+function breakCinder(c, scored) {
+    if (c.gone) return;
+    c.gone = true;
+    Composite.remove(engine.world, c);
+    FX.crumble(c.position.x, c.position.y, c.circleRadius);
+    Sound.play('cinder', c.circleRadius);
+    if (!scored || !CLASH.broken) return;
+    score += CLASH.broken;
+    if (score > bestScore) { isNewBest = true; bestScore = score; try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {} }
+    showPop(c.position.x, c.position.y, CLASH.broken);
+    emitGame('cinder', 'broken');
+}
 function clash(a, b) {
     a.isMerging = b.isMerging = true;   // (out of every other rule from here on)
     const points = CLASH.points * (a.tier + b.tier + 2), big = a.tier > b.tier ? a : b, small = big === a ? b : a;
-    score += points;
-    if (score > bestScore) { isNewBest = true; bestScore = score; try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {} }
-    showPop(big.position.x, big.position.y, points);
+    if (points) {
+        score += points;
+        if (score > bestScore) { isNewBest = true; bestScore = score; try { localStorage.setItem(BEST_KEY, bestScore); } catch (e) {} }
+        showPop(big.position.x, big.position.y, points);
+    }
     FX.clash(big.position.x, big.position.y, TIERS[big.tier], small.position.x, small.position.y, TIERS[small.tier]);
     Sound.play('clash', big.tier);
     Haptics.play('merge', big.tier, 1);
     Composite.remove(engine.world, [a, b]);
+    if (CLASH.cinder) makeCinder(big.position.x, big.position.y, TIERS[Math.max(0, big.tier - CLASH.cinder)], big.angle);
     emitGame('clash', big.tier, small.tier);
 }
-if (CLASH) FX.dangerGlow(() => isGameOver ? [] : Composite.allBodies(engine.world)
-    .filter(b => b.tier !== undefined && !b.isMerging && !b.isDropping && Math.abs(b.tier - currentTier) > CLASH.apart)
-    .map(b => [b.position.x, b.position.y, b.currentRadius]));
+if (CLASH) {
+    // a big gem that has just been made breaks the cinders right beside it, while it grows and settles (about a second)
+    Events.on(engine, 'beforeUpdate', () => {
+        for (const b of Composite.allBodies(engine.world)) {
+            if (!(b.fresh > 0) || b.isMerging) continue;
+            b.fresh--;
+            for (const c of cinders()) if (Math.hypot(c.position.x - b.position.x, c.position.y - b.position.y) < b.currentRadius + c.circleRadius + CLASH.beside) breakCinder(c, true);
+        }
+    });
+    FX.dangerGlow(() => isGameOver ? [] : Composite.allBodies(engine.world)
+        .filter(b => b.tier !== undefined && !b.isMerging && !b.isDropping && Math.abs(b.tier - currentTier) > CLASH.apart)
+        .map(b => [b.position.x, b.position.y, b.currentRadius]));
+}
 
 // --- GLITCH --- (a set with glitch in GAME.skins, the Pixel Treasure)
 // Like an old video game that has gone wrong: at every merge a gem in the jar (GLITCH.gems of them) breaks up
@@ -1097,6 +1177,7 @@ const render = Render.create({
     options: { width: GAME_WIDTH, height: GAME_HEIGHT, wireframes: false, background: '#00000000' }  // the board's grid shows through
 });
 if (ERUPT) { const art = bombArt(); render.textures[BOMB_ART] = art; bombUrl = art.toDataURL(); }   // (the lava bomb's picture)
+if (CLASH) render.textures[CINDER_ART] = cinderArt();                                                 // (a cinder's)
 
 // --- THE CLOCK ---
 // The game runs at the same speed on every phone, whatever its screen: the physics moves in steps of 1/60 s of
@@ -1185,11 +1266,11 @@ Events.on(engine, 'beforeUpdate', () => {
 
         // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
         // entirely above it (its lowest point is above the line; floating: entirely below it)
-        if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping && body.sitAt === undefined) {   // (nor a pet that sits waiting, COME HERE)
+        if ((body.tier !== undefined || body.crate || body.cinder) && !body.isGrowing && !body.isDropping && body.sitAt === undefined) {   // (nor a pet that sits waiting, COME HERE)
             if (SWIRL) {   // a swirl: all of it outside the ring, whatever its speed (nothing rests there)
                 if (Math.hypot(body.position.x - SWIRL.x, body.position.y - SWIRL.y) - body.currentRadius > SWIRL.ring) isAnyBodyAboveLine = true;
             } else if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
-                if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
+                if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2 || body.hopLeft > 0) {   // (hopping to the beat is not falling)
                     isAnyBodyAboveLine = true;
                 }
             }
@@ -1301,11 +1382,15 @@ function dropFruit() {
     else {
         const gem = spawnItem(dropX, spawnY(currentTier), currentTier, false);
         callPets(dropX, currentTier, gem);
-        if (BEAT && onTheBeat()) {   // let go on the beat: its merge will count double
+        if (BEAT && onTheBeat()) {   // let go on the beat: the jar is in tune, and its merge will count double
             gem.onBeat = true;
+            setTune(true);
             FX.onBeat(dropX, spawnY(currentTier) + TIERS[currentTier] + 26, 'ON BEAT!');
             Sound.play('beatHit');
             Haptics.play('pickup');
+        } else if (BEAT) {           // off the beat: out of tune
+            if (inTune) { FX.onBeat(dropX, spawnY(currentTier) + TIERS[currentTier] + 26, 'OFF BEAT', true); Sound.play('offBeat'); }
+            setTune(false);
         }
     }
     if (SET_HINT) setHint();
@@ -1327,14 +1412,15 @@ function dropFruit() {
 const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : WATER ? ['waterTold', 'Under water: small gems float, big ones sink!']
     : ERUPT ? ['told.erupt', 'Merges heat the volcano: fill it for a lava bomb!']
-    : CLASH ? ['told.clash', `A small stone and a big one burn each other: ${CLASH.apart + 1} levels apart or more!`]
+    : CLASH ? ['told.clash', CLASH.any ? `A small stone and a big one burn each other: ${CLASH.apart + 1} levels apart or more!`
+        : `Drop a stone on one ${CLASH.apart + 1}+ levels bigger: both burn to a cinder!`]
     : GLITCH ? ['told.glitch', 'Glitch: at every merge a gem jumps somewhere else!']
     : WAVE ? ['told.wave', 'Every merge goes off with a blast!']
     : RUBBER ? ['told.rubber', 'Rubber: everything bounces!']
     : BLOCKS ? ['told.blocks', 'Blocks: they fall straight and never roll!']
     : WIRES ? ['told.wires', 'Touching gems are wires: a spark finds its like!']
     : SWIRL ? ['told.swirl', 'It starts wild: every merge changes the swirl!']
-    : BEAT ? ['told.beat', 'Let go on the beat: the merge counts double!']
+    : BEAT ? ['told.beat', 'Let go on the beat: alike gems hop together. Off it: apart!']
     : TWINS ? ['told.twins', TWINS.same ? 'Twins: every gem falls as a mirrored pair!' : 'Two different jewels fall at once, mirrored!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
 let setHinted = false;
@@ -1352,7 +1438,7 @@ function setHint() {
 // A dropped item lands when it touches the floor, an item that has already landed, or (in the Gem Mine)
 // a crate or a part of the jar. Only landed items may merge, so spamming drops can't merge items in mid-air at the top.
 function isLanded(body) {
-    return body === ground || body.crate || body.jarPart || (body.tier !== undefined && !body.isDropping);
+    return body === ground || body.crate || body.jarPart || body.cinder || (body.tier !== undefined && !body.isDropping);
 }
 function landed(body, speed) {
     body.isDropping = false;
@@ -1372,14 +1458,15 @@ function handleCollisions(event) {
             continue;
         }
         const speed = meetSpeed(pairs[i]);
-        if (bodyA.isDropping && isLanded(bodyB)) landed(bodyA, speed);
-        if (bodyB.isDropping && isLanded(bodyA)) landed(bodyB, speed);
+        let fell = false;   // (one of the two has just come down on the other: FIRE AND STONE)
+        if (bodyA.isDropping && isLanded(bodyB)) { landed(bodyA, speed); fell = true; }
+        if (bodyB.isDropping && isLanded(bodyA)) { landed(bodyB, speed); fell = true; }
         if (bodyA.isDropping || bodyB.isDropping) continue;
         if (event.name === 'collisionStart') knock(bodyA, bodyB, speed);
 
         if (bodyA.tier === undefined || bodyB.tier === undefined) continue;
         if (bodyA.isMerging || bodyB.isMerging) continue;
-        if (CLASH && Math.abs(bodyA.tier - bodyB.tier) > CLASH.apart) { clash(bodyA, bodyB); continue; }   // (FIRE AND STONE)
+        if (CLASH && (fell || CLASH.any) && Math.abs(bodyA.tier - bodyB.tier) > CLASH.apart) { clash(bodyA, bodyB); continue; }   // (FIRE AND STONE)
         if (bodyA.tier !== bodyB.tier || bodyA.tier >= TIERS.length - 1) continue;
         mergeGems(bodyA, bodyB);
     }
@@ -1425,6 +1512,7 @@ function mergeGems(bodyA, bodyB, at) {
     if (call && bodyA.tier === call.tier && Math.abs(midX - call.x) < TIERS[mergedTier]) merged.sitFor = { x: call.x, tier: call.tier };   // (COME HERE: made where the pets are called to)
     if (WAVE) shatter(midX, midY, mergedTier, merged);
     if (GLITCH) for (let k = 0; k < GLITCH.gems; k++) glitches.push(glitchStep + GLITCH.wait + k * 5);
+    if (CLASH && mergedTier + 1 >= CLASH.breaks) merged.fresh = CLASH.fresh;   // (FIRE AND STONE: a big gem breaks the cinders beside it as it grows and settles)
     return merged;
 }
 // --- THE SWIRL --- (a set with swirl in GAME.skins, the Spiral Atoms)
@@ -1646,11 +1734,36 @@ if (SWIRL) Events.on(engine, 'beforeUpdate', () => {
 // --- THE BEAT --- (a set with beat in GAME.skins, the Neon Nights)
 // The jar pulses to a beat: the music's own when a song plays (Sound.beat knows each song's), a steady one of
 // its own when none does, marked by a soft drum. A ring closes in on the gem in hand and meets it on the beat.
-// A gem let go within BEAT.within ms of a beat is on the beat: it glows until it merges, and that merge counts
-// BEAT.times. Nothing in how the gems move changes, and the beat never depends on how the player is doing.
+// The gems dance to it: on every beat each gem that has a like in the jar hops, the small ones high, the big ones
+// barely. Whether they hop toward their like or away from it is up to the player: a gem let go within BEAT.within
+// ms of a beat is on the beat, and from then on they hop together (and merge by themselves when they meet); a gem
+// let go off the beat puts the jar out of tune, and they hop apart, until a gem is let go on the beat again. The
+// jar shows which it is (its glow turns from pink and blue to a sour orange). A gem let go on the beat also glows
+// until it merges, and that merge counts BEAT.times. The beat never depends on how the player is doing.
 function onTheBeat() {
     const b = Sound.beat();
     return Math.min(b.phase, 1 - b.phase) * b.period <= BEAT.within;
+}
+function setTune(on) {
+    inTune = on;
+    board.classList.toggle('sour', !on);
+}
+// a beat: every gem that has landed hops toward its nearest like (out of tune: away from it)
+function beatHop() {
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isDropping && !b.isMerging && !b.isGrowing);
+    for (const b of gems) {
+        let like = null, d = inTune ? BEAT.reach : BEAT.apart;
+        for (const o of gems) {
+            if (o === b || o.tier !== b.tier) continue;
+            const far = Math.hypot(o.position.x - b.position.x, o.position.y - b.position.y);
+            if (far < d) { d = far; like = o; }
+        }
+        if (!like) continue;
+        const k = 1 / (1 + BEAT.less * b.tier), way = inTune ? 1 : -1;
+        Body.setVelocity(b, { x: b.velocity.x + way * BEAT.hop * k * (like.position.x - b.position.x) / (d || 1),
+            y: b.velocity.y + way * BEAT.hop * k * 0.4 * (like.position.y - b.position.y) / (d || 1) - DOWN * BEAT.up * k });
+        b.hopLeft = 28;   // (in the air for a moment: the line still counts it, see the jar-full check)
+    }
 }
 if (BEAT) {
     board.classList.add('beat');
@@ -1665,6 +1778,14 @@ if (BEAT) {
         if (b.phase < was && !b.music && clockOn && !isGameOver) Sound.play('kick');
         was = b.phase;
     })();
+    // the hops are part of the game, so they follow the game's own steps (and stop with it)
+    let stepWas = 0;
+    Events.on(engine, 'beforeUpdate', () => {
+        for (const b of Composite.allBodies(engine.world)) if (b.hopLeft > 0) b.hopLeft--;
+        const phase = Sound.beat().phase, beat = phase < stepWas;
+        stepWas = phase;
+        if (beat && !isGameOver) beatHop();
+    });
 }
 
 // --- WIRES --- (a set with wires in GAME.skins, the Cyber Circuit)
@@ -1863,8 +1984,9 @@ function revive() {
     const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar (floating: the bottom part)
     const inThere = b => SWIRL ? Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) + (b.currentRadius || 0) > SWIRL.ring * 0.72   // (a swirl: its outer part)
         : FLOAT ? b.bounds.max.y > GAME_HEIGHT - clearAbove : b.bounds.min.y < clearAbove;
-    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && inThere(b)).forEach(b => {
+    Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate || b.cinder) && inThere(b)).forEach(b => {
         if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
+        if (b.cinder) { breakCinder(b, false); return; }
         FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
         Composite.remove(engine.world, b);
     });
@@ -1899,6 +2021,8 @@ function saveGame() {
     if (ERUPT) data.heat = heat;   // (full: a lava bomb is in the hand, or on its way down)
     if (TWINS) { data.mate = currentMate; data.nextMate = nextMate; }   // (the other gem of the pair in hand, and of the next)
     if (SWIRL) data.swirl = [swirlMerges, swirlTop];                    // (how far the swirl has come: its pattern, and what is dropped)
+    if (BEAT) data.sour = !inTune;                                      // (out of tune: alike gems hop apart)
+    if (CLASH) data.cinders = cinders().map(c => [+c.position.x.toFixed(1), +c.position.y.toFixed(1), +c.circleRadius.toFixed(1), +c.angle.toFixed(3)]);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
 }
 
@@ -1928,6 +2052,10 @@ function loadGame() {
     isNewBest = score > 0 && score >= bestScore;
     if (okTier(data.current)) currentTier = data.current;
     if (okTier(data.next)) nextTier = data.next;
+    if (BEAT) setTune(!data.sour);
+    if (CLASH && CLASH.cinder && Array.isArray(data.cinders)) {
+        for (const [x, y, r, angle] of data.cinders) if ([x, y, r].every(Number.isFinite) && r > 4 && r < 200) makeCinder(x, turn ? GAME_HEIGHT - y : y, r, angle || 0);
+    }
     if (SWIRL) {   // (a game saved before the swirl kept count: it has long been through its first patterns)
         const top = Math.max(0, ...data.items.map(it => it[0] | 0).filter(okTier));
         if (Array.isArray(data.swirl)) { swirlMerges = Math.max(0, data.swirl[0] | 0); swirlTop = Math.max(top, Math.min(TIERS.length - 1, data.swirl[1] | 0)); }
@@ -2160,12 +2288,12 @@ zapBtn.addEventListener('click', () => {
 function gemAt(e, withCrates) {
     const rect = board.getBoundingClientRect();
     const p = { x: (e.clientX - rect.left) * (GAME_WIDTH / rect.width), y: (e.clientY - rect.top) * (GAME_HEIGHT / rect.height) };
-    const items = Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || (withCrates && b.crate)) && !b.isMerging);
+    const items = Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || (withCrates && (b.crate || b.cinder))) && !b.isMerging);
     let target = Matter.Query.point(items, p)[0];
     if (!target) {
         let nearest = 24;
         for (const b of items) {
-            const gap = Math.hypot(b.position.x - p.x, b.position.y - p.y) - (b.crate ? 30 : TIERS[b.tier]);
+            const gap = Math.hypot(b.position.x - p.x, b.position.y - p.y) - (b.crate ? 30 : b.cinder ? b.circleRadius : TIERS[b.tier]);
             if (gap < nearest) { nearest = gap; target = b; }
         }
     }
@@ -2174,11 +2302,14 @@ function gemAt(e, withCrates) {
 
 // a tap on the board while the Zap is armed (in the Gem Mine, a crate can be zapped: it breaks)
 function zapAt(e) {
-    const target = gemAt(e, !!MINE);
-    if (!target) { showToast(MINE ? 'Tap a gem or a crate to zap it' : 'Tap a gem to zap it'); return; }
+    const target = gemAt(e, !!MINE || !!CLASH);
+    if (!target) { showToast(MINE ? 'Tap a gem or a crate to zap it' : CLASH ? 'Tap a gem or a cinder to zap it' : 'Tap a gem to zap it'); return; }
     if (target.crate) {
         FX.zap(target.position.x, target.position.y, 30);
         Mine.breakCrate(target);
+    } else if (target.cinder) {   // (FIRE AND STONE: lightning breaks a cinder)
+        FX.zap(target.position.x, target.position.y, target.circleRadius);
+        breakCinder(target, false);
     } else {
         FX.zap(target.position.x, target.position.y, TIERS[target.tier]);
         Composite.remove(engine.world, target);
@@ -2288,7 +2419,8 @@ function snapshot() {
             tier: b.tier, x: b.position.x, y: b.position.y, angle: b.angle,
             vx: b.velocity.x, vy: b.velocity.y, spin: b.angularVelocity, dropping: !!b.isDropping })),
         score, bestScore, isNewBest, combo, dropsWithoutMerge, current: currentTier, next: nextTier, mate: currentMate, nextMate, heat, bomb,
-        swirl: [swirlMerges, swirlTop],
+        swirl: [swirlMerges, swirlTop], tune: inTune,
+        cinders: CLASH ? cinders().map(c => ({ x: c.position.x, y: c.position.y, r: c.circleRadius, angle: c.angle, vx: c.velocity.x, vy: c.velocity.y })) : [],
         daily: DAILY ? { rng: dropRandom.getState(), made: made.slice(), maxCombo } : null
     };
 }
@@ -2297,7 +2429,8 @@ function undoLastDrop() {
     const s = lastDrop;
     if (!s || isGameOver) return;
     lastDrop = null;
-    Composite.allBodies(engine.world).filter(b => b.tier !== undefined || b.bomb).forEach(b => { b.gone = true; Composite.remove(engine.world, b); });
+    Composite.allBodies(engine.world).filter(b => b.tier !== undefined || b.bomb || b.cinder).forEach(b => { b.gone = true; Composite.remove(engine.world, b); });
+    for (const c of s.cinders) Body.setVelocity(makeCinder(c.x, c.y, c.r, c.angle), { x: c.vx, y: c.vy });   // (FIRE AND STONE: the cinders as they were)
     for (const it of s.items) {
         const body = spawnItem(it.x, it.y, it.tier, false);
         if (!BLOCKS) { Body.setAngle(body, it.angle); Body.setAngularVelocity(body, it.spin); }
@@ -2319,6 +2452,7 @@ function undoLastDrop() {
     currentMate = s.mate;
     nextMate = s.nextMate;
     [swirlMerges, swirlTop] = s.swirl;   // (THE SWIRL: the pattern and the kinds that are dropped go back too)
+    if (BEAT) setTune(s.tune);           // (THE BEAT: and whether the jar was in tune)
     if (s.daily) {   // the Daily Challenge: the same drops come again, and what this drop made is taken back
         dropRandom.setState(s.daily.rng);
         s.daily.made.forEach((n, t) => { made[t] = n; });
@@ -2426,11 +2560,11 @@ function renderSets() {
             sk.glitch && '👾 Glitch (not in the Gem Mine): at every merge a gem vanishes and comes back somewhere else, at random',
             sk.swirl && '🌀 The swirl (not in the Gem Mine): no pile: it starts wild, then the gems circle the biggest one, and every merge changes the pattern; small gems first',
             sk.wires && '⚡ Wired (not in the Gem Mine): a gem that lands sends a spark through the gems it touches to its like, and the two merge',
-            sk.beat && '🎵 The beat (not in the Gem Mine): let a gem go on the beat and the merge it makes counts double',
+            sk.beat && '🎵 The beat (not in the Gem Mine): on every beat alike gems hop together if you let go on the beat (and its merge counts double), apart if you let go off it',
             sk.twins && (sk.twins.same ? '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right'
                 : '♛ Royal pairs (not in the Gem Mine): two different jewels fall at once, mirrored left and right'),
             sk.erupt && '🌋 Merges heat the volcano (not in the Gem Mine): when it is full you get a lava bomb that burns the small gems around where it lands',
-            sk.clash && '🌋 Fire and stone (not in the Gem Mine): a small stone and a big one, 5 levels apart or more, burn each other up when they touch',
+            sk.clash && '🌋 Fire and stone (not in the Gem Mine): a stone let go onto one 5 or more levels bigger burns up with it and leaves a cinder; only a big gem made beside a cinder breaks it',
             sk.call && '🐾 The same pets jump to your finger: hold it down to call them, or just drop'].filter(Boolean);
         if (notes.length) {
             const note = document.createElement('div');
