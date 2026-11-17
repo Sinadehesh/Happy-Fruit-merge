@@ -715,10 +715,52 @@ const render = Render.create({
     engine: engine,
     options: { width: GAME_WIDTH, height: GAME_HEIGHT, wireframes: false, background: '#00000000' }  // the board's grid shows through
 });
-Render.run(render);
 
+// --- THE CLOCK ---
+// The game runs at the same speed on every phone, whatever its screen: the physics moves in steps of 1/60 s of
+// game time (every rule that counts steps counts these), and SPEED steps of game time pass for every one of real
+// time. A screen that redraws 60, 90, 120 or 144 times a second gets as many steps as the time since its last
+// frame calls for (none, one or two), and each frame is drawn in between the last two steps, so the movement is
+// smooth on all of them. (Matter's own Runner made one step per frame: a 120 Hz phone played twice as fast as a
+// 60 Hz one.) Runner.run(runner, engine) and Runner.stop(runner) start and stop this clock, as they did Matter's.
+const STEP = 1000 / 60;                 // one physics step: ms of game time
+const SPEED = GAME.speed || 1.3;        // game time for each ms of real time
+const MAX_STEPS = 5;                    // most steps in one frame: a slow phone slows the game down, it doesn't choke
 const runner = Runner.create();
-Runner.run(runner, engine);
+let clockOn = true, clockAt = null, owed = 0;   // owed: game time that has passed and is not stepped yet
+Runner.run = () => { clockOn = true; return runner; };
+Runner.stop = () => { clockOn = false; };
+function drawFrame(between) {   // between: how far the picture is from the step before the last (0) to the last (1)
+    const moved = [];
+    if (between < 1) for (const b of Composite.allBodies(engine.world)) {
+        if (b.isStatic || b.wasX === undefined) continue;
+        const x = b.position.x, y = b.position.y, a = b.angle;
+        if (Math.abs(x - b.wasX) + Math.abs(y - b.wasY) > 60) continue;   // (put somewhere else by hand: no in-between)
+        moved.push(b, x, y, a);
+        b.position.x = b.wasX + (x - b.wasX) * between;
+        b.position.y = b.wasY + (y - b.wasY) * between;
+        b.angle = b.wasA + (a - b.wasA) * between;
+    }
+    Render.world(render);
+    for (let i = 0; i < moved.length; i += 4) { const b = moved[i]; b.position.x = moved[i + 1]; b.position.y = moved[i + 2]; b.angle = moved[i + 3]; }
+}
+(function frame(now) {
+    requestAnimationFrame(frame);
+    if (now === undefined) return;
+    const dt = clockAt === null ? 0 : now - clockAt;
+    clockAt = now;
+    if (clockOn) {
+        owed += (dt > 250 ? STEP : dt) * SPEED;   // (back from another app, or a long hitch: no racing to catch up)
+        let n = 0;
+        while (owed >= STEP && n++ < MAX_STEPS) {
+            for (const b of Composite.allBodies(engine.world)) { if (!b.isStatic) { b.wasX = b.position.x; b.wasY = b.position.y; b.wasA = b.angle; } }
+            Engine.update(engine, STEP);
+            owed -= STEP;
+        }
+        if (owed >= STEP) owed = 0;
+    }
+    drawFrame(clockOn ? owed / STEP : 1);
+})();
 
 const wallOptions = { isStatic: true, render: { fillStyle: '#34495e' } };
 const ground = Bodies.rectangle(GAME_WIDTH / 2, flipY(GAME_HEIGHT + 25), GAME_WIDTH, 50, wallOptions);   // (floating: the ceiling)
