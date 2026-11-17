@@ -3,7 +3,8 @@
 # (256 x 256). Each set lists where its gems come from: a sheet, its layout (rows x columns) and which of its
 # items to take, so gems that were made again on their own (assets/fixes) replace the ones that came out wrong;
 # glow: glowing gems (a see-through halo), pale_glow: a pale one whose edge melts into its glow, outline: gems drawn
-# inside a dark outline all round with light marks outside it, cut to the outline.
+# inside a dark outline all round with light marks outside it, cut to the outline, holes: gems with real gaps through
+# them ({gem: the smallest enclosed white area, in px, that is a gap and not a highlight}).
 #   python3 tools/cut_sets.py            every set
 #   python3 tools/cut_sets.py neon pets  only these
 # A new set: add it here, then to MODES in game.js, to skins in tools/make_gems_page.py, to GEM_SETS in
@@ -53,6 +54,13 @@ SETS = {
                  take=[('neon/source_sheet.webp', 3, 4, list(range(1, 9))), ('fixes/fix4_neon_9_12.webp', 2, 2, [1, 2, 3, 4])], glow=[12]),
     'pets': dict(names='bunny chick duckling piglet frog hamster fox kitten whale lion_cub unicorn baby_dragon',
                  take=[('pets/source_sheet.webp', 3, 4, ALL)], glow=[]),
+    # from the smallest thing there is to a little sun. The first six came on two sheets (1a, 1b), the best of each
+    # pair is taken: the quark, the proton and the atom of 1a, the electron, the neutron and the nucleus of 1b.
+    # The electron's orbit, the two atoms' orbits and the helix have gaps through them.
+    'atoms': dict(names='quark electron proton neutron nucleus atom complex_atom molecule double_helix living_cell crystal_cluster mini_sun',
+                  take=[('atoms/source_sheet_1a.webp', 2, 3, [1]), ('atoms/source_sheet_1b.webp', 2, 3, [2]), ('atoms/source_sheet_1a.webp', 2, 3, [3]),
+                        ('atoms/source_sheet_1b.webp', 2, 3, [4, 5]), ('atoms/source_sheet_1a.webp', 2, 3, [6]), ('atoms/source_sheet_2.webp', 2, 3, [1, 2, 3, 4, 5, 6])],
+                  glow=[1, 12], holes={2: 250, 6: (100, 300), 7: 40, 9: 120}),   # (the atom's highlight is bigger than its gaps)
 }
 
 sheets, boxes = {}, {}
@@ -72,6 +80,6 @@ for name in (sys.argv[1:] or SETS):
         sheet, box = item(path, rows, cols, k)
         if n in spec.get('pale_glow', []): im = gemcut.cut_glow(sheet, box, pale=True)
         elif n in spec['glow']: im = gemcut.cut_glow(sheet, box)
-        else: im = gemcut.cut(sheet, box, outline=n in spec.get('outline', []))
+        else: im = gemcut.cut(sheet, box, outline=n in spec.get('outline', []), holes=spec.get('holes', {}).get(n, 0))
         im.save(A / name / f'{n:02d}_{names[n - 1]}.png', optimize=True)
     print('cut', name)

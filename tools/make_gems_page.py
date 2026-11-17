@@ -62,7 +62,9 @@ swap('    <script src="config.js"></script>', '''    <script>
                 { id: 'odd', name: 'Odd Shapes', mineStars: 30, rubber: true },   // made of rubber: everything bounces
                 { id: 'cyber', name: 'Cyber Circuit', mineStars: 40, wires: true },   // touching gems are wires: a spark merges alike gems they link
                 { id: 'neon', name: 'Neon Nights', mineStars: 48, beat: true },   // the jar pulses to the beat: a gem let go on it counts double
-                { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true }   // the same pets leap to your finger, held or dropped
+                { id: 'pets', name: 'Gem Pets', mineStars: 55, call: true },   // the same pets jump to your finger, held or dropped
+                // this one opens at a level of the player (about two hours of play): no pile, the gems swirl round the biggest one
+                { id: 'atoms', name: 'Spiral Atoms', level: 15, swirl: true }
             ],
             // what to make to open each next set: [level, how many], counted from when the set before it opened.
             // Measured (22 hours of simulated play): about 49 Gold Nuggets (7), 13 Rubies (8) and 1 Opal (9)

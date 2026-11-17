@@ -121,6 +121,14 @@
             content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 0; z-index: 9; pointer-events: none;
             border-left: 2px dotted rgba(255, 214, 110, 0.3); transform: translateX(-1px);
         }
+        /* a swirl set (game.js THE SWIRL, the Spiral Atoms): no line; a ring round the swirl, which it has to stay in
+           (its place and size are set by the game) */
+        #board.swirl .danger-line { display: none; }
+        #board.swirl::before {
+            content: ''; position: absolute; left: var(--ring-x, 0); top: var(--ring-y, 30%); width: var(--ring-w, 100%); aspect-ratio: 1;
+            box-sizing: border-box; border-radius: 50%; border: 3px dashed rgba(255, 99, 99, 0.5); z-index: 9; pointer-events: none;
+        }
+        #board.swirl #toast { top: 12%; }
         /* a beat set (game.js THE BEAT, the Neon Nights): the jar glows on every beat (--pulse: 1 on the beat, then
            fading) and a ring closes in on the gem in hand (--ring: 1 just after a beat, 0 on the next); the ring is
            bright while letting go counts */

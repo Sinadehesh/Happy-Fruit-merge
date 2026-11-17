@@ -140,6 +140,13 @@ const MODES = {
         sprites: ['01_bunny', '02_chick', '03_duckling', '04_piglet', '05_frog', '06_hamster', '07_fox', '08_kitten',
             '09_whale', '10_lion_cub', '11_unicorn', '12_baby_dragon'].map(n => `assets/pets/${n}.png`)
     },
+    // Gem Jar's set that opens with a level (GAME.skins level): from a quark to a little sun
+    'atoms': {
+        background: '#f4ecf7',
+        tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
+        sprites: ['01_quark', '02_electron', '03_proton', '04_neutron', '05_nucleus', '06_atom', '07_complex_atom', '08_molecule',
+            '09_double_helix', '10_living_cell', '11_crystal_cluster', '12_mini_sun'].map(n => `assets/atoms/${n}.png`)
+    },
     'sweets': {
         background: '#fdf2f8',
         // like rocks, sweets fill most of their picture
@@ -174,8 +181,11 @@ if (UNLOCK_LINK) {
     try { history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : '') + location.hash); } catch (e) {}
 }
 const SKINS = (GAME.skins || []).filter(sk => MODES[sk.id]);
-// (a set with `mineStars` opens with that many stars in the Gem Mine instead, mine.js)
-const skinOpen = i => UNLOCK.all ? !!SKINS[i] : SKINS[i] && SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars : i <= UNLOCK.opened;
+// (a set with `mineStars` opens with that many stars in the Gem Mine instead, mine.js; one with `level` at that
+// level of the player, meta.js, whose profile is read here since this runs first)
+const playerLevel = () => { try { return (JSON.parse(localStorage.getItem(`${GAME.id}.profile`)) || {}).level | 0; } catch (e) { return 0; } };
+const skinOpen = i => UNLOCK.all ? !!SKINS[i] : !SKINS[i] ? false : SKINS[i].mineStars ? Mine.totalStars() >= SKINS[i].mineStars
+    : SKINS[i].level ? playerLevel() >= SKINS[i].level : i <= UNLOCK.opened;
 const SKIN = (() => {
     if (!SKINS.length) return null;
     let id = null;
@@ -258,6 +268,20 @@ const BEAT = SKIN && SKIN.beat && !MINE ? Object.assign({
     within: 95,     // how close to a beat the gem must be let go, ms either side
     times: 2        // the points of its merge are multiplied by this
 }, SKIN.beat === true ? null : SKIN.beat) : null;
+// A swirl set (GAME.skins swirl: the Spiral Atoms): there is no pile: the gems swirl in the middle of the jar round
+// the biggest one, see THE SWIRL below. Not in the Gem Mine. (swirl: true, or an object that changes these numbers)
+const SWIRL = SKIN && SKIN.swirl && !MINE && !FLOAT ? Object.assign({
+    size: 0.78,       // the gems are this much smaller than in the other sets, so that rings of them fit round the big one
+    x: 225, y: 416,   // the middle of the swirl
+    ring: 222,        // the ring the swirl has to stay in, in place of the line: its size (it touches the walls and the floor)
+    rim: 214,         // how far from the middle the outermost gems reach
+    turn: 2.1,        // how fast it turns: a gem at r px from the middle goes round at turn / (r + soft) a step,
+    soft: 60,         // ...so the inner rings turn faster, but never wildly
+    pull: 0.045,      // how hard a gem is drawn to its own ring: px a step for each px it is off it
+    steer: 0.12,      // how fast a gem takes up the speed the swirl gives it (the part of the difference it makes up each step)
+    drop: 5.5,        // how fast a gem that was let go falls into it, px a step
+    blend: 94         // steps over which the swirl goes from one figure to the next when a new biggest gem is made (1.2 s)
+}, SKIN.swirl === true ? null : SKIN.swirl) : null;
 // A twins set (GAME.skins twins: the Royal Treasury): every drop is a pair of the same gem, mirrored left and
 // right, see ROYAL TWINS below. Not in the Gem Mine, whose stages count on one gem a drop.
 const TWINS = !!(SKIN && SKIN.twins) && !FLOAT && !MINE;
@@ -308,7 +332,7 @@ function reverseTiers(count) {
     return Array.from({ length: count }, (_, i) =>
         Math.round(REVERSE_LARGEST * Math.pow(REVERSE_SMALLEST / REVERSE_LARGEST, i / (count - 1))));
 }
-const TIERS = REVERSE ? reverseTiers(MODES[MODE].tiers.length) : MODES[MODE].tiers;
+const TIERS = REVERSE ? reverseTiers(MODES[MODE].tiers.length) : SWIRL ? MODES[MODE].tiers.map(r => Math.round(r * SWIRL.size)) : MODES[MODE].tiers;
 const SPRITE_SIZE = 256;   // px, every sprite is a 256x256 square
 const SPRITE_FIT = 1.08;   // draw slightly bigger than the collider so art touches neighbours
 SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
@@ -381,6 +405,12 @@ const dropGuide = document.getElementById('drop-guide');
 const aimLine = document.getElementById('aim-line');
 board.classList.toggle('float', FLOAT);   // (the line, the guide and messages sit the other way up: index.html)
 if (WATER) { board.classList.add('water'); board.style.setProperty('--water', `${WATER.y / GAME_HEIGHT * 100}%`); }   // (the water's tint)
+if (SWIRL) {   // (the ring, in place of the line: index.html)
+    board.classList.add('swirl');
+    board.style.setProperty('--ring-x', `${(SWIRL.x - SWIRL.ring) / GAME_WIDTH * 100}%`);
+    board.style.setProperty('--ring-y', `${(SWIRL.y - SWIRL.ring) / GAME_HEIGHT * 100}%`);
+    board.style.setProperty('--ring-w', `${SWIRL.ring * 2 / GAME_WIDTH * 100}%`);
+}
 
 function randomDropTier() {
     return Math.floor(dropRandom() * DROPS);
@@ -507,6 +537,7 @@ function clampX(x, tier) {
 // Extra solver iterations so heavy piles don't sink into each other
 const engine = Engine.create({ positionIterations: 20, velocityIterations: 12 });
 engine.gravity.y = DOWN;   // (floating sets: up)
+if (SWIRL) engine.gravity.scale = 0;   // (a swirl set: nothing falls, THE SWIRL moves the gems)
 
 // --- WEIGHT ---
 // Every gem is heavier than the one before it, and it shows. Its mass grows with its size and density (each
@@ -1039,7 +1070,9 @@ Events.on(engine, 'beforeUpdate', () => {
         // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
         // entirely above it (its lowest point is above the line; floating: entirely below it)
         if ((body.tier !== undefined || body.crate) && !body.isGrowing && !body.isDropping && body.sitAt === undefined) {   // (nor a pet that sits waiting, COME HERE)
-            if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
+            if (SWIRL) {   // a swirl: all of it outside the ring, whatever its speed (nothing rests there)
+                if (Math.hypot(body.position.x - SWIRL.x, body.position.y - SWIRL.y) - body.currentRadius > SWIRL.ring) isAnyBodyAboveLine = true;
+            } else if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2) {
                     isAnyBodyAboveLine = true;
                 }
@@ -1074,7 +1107,7 @@ function gameOver(reason) {
     // in the app: the player may watch an ad to keep going (clearing the top of the jar), MAX_REVIVES times a game
     const canRevive = reason === 'full' && revives < MAX_REVIVES && Ads.canRevive();
     document.getElementById('revive').style.display = canRevive ? 'block' : 'none';
-    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + `atch a short ad to clear the ${FLOAT ? 'bottom' : 'top'} of the jar`;
+    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + `atch a short ad to clear the ${SWIRL ? 'outside of the swirl' : (FLOAT ? 'bottom' : 'top') + ' of the jar'}`;
     showNextSetProgress();
     if (reason === 'full' || reason === 'time') {
         Sound.play('gameOver');
@@ -1181,6 +1214,7 @@ const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : RUBBER ? ['told.rubber', 'Rubber: everything bounces!']
     : BLOCKS ? ['told.blocks', 'Blocks: they fall straight and never roll!']
     : WIRES ? ['told.wires', 'Touching gems are wires: a spark finds its like!']
+    : SWIRL ? ['told.swirl', 'They swirl round the biggest one: time your drop!']
     : BEAT ? ['told.beat', 'Let go on the beat: the merge counts double!']
     : TWINS ? ['told.twins', 'Twins: every gem falls as a mirrored pair!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
@@ -1271,6 +1305,110 @@ function mergeGems(bodyA, bodyB, at) {
     if (WAVE) shatter(midX, midY, mergedTier, merged);
     return merged;
 }
+// --- THE SWIRL --- (a set with swirl in GAME.skins, the Spiral Atoms)
+// There is no gravity and no pile. The biggest gem in the jar holds the middle and everything else swirls round
+// it: each gem is drawn to a ring of its own, the bigger ones close to the middle, the smallest out at the rim,
+// and goes round, the inner rings faster. Two of the biggest kind are both drawn to the middle, so they meet and
+// merge there by themselves; the smaller ones meet when a gem is let go so that it lands by its like, which
+// takes timing, since the rings turn. A gem that is let go falls straight until it is in the swirl. In place of
+// the line there is a ring round the swirl: the jar is full when the swirl has grown so big that a gem is pushed
+// right out of the ring for 3 seconds.
+// The swirl has 12 figures, one for each kind the biggest gem can be (FIGURES, after the set's own guide: loops,
+// a whirlpool with wakes, grooves, turning ellipses, bands turning against each other, a rose, a braid,
+// standing waves, six spiral arms, and the sun's fall and breath); when a new biggest gem is made it goes over
+// from one to the next in 1.2 s, smoothly. The gems slip past each other, lean the way they go, and the one in
+// the middle turns on the spot. Nothing in it is left to chance and nothing follows how the player is doing.
+let swirlStep = 0, figure = -1, figureWas = -1, figureSince = 0;   // the figure it turns in (the biggest gem's level - 1), the one before, since when
+const SWIRL_SPIN = [0.004, 0.03, 0.012, 0.01, 0.012, 0.012, 0.01, 0.007, 0.02, 0.006, 0.004, 0.004];   // how fast the one in the middle turns
+// the ring of a gem of level k + 1 when the biggest is of level top + 1: how far its middle is from the swirl's
+function ringOf(k, top) {
+    const core = TIERS[top], r = TIERS[k];
+    const inner = core + r + 3, outer = Math.min(SWIRL.rim - r, core + 60 + 30 * top);   // (a young swirl is a small one)
+    if (top < 1 || outer <= inner) return inner;
+    return inner + (outer - inner) * Math.pow((top - 1 - k) / Math.max(1, top - 1), 0.85);
+}
+// The 12 figures. Each gives, for a gem at r px and angle a from the swirl's middle, at time t (steps), with its
+// ring at R and the core's edge at `core`: [how fast it goes out (px a step), how fast it goes round (a step)].
+const FIGURES = SWIRL ? (() => {
+    const K = SWIRL.pull, S = SWIRL.soft, round = r => SWIRL.turn / (r + S), TAU = Math.PI * 2;
+    return [
+        // 1 quark: a slow turn (the eddies are added to it in swirlAt)
+        (r, a, t, R) => [-K * (r - R), 0.010],
+        // 2 electron: loops woven in and out, never twice the same (the two turns are in the golden ratio)
+        (r, a, t, R) => [-K * (r - (R + 14 * Math.sin(2 * a - t * 0.015) * Math.cos(3 * a + t * 0.00927))), round(r)],
+        // 3 proton: a whirlpool, quick inside, with two wakes that turn with it
+        (r, a, t, R) => [-K * (r - R) - 55 * Math.sin(2 * a - t * 0.0126) / (r + S),
+            441 / ((r + S) * (r + S)) * (1 - Math.exp(-r * r / 3600)) + 0.45 * Math.cos(2 * a - t * 0.0126) / (r + S)],
+        // 4 neutron: round a middle that itself goes in a small circle (swirlAt moves it), so the cloud has a thick and a thin side
+        (r, a, t, R) => [-K * (r - R), 0.145 / Math.sqrt(r + S)],
+        // 5 nucleus: grooves, a lane every 46 px, all turning together
+        (r, a, t, R, core) => [-0.5 * Math.sin(TAU * (r - core) / 46) - 0.02 * (r - R), 0.009],
+        // 6 atom: ellipses that slowly turn, slow at the far ends and quick past the middle
+        (r, a, t, R) => { const c = Math.cos(a - t * 0.0042); return [-K * (r - R * 0.8 / (1 - 0.2 * c * c)), 261 / (r * r + S * S)]; },
+        // 7 complex atom: bands 50 px apart that turn against each other
+        (r, a, t, R, core) => [-0.5 * Math.sin(TAU * (r - core) / 50) - 0.012 * (r - R), 0.012 * Math.cos(Math.PI * (r - core) / 50)],
+        // 8 molecule: a rose of three petals that turns with the molecule in the middle
+        (r, a, t, R) => [-K * (r - (R + 16 * Math.cos(3 * (a - t * SWIRL_SPIN[7])))), 0.009],
+        // 9 double helix: two strands braided through each other
+        (r, a, t, R, core, b) => { const ph = 3 * a - t * 0.0131 + (b.id % 2) * Math.PI; return [-K * (r - (R + 15 * Math.sin(ph))), 0.009 * (1 + 0.2 * Math.cos(ph))]; },
+        // 10 living cell: rings that breathe in and out
+        (r, a, t, R, core) => { const w = TAU * (r - core) / 60; return [-K * (r - R) + 0.5 * Math.sin(w) * Math.cos(t * 0.021), 0.008 / (1 + 0.25 * Math.cos(w) * Math.sin(t * 0.021))]; },
+        // 11 crystal cluster: six spiral arms, like a galaxy
+        (r, a, t, R, core) => [-0.45 * Math.sin(6 * (a - t * SWIRL_SPIN[10]) - 18.5 * Math.log(Math.max(1, r) / Math.max(1, core))) - 0.02 * (r - R), SWIRL_SPIN[10] + 1.2 / (r + S)],
+        // 12 mini sun: faster and faster toward the sun, and lifted out again by its slow breath
+        (r, a, t, R, core) => { const lift = R + 60 * Math.exp(-R / 150) * Math.sin(t * 0.0079) ** 2, near = Math.max(8, r - core + 30); return [-K * (r - lift), Math.sqrt(268 / ((r + S) * near * near))]; }
+    ];
+})() : null;
+// the speed figure `fig` gives gem b, when the biggest gems are of level top + 1
+function swirlAt(fig, b, top, t) {
+    let cx = SWIRL.x, cy = SWIRL.y;
+    if (fig === 0) { cx += 10 * Math.sin(t * 0.0105); cy += 10 * Math.sin(t * 0.021); }           // (the quark's middle drifts in a figure of eight)
+    else if (fig === 3) { cx += 14 * Math.cos(t * 0.0175); cy += 14 * Math.sin(t * 0.0175); }      // (the neutron's goes in a small circle)
+    const dx = b.position.x - cx, dy = b.position.y - cy;
+    if (b.tier === top) return [-dx * 0.08, -dy * 0.08];                                           // the biggest: to the middle
+    const r = Math.hypot(dx, dy) || 1, a = Math.atan2(dy, dx);
+    let [out, round] = FIGURES[fig](r, a, t, ringOf(b.tier, top), TIERS[top], b);
+    const far = r + TIERS[b.tier] - SWIRL.rim;
+    if (far > 0) out -= 0.15 * far;                                                                // (whatever the figure, no further out than the rim)
+    let vx = out * dx / r - round * dy, vy = out * dy / r + round * dx;
+    if (fig === 0) {   // smooth eddies (the curl of a slow wave: it stirs without pushing the gems together or apart)
+        const x = b.position.x, y = b.position.y, p = Math.sin(x / 70 + t / 190), q = Math.cos((x + y) / 45 + t / 150) / 90;
+        vx += 30 * (-p * Math.sin(y / 55 - t / 230) / 55 + q);
+        vy -= 30 * (Math.cos(x / 70 + t / 190) * Math.cos(y / 55 - t / 230) / 70 + q);
+    }
+    return [vx, vy];
+}
+if (SWIRL) Events.on(engine, 'beforeUpdate', () => {
+    swirlStep++;
+    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    // a gem that was let go falls straight until it is in the swirl (all of it under the line), or touches a gem of it
+    let top = -1;
+    for (const b of gems) {
+        if (b.isDropping && Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) + b.currentRadius < SWIRL.ring - 2) landed(b, 3);
+        if (!b.isDropping && b.tier > top) top = b.tier;
+    }
+    if (top !== figure) { figureWas = figure < 0 ? top : figure; figure = top; figureSince = swirlStep; }
+    // from the old figure to the new one, with no jolt at either end (6u^5 - 15u^4 + 10u^3)
+    const u = Math.min(1, (swirlStep - figureSince) / SWIRL.blend), mix = figureWas === figure ? 1 : u * u * u * (u * (6 * u - 15) + 10);
+    const push = 1 / (STEP * STEP);   // (a force that changes the speed by 1 px a step)
+    for (const b of gems) {
+        let vx = 0, vy = SWIRL.drop, gain = 0.3;
+        if (!b.isDropping) {
+            [vx, vy] = swirlAt(figure, b, top, swirlStep);
+            if (mix < 1) { const [ox, oy] = swirlAt(figureWas, b, top, swirlStep); vx = ox + (vx - ox) * mix; vy = oy + (vy - oy) * mix; }
+            const v = Math.hypot(vx, vy);
+            if (v > 7) { vx *= 7 / v; vy *= 7 / v; }
+            gain = SWIRL.steer;
+            // it leans the way it goes; the one in the middle turns on the spot
+            const lean = b.tier === top ? null : 0.26 * vx / (v || 1);
+            if (lean === null) Body.setAngularVelocity(b, SWIRL_SPIN[figure]);
+            else Body.setAngularVelocity(b, Math.atan2(Math.sin(lean - b.angle), Math.cos(lean - b.angle)) * 0.12);
+        }
+        b.force.x += b.mass * gain * (vx - b.velocity.x) * push;
+        b.force.y += b.mass * gain * (vy - b.velocity.y) * push;
+    }
+});
+
 // --- THE BEAT --- (a set with beat in GAME.skins, the Neon Nights)
 // The jar pulses to a beat: the music's own when a song plays (Sound.beat knows each song's), a steady one of
 // its own when none does, marked by a soft drum. A ring closes in on the gem in hand and meets it on the beat.
@@ -1380,7 +1518,8 @@ function spawnItem(x, y, tier, animateGrowth) {
         chamfer: { radius: startRadius * BLOCKS.side * 0.05 }, render: { sprite: { texture: SPRITES[tier], xScale: scale, yScale: scale } }, tier
     }) : Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
         restitution: bounceOf(tier),   // heavier gems bounce less (see WEIGHT)
-        friction: 0.5,
+        friction: SWIRL ? 0.02 : 0.5,  // (in a swirl they slip past each other)
+        frictionAir: SWIRL ? 0 : 0.01,
         density: 0.001 * (tier + 1) * weightOf(tier),
         slop: 0.01,
         render: { sprite: { texture: SPRITES[tier], xScale: scale, yScale: scale } },
@@ -1488,7 +1627,8 @@ function revive() {
     revives++;
     lastDrop = null;   // (nothing to undo: the drop that filled the jar is gone)
     const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar (floating: the bottom part)
-    const inThere = b => FLOAT ? b.bounds.max.y > GAME_HEIGHT - clearAbove : b.bounds.min.y < clearAbove;
+    const inThere = b => SWIRL ? Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) + (b.currentRadius || 0) > SWIRL.ring * 0.72   // (a swirl: its outer part)
+        : FLOAT ? b.bounds.max.y > GAME_HEIGHT - clearAbove : b.bounds.min.y < clearAbove;
     Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate) && inThere(b)).forEach(b => {
         if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
         FX.merge(b.position.x, b.position.y, TIERS[b.tier], 0);
@@ -1981,11 +2121,17 @@ function countForNextSet(tier) {
 // Gem Mine, the pickaxe and the stars so far
 function needChips(i, counting) {
     const row = document.createElement('div');
-    row.className = 'need' + (counting || SKINS[i].mineStars ? '' : ' later');
+    row.className = 'need' + (counting || SKINS[i].mineStars || SKINS[i].level ? '' : ' later');
     if (SKINS[i].mineStars) {
         const chip = document.createElement('span');
         for (const src of ['assets/mine/icon_pickaxe.png', 'assets/ui/icon_star.png']) { const im = document.createElement('img'); im.src = src; im.alt = ''; chip.append(im); }
         chip.append(`${Math.min(Mine.totalStars(), SKINS[i].mineStars)}/${SKINS[i].mineStars}`);
+        row.append(chip);
+        return row;
+    }
+    if (SKINS[i].level) {   // (a set that opens with a level: the level so far and the one it asks for)
+        const chip = document.createElement('span');
+        chip.append(`Level ${Math.min(Math.max(1, playerLevel()), SKINS[i].level)}/${SKINS[i].level}`);
         row.append(chip);
         return row;
     }
@@ -2025,6 +2171,7 @@ function renderSets() {
             sk.wave && '💎 Shatter wave (not in the Gem Mine): every merge shoves the gems around it away, a bigger gem harder',
             sk.rubber && '🏀 Rubber (not in the Gem Mine): everything bounces a few times before it lies still',
             sk.blocks && '🧱 Blocks (not in the Gem Mine): square blocks that fall straight down and never roll',
+            sk.swirl && '🌀 The swirl (not in the Gem Mine): no pile: the gems circle the biggest one, the big ones close in, the small ones at the rim',
             sk.wires && '⚡ Wired (not in the Gem Mine): a gem that lands sends a spark through the gems it touches to its like, and the two merge',
             sk.beat && '🎵 The beat (not in the Gem Mine): let a gem go on the beat and the merge it makes counts double',
             sk.twins && '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right',

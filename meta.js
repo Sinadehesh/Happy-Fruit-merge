@@ -85,6 +85,7 @@
         if (n > FEATURES.star && n % 10 === 0) r.stars++;
         for (const [f, l] of Object.entries(FEATURES)) if (l === n) r.opens.push({ feature: f });
         for (const t of THEMES) if (t.level === n) r.opens.push({ theme: t });
+        for (const sk of SKINS) if (sk.level === n) r.opens.push({ set: sk });   // (a gem set that opens with a level, game.js)
         const title = TITLES.find(([l]) => l === n && l > 1);
         if (title) r.title = title[1];
         return r;
@@ -174,6 +175,7 @@
         if (p.stars) chip(img(ICON.star), `×${p.stars}`);
         for (const o of p.opens) {
             if (o.theme) { const sw = document.createElement('i'); sw.className = 'swatch'; sw.style.background = `linear-gradient(${o.theme.c[0]}, ${o.theme.c[1]})`; chip(sw, `${o.theme.name} colours`); }
+            else if (o.set) chip(img(MODES[o.set.id].sprites[11]), `New gems: ${o.set.name}`);
             else chip(o.feature === 'rush' ? watch() : img(ICON[o.feature] || ICON.star), FEATURE_NAME[o.feature]);
         }
         $('lu-lucky').textContent = p.lucky ? `Lucky bonus! +${p.lucky} Zap${p.lucky > 1 ? 's' : ''}` : '';
@@ -458,9 +460,12 @@
         // what opens next (anticipation): a feature or a jar colour, with its level
         const nextF = Object.entries(FEATURES).filter(([, l]) => l > n).sort((a, c) => a[1] - c[1])[0];
         const nextT = THEMES.filter(t => t.level > n).sort((a, c) => a.level - c.level)[0];
+        const nextS = SKINS.filter(sk => sk.level > n).sort((a, c) => a.level - c.level)[0];   // (a gem set that opens with a level)
         const box = $('menu-next');
         box.innerHTML = '';
-        if (nextF && (!nextT || nextF[1] <= nextT.level)) {
+        if (nextS && (!nextF || nextS.level <= nextF[1]) && (!nextT || nextS.level <= nextT.level)) {
+            box.append(img(MODES[nextS.id].sprites[11]), `${nextS.name} gems at Level ${nextS.level}`);
+        } else if (nextF && (!nextT || nextF[1] <= nextT.level)) {
             box.append(nextF[0] === 'rush' ? watch() : img(ICON[nextF[0]] || ICON.star), `${FEATURE_NAME[nextF[0]]} at Level ${nextF[1]}`);
         } else if (nextT) {
             const sw = document.createElement('i');

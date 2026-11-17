@@ -104,7 +104,8 @@ def background(cell, tol=TOL):
 
 def solid_shape(cell, keep=0, holes=0, outline=False):
     """the item's shape. keep: a closing radius, for an item with a white sparkle on its edge that should stay
-    part of it. holes: open enclosed white areas at least this big (px), for an item with a real gap through it.
+    part of it. holes: open enclosed white areas at least this big (px), for an item with a real gap through it
+    (or (smallest, biggest), when a white highlight on it is bigger than its gaps).
     outline: the item is drawn inside a dark outline all round, so anything light outside the outline (pencil
     marks, a pale rim) goes too"""
     B, bg = background(cell)
@@ -118,8 +119,9 @@ def solid_shape(cell, keep=0, holes=0, outline=False):
     m = ndimage.binary_fill_holes(m)
     if holes:
         lab, n = ndimage.label((distance_from_white(cell, bg) <= TOL) & m)
+        lo, hi = holes if isinstance(holes, (tuple, list)) else (holes, float('inf'))   # (lo, hi): gaps of these sizes only
         for i in range(1, n + 1):
-            if (lab == i).sum() >= holes: m &= lab != i
+            if lo <= (lab == i).sum() <= hi: m &= lab != i
     return m
 
 
