@@ -576,6 +576,38 @@ ITEMS, from the smallest to the biggest, left to right, top to bottom:
 AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on the background, gradients or textures in the background, a black or starry background, stars, sparkles or dust floating around or touching the items (sparkles only inside them), glowing halos around items 1 to 11, long comet tails, thin rings, a realistic photo or NASA look, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, long thin spikes, holes, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
 ```
 
+### Fix 8. Spiral Atoms, the whole set again: from a quark to a living cell
+
+The first atom set was not in a true order (an electron after a quark, a crystal and a mini sun after a living cell). This one is physically correct: twelve real things, each really bigger than the one before, from the smallest thing there is to a single-celled organism. Quarks make a pion and a proton; protons and neutrons make a helium nucleus; helium nuclei make a carbon nucleus (that is how stars make carbon); the nucleus takes electrons and is an atom; atoms make water and sugar; then DNA, a virus, a bacterium and an amoeba. Real sizes, for the record: a quark has no size anyone has measured (under a thousandth of a proton), pion 0.0000013 nm across, proton 0.0000017 nm, helium nucleus 0.0000034 nm, carbon nucleus 0.000005 nm, carbon atom 0.15 nm, water 0.3 nm, glucose 1 nm, DNA 2 nm wide, virus 100 nm, bacterium 2000 nm, amoeba 300000 nm.
+
+```
+A sprite sheet of 12 candy-style science objects for a mobile merge game: the "Spiral Atoms" collection, a journey from a single quark to a living single-celled organism.
+
+IMPORTANT: The items are real things in their true order of size, from the smallest thing in nature to a living cell, and each one is drawn the way a science book shows it, with the right number of parts. Count the parts exactly as written. Every item has a clearly different shape and a different main color, so no two items can be mixed up, even when they are very small.
+
+STYLE: ultra-saturated candy style, exactly like a premium candy match-3 game. Every item looks like it is made of glossy hard candy and jelly: juicy, wet-looking, semi-translucent candy surfaces with light glowing through the edges, a thick glossy candy coating, sugar-glass shine and big bright white specular highlights, with a bright rim light along one edge. Colors are maximum saturation, bright and electric, with no dull, grey, brown or muddy tones. Thick smooth dark-tinted outlines (a darker shade of each item's own color, never plain black). Fat, chunky, rounded shapes: every ball is a big glossy ball, every link is short and thick, with no long thin lines, no thin parts and no holes. No faces, no eyes, no mouths. Clean polished mobile-game icon art.
+
+LAYOUT: a neat grid of 3 rows and 4 columns on a plain pure white background. Each item is separate, centered in its own cell, evenly spaced, with clear empty space around it and nothing touching or overlapping. All items are about the same size, fill their cells, and have a compact, roundish overall outline (in the game they circle each other like little planets).
+
+ITEMS, from the smallest to the biggest, left to right, top to bottom:
+1. Quark: one single perfect little ball of hot magenta candy with a tiny bright spark of light deep inside it, nothing else
+2. Pion (a pair of quarks): exactly two balls side by side, one tangerine orange and one lemon yellow, joined by one short, fat, wavy white spring between them
+3. Proton: one translucent ruby-red jelly ball with exactly three small balls inside it, one red, one green and one blue, set in a triangle and joined to each other by short fat wavy white springs
+4. Helium nucleus: exactly four balls packed tight in a little pyramid, two cherry red and two sky blue, all touching, inside one clear golden-yellow jelly bubble
+5. Carbon nucleus: a round bumpy cluster of exactly twelve small balls packed tight like a raspberry, six cherry red and six sky blue, mixed evenly, with no bubble around it
+6. Carbon atom: a translucent electric-blue jelly ball with a tiny red and blue cluster at its exact center and two thick glowing rings inside the ball around the center, a small inner ring with exactly two bright white beads on it and a bigger outer ring with exactly four bright white beads on it
+7. Water molecule: one big aqua-turquoise ball with exactly two smaller pearl-white balls stuck onto it at the upper left and the upper right, like a round head with two round ears, the three balls pressed into each other
+8. Sugar molecule (glucose): a chunky six-sided ring made of exactly six balls touching each other, five lime green and one red, with a few tiny white balls stuck around the outside of the ring, the middle of the ring filled with clear pale-green jelly
+9. DNA: a short fat double helix standing upright, two thick twisted ribbons, one violet and one hot pink, joined by short fat rungs in four colors (red, yellow, green and blue), only two full twists, so the whole item is a chunky egg shape
+10. Virus: a round teal ball whose shell is made of flat five-sided and six-sided panels like a football, covered evenly with short, fat, rounded coral-pink knobs sticking out all around
+11. Bacterium: a plump emerald-green capsule, a short fat rod like a pill, with a darker green tangled loop of DNA seen inside it, short fat hairs all around it and one short, fat, curly tail at one end
+12. Amoeba: a big soft blob of translucent peach-pink jelly with five short, fat, rounded lobes around its edge, one glowing golden-orange round nucleus inside and three small clear round bubbles, the only item with a small soft glow (the final, living item)
+
+AVOID: text, labels, letters, numbers, plus and minus signs, arrows, formulas, logos, watermarks, faces, eyes, grid lines, shadows on the background, gradients or textures in the background, a dark or starry background, sparkles or dust floating around or touching the items (sparkles only inside them), glowing halos around items 1 to 11, orbit rings or electrons outside the atom's ball, thin lines, thin sticks between balls, long thin tails or hairs, a microscope photo look, a realistic 3D render or textbook diagram look, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, holes through an item, a wrong number of balls, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
+```
+
+When the sheet is back: cut it with `tools/cut_sets.py` (one 3x4 sheet; file names `01_quark`, `02_pion`, `03_proton`, `04_helium_nucleus`, `05_carbon_nucleus`, `06_carbon_atom`, `07_water`, `08_glucose`, `09_dna`, `10_virus`, `11_bacterium`, `12_amoeba`), put the names in `MODES.atoms` in `game.js`, and make the outlines again with `tools/make_shapes.py`.
+
 ## Blast animation (merge burst, frame by frame)
 
 An 8-frame animation of one candy burst, played in order when two items merge.

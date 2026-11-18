@@ -121,6 +121,59 @@ const FX = (() => {
         effects.push({ kind: 'smoke', x, y, r, t: 0, dur: 0.75 });
     }
 
+    // Trails (game.js THE SWIRL): a function giving the items that leave one, [id, x, y, level], and how long a trail is
+    // (seconds). Each item draws a thin line where it has been, in its level's colour, fading toward its old end: the
+    // figure its orbits make. They are drawn on a canvas of their own, under the items.
+    const TRAIL_COLOURS = ['#ff5fd0', '#5fe0ff', '#ff6a5f', '#d6b8ff', '#ffa040', '#9be04a', '#6f9bff', '#ff8f7a', '#ffe14a', '#7ae8c8', '#c77bff', '#ffc24a'];
+    let trailsOf = null, trailFor = 0, trailCanvas = null, trailCtx = null, trailTick = 0;
+    const trailsBy = new Map();   // id -> { tier, pts: [x, y, x, y, ...] } (the newest last)
+    function trails(fn, seconds) { trailsOf = fn; trailFor = seconds; }
+    function trailLayer() {   // (made when the first trail is drawn: the board is there by then)
+        trailCanvas = document.createElement('canvas');
+        trailCanvas.className = 'trail-layer';
+        boardEl.insertBefore(trailCanvas, boardEl.firstChild);
+        trailCtx = trailCanvas.getContext('2d');
+        sizeTrails();
+        window.addEventListener('resize', sizeTrails);
+    }
+    function sizeTrails() {
+        const dpr = Math.min(2, window.devicePixelRatio || 1), r = trailCanvas.getBoundingClientRect();
+        trailCanvas.width = Math.round(r.width * dpr); trailCanvas.height = Math.round(r.height * dpr);
+        trailCtx.setTransform(trailCanvas.width / W, 0, 0, trailCanvas.height / H, 0, 0);
+        trailCtx.lineCap = trailCtx.lineJoin = 'round';
+    }
+    function drawTrails() {
+        let list = [];
+        try { list = trailsOf(); } catch (e) {}
+        const keep = Math.max(8, Math.round(trailFor * 30)), sample = ++trailTick % 2 === 0, seen = new Set();   // (a point every other frame: about 30 a second)
+        for (const [id, x, y, tier] of list) {
+            seen.add(id);
+            let tr = trailsBy.get(id);
+            if (!tr) { tr = { tier, pts: [] }; trailsBy.set(id, tr); }
+            const n = tr.pts.length;
+            if (n >= 2 && Math.hypot(x - tr.pts[n - 2], y - tr.pts[n - 1]) > 60) tr.pts.length = 0;   // (put somewhere else at one go: a new trail)
+            if (sample) { tr.pts.push(x, y); if (tr.pts.length > keep * 2) tr.pts.splice(0, tr.pts.length - keep * 2); }
+        }
+        for (const id of trailsBy.keys()) if (!seen.has(id)) trailsBy.delete(id);
+        trailCtx.clearRect(0, 0, W, H);
+        trailCtx.lineWidth = 2;
+        const BANDS = 5;
+        for (const tr of trailsBy.values()) {
+            const n = tr.pts.length / 2;
+            if (n < 3) continue;
+            trailCtx.strokeStyle = TRAIL_COLOURS[tr.tier % TRAIL_COLOURS.length];
+            for (let band = 0; band < BANDS; band++) {   // from the old end (faint) to the new one
+                const from = Math.floor(n * band / BANDS), to = Math.min(n - 1, Math.floor(n * (band + 1) / BANDS));
+                if (to <= from) continue;
+                trailCtx.globalAlpha = 0.06 + 0.4 * (band + 1) / BANDS * (n / keep > 1 ? 1 : 0.5 + 0.5 * n / keep);
+                trailCtx.beginPath(); trailCtx.moveTo(tr.pts[from * 2], tr.pts[from * 2 + 1]);
+                for (let k = from + 1; k <= to; k++) trailCtx.lineTo(tr.pts[k * 2], tr.pts[k * 2 + 1]);
+                trailCtx.stroke();
+            }
+        }
+        trailCtx.globalAlpha = 1;
+    }
+
     // The volcano (game.js LAVA). lava: a function giving where the lava's surface is now (y), where it erupts (mark),
     // how near that is (hot: 0 to 1) and whether it is about to (soon); the lava is drawn every frame, glowing and
     // heaving, with the mark as a dashed line that throbs as the lava nears it. calm: steam rises from the lava
@@ -581,6 +634,7 @@ const FX = (() => {
         last = now;
         ctx.clearRect(0, 0, W, H);
         shakeStep(dt);
+        if (trailsOf && boardEl) { if (!trailCanvas) trailLayer(); drawTrails(); }
         if (threadsOf) drawThreads(now / 1000);
         if (glowsOf) {   // the gems let go on the beat: a neon ring that breathes
             let list = [];
@@ -806,5 +860,5 @@ const FX = (() => {
         requestAnimationFrame(loop);
     }
 
-    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, lava, calm, erupt, heatGlow, melt, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
+    return { init, flip, threads, water, splash, bubble, rumble, blast, burn, trails, lava, calm, erupt, heatGlow, melt, clash, dangerGlow, crumble, pixels, wave, spark, onBeat, beatGlow, calling, hop, merge, praise, zap, banner, splinters, thud };
 })();

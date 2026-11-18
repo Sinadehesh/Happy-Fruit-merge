@@ -334,29 +334,37 @@ const BEAT = SKIN && SKIN.beat && !MINE ? Object.assign({
     apart: 170      // out of tune, a gem hops away only from a like nearer than this
 }, SKIN.beat === true ? null : SKIN.beat) : null;
 let inTune = true;   // (THE BEAT) the last gem was let go on the beat (or none has been yet): alike gems hop together; false: apart
-// A swirl set (GAME.skins swirl: the Spiral Atoms): there is no pile: the gems swirl in the middle of the jar round
-// the biggest one, in a pattern that every merge changes, see THE SWIRL below. Not in the Gem Mine.
+// A swirl set (GAME.skins swirl: the Spiral Atoms): a round jar with no pile in it: every item circles a bigger
+// one, in orbits within orbits, by a law that every merge changes, see THE SWIRL below. Not in the Gem Mine.
 // (swirl: true, or an object that changes these numbers)
 const SWIRL = SKIN && SKIN.swirl && !MINE && !FLOAT ? Object.assign({
-    chaos: 7,         // the first merges of a game the swirl is wild, a little less with each one...
-    orderly: 8,       // ...the next ones it turns in plain rings, each merge in another way; after them come the figures
-    wild: 1.1,        // how fast the wild drift is, px a step
-    ones: 4,          // only level 1 is dropped until a gem of this level has been made,
+    small: 16, big: 120,  // the sizes of the items, px: from the first level to the last, each the same number of times the one before
+                      // (1.2: a gentler ladder than the other sets' 20 to 178, so that orbits within orbits fit in the jar)
+    x: 225, y: 416,   // the middle of the jar
+    ring: 222,        // the jar: round, this big (the inside of its wall); it touches the sides and the bottom of the board
+    mouth: 45,        // ...and open at the top, this many degrees either side of straight up: items are let go through there
+    edge: 3,          // everything keeps this far inside the wall, px
+    chaos: 12,        // the first merges of a game the orbits are wild: the items stray from their places, a little less with each one
+    order: 0.25,      // ...how much order there is at the very start (1: all of it)
+    wander: 40,       // ...and how far an item strays when there is none, px
+    ones: 4,          // only level 1 is dropped until an item of this level has been made,
     twos: 6,          // ...then levels 1 and 2 until one of this level has; from then on the usual kinds, at random
-    gather: 1.2,      // how fast alike gems that the player cannot bring together are drawn to each other, px a step
-    size: 0.78,       // the gems are this much smaller than in the other sets, so that rings of them fit round the big one
-    x: 225, y: 416,   // the middle of the swirl
-    ring: 222,        // the ring the swirl has to stay in, in place of the line: its size (it touches the walls and the floor)
-    rim: 214,         // how far from the middle the outermost gems reach
-    turn: 2.1,        // how fast it turns: a gem at r px from the middle goes round at turn / (r + soft) a step,
-    soft: 60,         // ...so the inner rings turn faster, but never wildly
-    pull: 0.045,      // how hard a gem is drawn to its own ring: px a step for each px it is off it
-    steer: 0.12,      // how fast a gem takes up the speed the swirl gives it (the part of the difference it makes up each step)
-    drop: 5.5,        // how fast a gem that was let go falls into it, px a step
-    blend: 94,        // steps over which the swirl goes from one pattern to the next after a merge (1.2 s)
-    apart: 8,         // soft, like candy: unlike gems nearer than this (px between them) push each other off...
-    shove: 0.1,       // ...this hard at most (px a step, each step, shared out by their weights)
-    breath: 0.025     // how much the one in the middle swells and shrinks as it turns (the picture only)
+    gap: 6,           // room between an item (with all that circles it) and the next, px
+    turn: 2.1,        // how fast: an item on an orbit of r px round the middle goes round at turn / (r + soft) a step,
+    soft: 60,         // ...so a small orbit is quicker than a wide one, but never wild
+    most: 3.4,        // no item goes round its orbit faster than this, px a step,
+    spin: 0.07,       // ...nor than this, a step (a full turn in about a second)
+    near: 24,         // an item that takes its place on an orbit this near its like (px between the two) comes together with it
+    close: 0.003,     // how fast two items that are to meet close up on their orbit, each (the angle a step: from opposite sides in 7 s)
+    spread: 0.04,     // how fast the items on an orbit spread out evenly round it (the part of the difference made up each step)
+    hold: 0.14,       // an item that is not at its place goes this part of the way there each step,
+    reach: 4.5,       // ...but no faster than this, px a step
+    touch: 0.97,      // alike items merge when they are this near (x the two sizes together)
+    wait: 52,         // an item that is left out waits this far from the side of the board, beside the mouth
+    drop: 10,         // how fast an item that was let go falls into the jar, px a step
+    blend: 94,        // steps over which the orbits go from one law to the next after a merge (1.2 s)
+    breath: 0.025,    // how much the one in the middle swells and shrinks as it turns (the picture only)
+    trail: 7          // every item leaves a faint trail this many seconds long, which draws the figure it makes (0: none)
 }, SKIN.swirl === true ? null : SKIN.swirl) : null;
 let swirlMerges = 0;   // (THE SWIRL) how many merges this game has had: the swirl's pattern follows it
 let swirlTop = 0;      // ...and the highest level made in it so far (0: level 1): what is dropped follows it
@@ -413,7 +421,8 @@ function reverseTiers(count) {
     return Array.from({ length: count }, (_, i) =>
         Math.round(REVERSE_LARGEST * Math.pow(REVERSE_SMALLEST / REVERSE_LARGEST, i / (count - 1))));
 }
-const TIERS = REVERSE ? reverseTiers(MODES[MODE].tiers.length) : SWIRL ? MODES[MODE].tiers.map(r => Math.round(r * SWIRL.size)) : MODES[MODE].tiers;
+const TIERS = REVERSE ? reverseTiers(MODES[MODE].tiers.length)
+    : SWIRL ? MODES[MODE].tiers.map((r, i, all) => Math.round(SWIRL.small * Math.pow(SWIRL.big / SWIRL.small, i / (all.length - 1)))) : MODES[MODE].tiers;
 const SPRITE_SIZE = 256;   // px, every sprite is a 256x256 square
 const SPRITE_FIT = 1.08;   // draw slightly bigger than the collider so art touches neighbours
 SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
@@ -596,6 +605,7 @@ function updateUI() {
 }
 
 function spawnY(tier) {
+    if (SWIRL) return SWIRL.y - SWIRL.ring - TIERS[tier] - 6;   // (a round jar: just over its mouth)
     return flipY(TIERS[tier] + 10);
 }
 
@@ -633,6 +643,10 @@ if (TWINS) { board.classList.add('twins'); if (TWINS.same) document.querySelecto
 
 function clampX(x, tier) {
     const r = bomb === 2 ? ERUPT.size : TIERS[tier] * (BLOCKS ? BLOCKS.side / 2 : 1);   // (a lava bomb in the hand; a block right up to the wall)
+    if (SWIRL) {   // (a round jar: through its mouth at the top)
+        const half = Math.max(0, SWIRL.ring * Math.sin(SWIRL.mouth * Math.PI / 180) - r);
+        return Math.max(SWIRL.x - half, Math.min(SWIRL.x + half, x));
+    }
     return Math.max(r, Math.min(GAME_WIDTH - r, x));
 }
 
@@ -1446,8 +1460,8 @@ Events.on(engine, 'beforeUpdate', () => {
         // Touching or crossing the line is fine; you lose only when a landed item (or a crate) is
         // entirely above it (its lowest point is above the line; floating: entirely below it)
         if ((body.tier !== undefined || body.crate || body.cinder) && !body.isGrowing && !body.isDropping && body.sitAt === undefined) {   // (nor a pet that sits waiting, COME HERE)
-            if (SWIRL) {   // a swirl: all of it outside the ring, whatever its speed (nothing rests there)
-                if (Math.hypot(body.position.x - SWIRL.x, body.position.y - SWIRL.y) - body.currentRadius > SWIRL.ring) isAnyBodyAboveLine = true;
+            if (SWIRL) {   // a round jar: an item that is outside its wall (left out: there is no room for it, THE SWIRL)
+                if (Math.hypot(body.position.x - SWIRL.x, body.position.y - SWIRL.y) > SWIRL.ring) isAnyBodyAboveLine = true;
             } else if (FLOAT ? body.bounds.min.y > GAME_HEIGHT - DANGER_Y : body.bounds.max.y < DANGER_Y) {
                 if (Math.abs(body.velocity.y) < 2 && Math.abs(body.velocity.x) < 2 || body.hopLeft > 0) {   // (hopping to the beat is not falling)
                     isAnyBodyAboveLine = true;
@@ -1483,7 +1497,7 @@ function gameOver(reason) {
     // in the app: the player may watch an ad to keep going (clearing the top of the jar), MAX_REVIVES times a game
     const canRevive = reason === 'full' && revives < MAX_REVIVES && Ads.canRevive();
     document.getElementById('revive').style.display = canRevive ? 'block' : 'none';
-    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + `atch a short ad to clear the ${SWIRL ? 'outside of the swirl' : (FLOAT ? 'bottom' : 'top') + ' of the jar'}`;
+    document.getElementById('revive-text').textContent = (revives === MAX_REVIVES - 1 ? 'Last chance: w' : 'W') + `atch a short ad to clear the ${FLOAT ? 'bottom' : 'top'} of the jar`;
     showNextSetProgress();
     if (reason === 'full' || reason === 'time') {
         Sound.play('gameOver');
@@ -1602,7 +1616,7 @@ const SET_HINT = FLOAT ? ['floatTold', 'Zero gravity: these gems float up!']
     : RUBBER ? ['told.rubber', 'Rubber: everything bounces!']
     : BLOCKS ? ['told.blocks', 'Blocks: they fall straight and never roll!']
     : WIRES ? ['told.wires', 'Touching gems are wires: a spark finds its like!']
-    : SWIRL ? ['told.swirl', 'It starts wild: every merge changes the swirl!']
+    : SWIRL ? ['told.swirl', 'Each one circles a bigger one. Drop yours onto its like!']
     : BEAT ? ['told.beat', 'Let go on the beat: alike gems hop together. Off it: apart!']
     : TWINS ? ['told.twins', TWINS.same ? 'Twins: every gem falls as a mirrored pair!' : 'Two different jewels fall at once, mirrored!']
     : CALL ? ['told.call', 'The same pets jump to your finger!'] : null;
@@ -1700,220 +1714,333 @@ function mergeGems(bodyA, bodyB, at) {
     return merged;
 }
 // --- THE SWIRL --- (a set with swirl in GAME.skins, the Spiral Atoms)
-// There is no gravity and no pile: the gems drift and circle in the middle of the jar, and every merge changes
-// the way they do. A game goes from chaos to order to ever new figures:
-//  - the first SWIRL.chaos merges the swirl is wild: the gems wander on slow eddies with no middle to hold on to,
-//    each merge calming them a little and shifting the eddies;
-//  - the next SWIRL.orderly merges it is plain: the biggest gem holds the middle and the others circle it, each
-//    level on a ring of its own, the bigger ones close in, the small ones at the rim. Each merge turns the rings
-//    another way: all as one, the inner ones faster, back again, every other ring the other way, quick and slow...
-//  - after that each merge brings the next of twelve figures (ovals that turn, a rose, bands that slide past
-//    each other, a braid, a whirlpool with wakes, rings that breathe, spiral arms, woven loops, a sun's fall and
-//    breath, grooves, a middle that circles, eddies), and after the twelfth they come again mirrored and with more
-//    petals, arms and strands. It goes from one pattern to the next in 1.2 s, smoothly.
-// A game also starts small, so that there is time to see it: only level 1 is dropped until a gem of level
-// SWIRL.ones has been made, then levels 1 and 2 until one of level SWIRL.twos, and from then on the usual kinds.
-// The levels that are dropped are the player's to bring together: a gem that is let go falls straight until it
-// is in the swirl, so it takes aim and timing to land it by its like. Alike gems of a level that is not dropped
-// find each other by themselves: they are drawn along their ring until they meet (and the biggest ones meet in
-// the middle). While the swirl is still wild every gem is drawn to its like, the less the calmer it gets.
-// In place of the line there is a ring round the swirl: the jar is full when the swirl has grown so big that a
-// gem is pushed right out of the ring for 3 seconds. The gems slip past each other, lean the way they go, and
-// the one in the middle turns on the spot. The patterns follow the merges and nothing else: no chance in them
-// (the wild drift is a fixed field too), and nothing follows how the player is doing.
-let swirlStep = 0, figure = -1, figureWas = -1, figureSince = 0;   // the pattern it turns in (the merges it stands for), the one before, since when
-const SWIRL_SPIN = [0.004, 0.03, 0.012, 0.01, 0.012, 0.012, 0.01, 0.007, 0.02, 0.006, 0.004, 0.004];   // how fast the one in the middle turns, by figure
-// the ring of a gem of level k + 1 when the biggest is of level top + 1: how far its middle is from the swirl's
-function ringOf(k, top) {
-    const core = TIERS[top], r = TIERS[k];
-    const inner = core + r + 3, outer = Math.min(SWIRL.rim - r, core + 60 + 30 * top);   // (a young swirl is a small one)
-    if (top < 1 || outer <= inner) return inner;
-    return inner + (outer - inner) * Math.pow((top - 1 - k) / Math.max(1, top - 1), 0.85);
-}
-// Every pattern gives, for a gem at r px and angle a from the swirl's middle, at time t (steps), with its ring at
-// R and the core's edge at `core`: [how fast it goes out (px a step), how fast it goes round (a step)].
-// The plain ones, in the order the merges bring them:
-const ORDERLY = SWIRL ? (() => {
-    const K = SWIRL.pull, S = SWIRL.soft, inner = r => SWIRL.turn / (r + S);
-    return [
-        (r, a, t, R) => [-K * (r - R), 0.008],                                                  // all as one, slowly
-        (r, a, t, R) => [-K * (r - R), inner(r)],                                               // the inner rings faster
-        (r, a, t, R) => [-K * (r - R), -inner(r)],                                              // the other way
-        (r, a, t, R, core, b) => [-K * (r - R), (b.tier % 2 ? -1 : 1) * 0.0095],                // every other ring the other way
-        (r, a, t, R) => [-K * (r - R), -0.013],                                                 // all as one, quicker, back again
-        (r, a, t, R) => [-K * (r - (R + 9 * Math.sin(t * 0.02))), inner(r)],                    // the rings breathe
-        (r, a, t, R, core, b) => [-K * (r - R), (b.tier % 2 ? 1.5 : 0.7) * inner(r)],           // every other ring quick, the ones between slow
-        (r, a, t, R) => { const c = Math.cos(a - t * 0.004); return [-K * (r - R * 0.86 / (1 - 0.14 * c * c)), inner(r)]; }   // the rings stretch into ovals that slowly turn
-    ];
-})() : null;
-// The twelve figures (q: how many times all twelve have been round: it gives them more petals, arms and strands)
-const FIGURES = SWIRL ? (() => {
-    const K = SWIRL.pull, S = SWIRL.soft, round = r => SWIRL.turn / (r + S), TAU = Math.PI * 2;
-    return [
-        // 0 eddies: a slow turn (the eddies are added to it in swirlAt)
-        (r, a, t, R) => [-K * (r - R), 0.010],
-        // 1 loops woven in and out, never twice the same (the two turns are in the golden ratio)
-        (r, a, t, R, core, b, q) => [-K * (r - (R + 22 * Math.sin((2 + q % 2) * a - t * 0.015) * Math.cos(3 * a + t * 0.00927))), round(r)],
-        // 2 a whirlpool, quick inside, with wakes that turn with it
-        (r, a, t, R, core, b, q) => { const w = 2 + q % 2; return [-K * (r - R) - 55 * Math.sin(w * a - t * 0.0126) / (r + S),
-            441 / ((r + S) * (r + S)) * (1 - Math.exp(-r * r / 3600)) + 0.45 * Math.cos(w * a - t * 0.0126) / (r + S)]; },
-        // 3 round a middle that itself goes in a small circle (swirlAt moves it), so the cloud has a thick and a thin side
-        (r, a, t, R) => [-K * (r - R), 0.145 / Math.sqrt(r + S)],
-        // 4 grooves, a lane every 46 px, all turning together
-        (r, a, t, R, core) => [-0.5 * Math.sin(TAU * (r - core) / 46) - 0.02 * (r - R), 0.009],
-        // 5 ovals that slowly turn, slow at the far ends and quick past the middle
-        (r, a, t, R) => { const c = Math.cos(a - t * 0.0042); return [-K * (r - R * 0.72 / (1 - 0.28 * c * c)), 261 / (r * r + S * S)]; },
-        // 6 bands 50 px apart, quick and slow in turn (they slide past each other)
-        (r, a, t, R, core) => [-0.5 * Math.sin(TAU * (r - core) / 50) - 0.012 * (r - R), 0.0105 * (1 + 0.8 * Math.cos(Math.PI * (r - core) / 50))],
-        // 7 a rose of three petals (then four, then five) that turns with the gem in the middle
-        (r, a, t, R, core, b, q) => [-K * (r - (R + 24 * Math.cos((3 + q % 3) * (a - t * SWIRL_SPIN[7])))), 0.009],
-        // 8 a braid: two strands woven through each other
-        (r, a, t, R, core, b, q) => { const ph = (3 + q % 2) * a - t * 0.0131 + (b.id % 2) * Math.PI; return [-K * (r - (R + 22 * Math.sin(ph))), 0.009 * (1 + 0.25 * Math.cos(ph))]; },
-        // 9 rings that breathe in and out
-        (r, a, t, R, core) => { const w = TAU * (r - core) / 60; return [-K * (r - R) + 0.5 * Math.sin(w) * Math.cos(t * 0.021), 0.008 / (1 + 0.25 * Math.cos(w) * Math.sin(t * 0.021))]; },
-        // 10 spiral arms, like a galaxy: six, then two, four, three, five
-        (r, a, t, R, core, b, q) => { const arms = [6, 2, 4, 3, 5][q % 5];
-            return [-0.45 * Math.sin(arms * (a - t * SWIRL_SPIN[10]) - 18.5 * Math.log(Math.max(1, r) / Math.max(1, core))) - 0.02 * (r - R), SWIRL_SPIN[10] + 1.2 / (r + S)]; },
-        // 11 a sun: faster and faster toward it, and lifted out again by its slow breath
-        (r, a, t, R, core) => { const lift = R + 60 * Math.exp(-R / 150) * Math.sin(t * 0.0079) ** 2, near = Math.max(8, r - core + 30); return [-K * (r - lift), Math.sqrt(268 / ((r + S) * near * near))]; }
-    ];
-})() : null;
-const FIGURE_ORDER = [5, 7, 6, 8, 2, 9, 10, 1, 11, 4, 3, 0];   // the order the merges bring them in
-// the wild drift at (x, y): the curl of a slow wave, so it stirs the gems without pushing them together or apart;
-// every merge (m) shifts its eddies
-function wildAt(x, y, t, m) {
-    const s = m * 1.7, u = x / 62 + s + t / 170, v = y / 54 - s * 0.6 - t / 210, q = Math.cos((x + y) / 41 + t / 130 + s) * 35 / 41;
-    return [SWIRL.wild * (Math.sin(u) * Math.cos(v) * 70 / 54 + q), -SWIRL.wild * (Math.cos(u) * Math.sin(v) * 70 / 62 + q)];
-}
-// what the pattern of a swirl that has had m merges is: [the stage (0 wild, 1 plain, 2 figures), how much order there
-// is in it (0 to 1), the figure, how many times the figures have been round, and which way they turn]
+// The jar is round and open at the top, with no gravity and no pile in it: it is an orrery. The biggest item
+// holds the middle of the jar. Every other item circles a bigger one, which itself circles a bigger one, and so
+// on: orbits within orbits, like moons round planets round a sun. Each item keeps exactly to its place on its
+// orbit and nothing pushes anything, so its path through the jar is a loop upon a loop: a rosette, a rounded
+// triangle, an oval... (the law says which), and the faint trail it leaves draws that figure.
+// Nothing is drawn into anything. Items merge when two alike touch, and that is all:
+//  - An item that is let go falls straight in through the mouth of the jar until it touches an item, or has
+//    passed them all. On its like, the two merge. Otherwise it stays in the jar and circles the nearest bigger
+//    item that has room for it, on that item's next free orbit; if its like is right by it on that orbit
+//    (SWIRL.near), the two come together and merge.
+//  - Alike items of the kinds that are dropped keep step on their orbit and never meet by themselves: they are
+//    the player's to bring together.
+//  - Alike items of a kind that is not dropped share an orbit and close up on it until they meet (so the higher
+//    levels, which cannot be dropped, can be made); two of the biggest kind meet in the middle.
+// Round one item the bigger kinds circle close in and the smaller ones further out, as many on an orbit as fit
+// round it, each with room for all that circles it. When there is no more room round an item, the next one
+// circles the item that one circles, and so on down to the one in the middle: a full jar is rings round the
+// middle. An item for which there is no room anywhere is left out: it waits beside the mouth, and the jar is
+// full when one has waited there for 3 seconds (a merge that makes room lets it in).
+// Every merge changes the law of the orbits (LAWS: which way each orbit goes, how many times a moon goes round
+// while its planet goes round once, the shape of the orbits), and after the last they come again the other way
+// round. The first SWIRL.chaos merges of a game the orbits are wild: the items stray from their places and go
+// round slowly, a little less wild with each merge. A game also starts small: only level 1 is dropped until an
+// item of level SWIRL.ones has been made, then levels 1 and 2 until one of level SWIRL.twos, and from then on
+// the usual kinds. The laws follow the merges and nothing else: no chance in them (the wild straying is a fixed
+// figure too), and nothing follows how the player is doing.
+let swirlStep = 0, figure = -1, figureWas = -1, figureSince = 0;   // the law the orbits follow (the merges it stands for), the one before, since when
+let swirlMix = 1;        // how far the orbits have gone from the law before to this one (0 to 1)
+let swirlSeen = '';      // the items in the jar (and the kinds that are dropped) the orbits were last worked out for
+let swirlOrder = [];     // the items in the jar, each after the one it circles
+let swirlRings = [];     // the orbits: the items on each
+let swirlLoose = 1;      // how much of a law's shape the orbits take (1: all of it, 0: plain circles, the jar is tight)
+let swirlStray = 0;      // how far a wild item strays from its place, px (the orbits are laid out with room for it)
+let swirlLeft = 0;       // how many items are left out (no room for them in the jar)
+// The laws, in the order the merges bring them:
+//   way(j): which way orbit j round the middle goes (j: 0 the innermost; 1 or -1),
+//   quick(j): ...and how fast (x the usual; left out: 1),
+//   times(d, j): an item d orbits out from the middle (2: a moon, 3: a moon's moon), on orbit j of the item it
+//     circles, goes round this many times while that item goes round once (under 0: the other way). It says the
+//     figure a moon draws: 2 a loop, 3 two loops, -1 an oval, -2 a rounded triangle, -3 a rounded square...
+//   shape(a, t): how far out an orbit round the middle is at angle a at time t (x its nearest: 1 to 1.3; left
+//     out: a circle). The orbits take the shape only as far as there is room for it in the jar (swirlLoose); a
+//     moon's own orbit is always a circle, and its path follows its planet's.
+const LAWS = [
+    { way: j => 1,              times: (d, j) => 2 },                                                                    // all one way: each moon draws a loop
+    { way: j => j % 2 ? -1 : 1, times: (d, j) => -2 },                                                                   // orbit against orbit: rounded triangles
+    { way: j => 1,              times: (d, j) => -1, shape: (a, t) => 1.15 - 0.15 * Math.cos(a - t * 0.004) },           // orbits off their middle that slowly turn: ovals
+    { way: j => 1,              times: (d, j) => 3 },                                                                    // quick moons: two loops
+    { way: j => j % 2 ? -1 : 1, times: (d, j) => -2, shape: (a, t) => 1.13 + 0.13 * Math.cos(3 * (a - t * 0.003)) },     // a trefoil
+    { way: j => 1,              times: (d, j) => 2,  shape: (a, t) => 1.12 + 0.12 * Math.sin(t * 0.02) },                // orbits that breathe
+    { way: j => j % 2 ? 1 : -1, times: (d, j) => -3 },                                                                   // the other way round: rounded squares
+    { way: j => 1,              times: (d, j) => 3,  shape: (a, t) => 1.11 + 0.11 * Math.cos(4 * (a + t * 0.003)) },     // four corners
+    { way: j => j % 2 ? -1 : 1, times: (d, j) => -1, shape: (a, t) => 1.15 - 0.15 * Math.cos(2 * (a + t * 0.005)) },     // long ovals
+    { way: j => 1,              times: (d, j) => 4,  shape: (a, t) => 1.1 + 0.1 * Math.cos(5 * (a - t * 0.002)) },       // five petals: three loops
+    { way: j => j % 2 ? -1 : 1, quick: j => [1, 0.6, 1.5][j % 3], times: (d, j) => [2, -3, 3, -2][(d + j) % 4] },        // fast and slow: every orbit its own figure
+    { way: j => 1,              times: (d, j) => -4, shape: (a, t) => 1.08 + 0.08 * Math.sin(2 * a + t * 0.03) }         // a ripple round the orbits: rounded pentagons
+];
+// what the orbits of a game that has had m merges are like: [how much order there is in them (under 1: still
+// wild), the law, and which way round it is taken (1, or -1 the second time through the laws)]
 function patternOf(m) {
-    if (m < SWIRL.chaos) return [0, m / SWIRL.chaos, -1, 0, 1];
-    if (m < SWIRL.chaos + SWIRL.orderly) return [1, 1, -1, 0, 1];
-    const n = m - SWIRL.chaos - SWIRL.orderly, q = Math.floor(n / FIGURE_ORDER.length);
-    return [2, 1, FIGURE_ORDER[n % FIGURE_ORDER.length], q, q % 2 ? -1 : 1];
+    if (m < SWIRL.chaos) return [SWIRL.order + (1 - SWIRL.order) * m / SWIRL.chaos, 0, 1];
+    const n = m - SWIRL.chaos;
+    return [1, n % LAWS.length, Math.floor(n / LAWS.length) % 2 ? -1 : 1];
 }
-// the speed the pattern of m merges gives gem b, when the biggest gems are of level top + 1
-function swirlAt(m, b, top, t) {
-    const [stage, order, fig, q, way] = patternOf(m);
-    let cx = SWIRL.x, cy = SWIRL.y;
-    if (fig === 0) { cx += 10 * Math.sin(t * 0.0105); cy += 10 * Math.sin(t * 0.021); }           // (the eddies' middle drifts in a figure of eight)
-    else if (fig === 3) { cx += 14 * Math.cos(t * 0.0175); cy += 14 * Math.sin(t * 0.0175); }      // (this one's goes in a small circle)
-    const dx = b.position.x - cx, dy = b.position.y - cy, r = Math.hypot(dx, dy) || 1, a = Math.atan2(dy, dx);
-    let vx, vy;
-    if (b.tier === top) {                                                                          // the biggest: to the middle, unhurried
-        const k = Math.min(0.06, 2.6 / r);
-        vx = -dx * k; vy = -dy * k;
-    } else {
-        const R = ringOf(b.tier, top), core = TIERS[top];
-        let [out, round] = stage === 2 ? FIGURES[fig](r, a * way, t, R, core, b, q) : ORDERLY[stage === 0 ? 0 : m - SWIRL.chaos](r, a, t, R, core, b);
-        round *= way;
-        const far = r + TIERS[b.tier] - SWIRL.rim;
-        if (far > 0) out -= 0.25 * far;                                                            // (whatever the pattern, no further out than the rim)
-        vx = out * dx / r - round * dy; vy = out * dy / r + round * dx;
+const norm = a => ((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);   // an angle, from 0 to a full turn
+// where a wild item strays to from its place (x how far): a slow, tangled figure of its own
+const strayOf = (b, t) => { const p = b.id * 2.399; return [(Math.sin(t * 0.021 + p) + Math.sin(t * 0.0134 + p * 1.7)) / 2, (Math.cos(t * 0.0173 + p * 0.6) + Math.sin(t * 0.0117 + p * 2.3)) / 2]; };
+// How far from its middle item b reaches with all that circles it. Those are laid out on orbits round it, in the
+// order of kids.get(b) (the bigger kinds first, so they are close in): as many on an orbit as fit round it,
+// `gap` px between one (with all that circles it) and the next. Into `plan`, when given: for each of them
+// [which orbit, how far from b's middle it is, how far it reaches itself, the angle it takes up on the orbit].
+function swirlSys(b, kids, gap, plan) {
+    const list = kids.get(b) || [];
+    let reach = TIERS[b.tier];
+    if (!list.length) return reach;
+    const S = list.map(c => swirlSys(c, kids, gap, plan));
+    for (let i = 0, ring = 0; i < list.length; ring++) {
+        let T = S[i], n = 1;
+        for (; i + n < list.length; n++) {
+            const T2 = Math.max(T, S[i + n]), far = reach + gap + T2;
+            let wide = 0;
+            for (let k = i; k <= i + n; k++) wide += 2 * Math.asin(Math.min(1, (S[k] + gap / 2) / far));
+            if (wide > 2 * Math.PI) break;
+            T = T2;
+        }
+        const far = reach + gap + T;
+        if (plan) for (let k = i; k < i + n; k++) plan.set(list[k], [ring, far, S[k], 2 * Math.asin(Math.min(1, (S[k] + gap / 2) / far))]);
+        reach = far + T; i += n;
     }
-    if (stage === 0) {   // still wild: the less order there is yet, the more of the drift (which keeps to the middle part of the ring)
-        const [wx, wy] = wildAt(b.position.x, b.position.y, t, m), roam = 105 + 14 * top, back = r > roam ? 0.05 * (r - roam) : 0;
-        vx = order * vx + (1 - order) * (wx - back * dx / r);
-        vy = order * vy + (1 - order) * (wy - back * dy / r);
-    }
-    if (fig === 0 && b.tier !== top) {   // smooth eddies over the turn
-        const x = b.position.x, y = b.position.y, p = Math.sin(x / 70 + t / 190), e = Math.cos((x + y) / 45 + t / 150) / 90;
-        vx += 30 * (-p * Math.sin(y / 55 - t / 230) / 55 + e);
-        vy -= 30 * (Math.cos(x / 70 + t / 190) * Math.cos(y / 55 - t / 230) / 70 + e);
-    }
-    return [vx, vy];
+    return reach;
 }
-// a merge (or a saved game coming back): the swirl has had m merges and its biggest gem so far is of level top + 1
+// ...and how far from the middle of the jar all of it reaches: one biggest item holds the middle; several (of a
+// kind that is dropped) circle it on one orbit, side by side
+function swirlReach(suns, kids, gap, plan) {
+    if (suns.length === 1) { const s = swirlSys(suns[0], kids, gap, plan); if (plan) plan.set(suns[0], [0, 0, s, 0]); return s; }
+    const S = suns.map(b => swirlSys(b, kids, gap, plan)), T = Math.max(...S);
+    const wide = far => S.reduce((sum, s) => sum + 2 * Math.asin(Math.min(1, (s + gap / 2) / far)), 0);
+    let far = T + gap / 2;
+    while (wide(far) > 2 * Math.PI + 1e-9) far += 2;
+    if (plan) suns.forEach((b, k) => plan.set(b, [0, far, S[k], 2 * Math.asin(Math.min(1, (S[k] + gap / 2) / far))]));
+    return far + T;
+}
+// Who circles whom, among the items in the jar (not the ones still falling in), and on which orbit. Each gets
+// b.orbit: { round: the item it circles (null: the middle of the jar), deep: how many orbits out from the middle
+// it is, ring: which orbit of that item (0: the innermost), near: how far from that item's middle the orbit is at
+// its nearest, at: the angle it is at on it, sys / wide: how far it reaches with all that circles it, and the
+// angle that takes up on the orbit, lone: it is the one biggest item, which holds the middle, come: the item it
+// is coming to (two of the biggest kind), left: there is no room for it (slot: where it waits), meet: its like on
+// the orbit that it is coming together with, ex / ey: how far it still is from its place }.
+// The bigger items are placed first. Each goes to the first of these that has room for it: (a kind that is not
+// dropped) the item its like circles; the item it circles already; the other bigger items, the nearest first (a
+// big one counts as nearer by its size). Room: with it there, everything still fits inside the wall of the jar.
+function swirlPlan(items) {
+    const given = swirlDrops(), [order] = patternOf(swirlMerges);
+    const sorted = items.slice().sort((p, q) => q.tier - p.tier || p.id - q.id), top = sorted[0].tier;
+    let suns = sorted.filter(b => b.tier === top), comers = [];
+    if (top >= given && suns.length > 1) {   // two of the biggest kind, which is not dropped: one holds the middle, the other comes to it
+        const mid = suns.find(b => b.orbit && b.orbit.lone) || suns[0];
+        comers = suns.filter(b => b !== mid); suns = [mid];
+    }
+    const off = (p, q) => Math.hypot(p.position.x - q.position.x, p.position.y - q.position.y) - TIERS[q.tier];   // how far p is from q's edge
+    let kids, home, out, gap, stray;
+    for (stray of order < 1 ? [SWIRL.wander * (1 - order), 0] : [0]) {   // (wild orbits are laid out with room to stray; if that does not fit, without)
+        const limit = SWIRL.ring - SWIRL.edge - 2 * stray, first = new Map();
+        gap = SWIRL.gap + 2 * stray; kids = new Map(suns.map(b => [b, []])); home = new Map(); out = [];
+        for (const b of sorted) {
+            if (b.tier === top) continue;
+            const was = b.orbit && !b.orbit.left ? b.orbit.round : null, lead = b.tier >= given ? first.get(b.tier) : null;
+            const want = [];
+            if (lead) want.push(home.get(lead));
+            if (was && was.tier > b.tier && kids.has(was) && !want.includes(was)) want.push(was);
+            const rest = [...kids.keys()].filter(c => c.tier > b.tier && !want.includes(c)).sort((p, q) => off(b, p) - off(b, q));
+            let to = null;
+            for (const c of want.concat(rest)) {
+                kids.get(c).push(b);
+                if (swirlReach(suns, kids, gap) <= limit) { to = c; break; }
+                kids.get(c).pop();
+            }
+            if (!to) { out.push(b); continue; }
+            home.set(b, to); kids.set(b, []);
+            if (b.tier >= given && !first.has(b.tier)) first.set(b.tier, b);
+        }
+        if (!out.length) break;
+    }
+    const plan = new Map(), reach = swirlReach(suns, kids, gap, plan), rings = new Map(), fresh = new Set();
+    swirlStray = stray;
+    swirlLoose = Math.max(0, Math.min(1, ((SWIRL.ring - SWIRL.edge - 2 * stray) / reach - 1) / 0.3));
+    swirlLeft = out.length;
+    swirlOrder = [];
+    const blank = b => ({ round: null, deep: 0, ring: 0, near: 0, at: 0, sys: TIERS[b.tier], wide: 0, lone: false, come: null, left: false, slot: 0, meet: null,
+        ex: 0, ey: 0, wa: 0, wb: 0, nx: b.position.x, ny: b.position.y });
+    const put = (b, round, deep) => {
+        const o = b.orbit, [ring, near, sys, wide] = plan.get(b), lone = !round && suns.length === 1;
+        const same = !!o && !o.left && !o.come && !o.lone && !lone && o.round === round;   // it circles what it circled: it keeps its angle
+        const cx = round ? round.position.x : SWIRL.x, cy = round ? round.position.y : SWIRL.y;
+        b.orbit = Object.assign(blank(b), { round, deep, ring, near, sys, wide, lone, at: same ? o.at : Math.atan2(b.position.y - cy, b.position.x - cx), meet: same ? o.meet : null });
+        if (!same) fresh.add(b);
+        if (!lone) { const key = (round ? round.id : 0) + '/' + ring; if (!rings.has(key)) rings.set(key, []); rings.get(key).push(b); }
+        swirlOrder.push(b);
+        for (const c of kids.get(b)) put(c, b, deep + 1);
+    };
+    suns.forEach(b => put(b, null, suns.length === 1 ? 0 : 1));
+    if (suns.length > 1) {   // (the one that held the middle until now has no side of its own yet: opposite the others)
+        const mid = suns.find(b => Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) < 2), other = suns.find(b => b !== mid);
+        if (mid) mid.orbit.at = other.orbit.at + Math.PI;
+    }
+    comers.forEach(b => { b.orbit = Object.assign(blank(b), { come: suns[0] }); swirlOrder.push(b); });
+    out.sort((p, q) => p.id - q.id).forEach((b, k) => { b.orbit = Object.assign(blank(b), { left: true, slot: k }); swirlOrder.push(b); });
+    swirlRings = [...rings.values()];
+    for (const ring of swirlRings) {
+        // a new one right by its like on the orbit: the two come together
+        for (const b of ring) {
+            if (!fresh.has(b) || b.tier >= given || b.tier >= TIERS.length - 1) continue;
+            let like = null, far = Infinity;
+            for (const c of ring) {
+                if (c === b || c.tier !== b.tier) continue;
+                const d = Math.abs(Math.atan2(Math.sin(c.orbit.at - b.orbit.at), Math.cos(c.orbit.at - b.orbit.at))) * b.orbit.near;   // (along the orbit)
+                if (d < far) { far = d; like = c; }
+            }
+            if (like && far < 2 * TIERS[b.tier] + SWIRL.near) { b.orbit.meet = like; if (!like.orbit.meet) like.orbit.meet = b; }
+        }
+        // alike items of a kind that is not dropped: side by side on the orbit, so that they can close up (they change places with what is between them)
+        const twins = new Set(ring.filter(b => b.tier >= given && ring.some(c => c !== b && c.tier === b.tier)).map(b => b.tier));
+        if (twins.size && ring.length > 2) {
+            const by = ring.slice().sort((p, q) => norm(p.orbit.at) - norm(q.orbit.at)), n = by.length;
+            const apart = [...twins].some(t => by.filter((b, i) => b.tier === t && by[(i + 1) % n].tier !== t).length > 1);
+            if (apart) {
+                const slots = by.map(b => b.orbit.at), next = [];
+                for (const b of by) {
+                    if (next.includes(b)) continue;
+                    next.push(b);
+                    if (twins.has(b.tier)) by.forEach(c => { if (c.tier === b.tier && !next.includes(c)) next.push(c); });
+                }
+                next.forEach((b, k) => { b.orbit.at = slots[k]; });
+            }
+        }
+    }
+    // everything stays where it is at this moment, and goes to its (new) place from there
+    for (const b of swirlOrder) {
+        const o = b.orbit, c = o.come || o.round;
+        const [px, py] = swirlPlace(b, c ? c.position.x : SWIRL.x, c ? c.position.y : SWIRL.y);
+        o.ex = b.position.x - px; o.ey = b.position.y - py;
+    }
+    board.classList.toggle('full', swirlLeft > 0);   // (the wall of the jar glows red: index.html)
+}
+// how far out item b's orbit is where it is now (x its nearest): the law's shape, as far as there is room for it
+function swirlOut(b) {
+    if (b.orbit.deep !== 1) return 1;   // (the orbits round the middle take the shape; a moon's stays a circle, so that it keeps clear of all that is round it)
+    const shape = m => { const [, law, turned] = patternOf(m), s = LAWS[law].shape; return s ? s(b.orbit.at * turned, swirlStep) : 1; };
+    const now = shape(figure), was = swirlMix < 1 ? shape(figureWas) : now;
+    return 1 + swirlLoose * (was + (now - was) * swirlMix - 1);
+}
+// the place of item b (px), given where the item it circles (or is coming to) is
+function swirlPlace(b, cx, cy) {
+    const o = b.orbit;
+    if (o.left) return [o.slot % 2 ? GAME_WIDTH - SWIRL.wait : SWIRL.wait, 96 + Math.floor(o.slot / 2) * 84];   // left out: beside the mouth, left and right in turn
+    if (o.come) return [cx, cy];
+    let x = SWIRL.x, y = SWIRL.y;
+    if (!o.lone) { const far = o.near * swirlOut(b); x = cx + far * Math.cos(o.at); y = cy + far * Math.sin(o.at); }
+    if (swirlStray) { const [sx, sy] = strayOf(b, swirlStep); x += swirlStray * sx; y += swirlStray * sy; }
+    return [x, y];
+}
+// how fast (a step) an item goes round its orbit by law L: an orbit round the middle by its size (a small one is
+// quicker), a moon as many times its planet's turn as the law says; never faster than SWIRL.most and SWIRL.spin
+function swirlTurn(L, turned, o, planet) {
+    const w = o.deep === 1 ? turned * L.way(o.ring) * (L.quick ? L.quick(o.ring) : 1) * SWIRL.turn / (o.near + SWIRL.soft) : L.times(o.deep, o.ring) * planet;
+    const most = Math.min(SWIRL.spin, SWIRL.most / o.near);
+    return Math.max(-most, Math.min(most, w));
+}
+// a merge (or a saved game coming back): the game has had m merges and its biggest item so far is of level top + 1
 function swirlGrew(m, top) {
     const before = swirlDrops();
     swirlMerges = m;
     swirlTop = Math.max(swirlTop, top);
-    if (swirlDrops() !== before && !isGameOver) showToast(swirlDrops() === 2 ? 'Bigger ones now: 1s and 2s!' : 'Now any small gem can come!');
+    if (swirlDrops() !== before && !isGameOver) showToast(swirlDrops() === 2 ? 'Bigger ones now: 1s and 2s!' : 'Now any small one can come!');
 }
 if (SWIRL) Events.on(engine, 'beforeUpdate', () => {
     swirlStep++;
-    const gems = Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
-    // a gem that was let go falls straight until it is in the swirl (all of it under the line), or touches a gem of it
-    let top = -1;
-    for (const b of gems) {
-        if (b.isDropping && Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) + b.currentRadius < SWIRL.ring - 2) landed(b, 3);
-        if (!b.isDropping && b.tier > top) top = b.tier;
+    const inWorld = () => Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging);
+    // an item that was let go falls straight in until it touches an item in the jar (its like: they merge), or
+    // has passed them all, or comes to the far wall
+    if (!isGameOver) {
+        const there = inWorld().filter(b => !b.isDropping);
+        for (const b of inWorld()) {
+            if (!b.isDropping) continue;
+            let like = null, hit = null, more = false;
+            for (const c of there) {
+                if (c.isMerging) continue;
+                const alike = c.tier === b.tier && b.tier < TIERS.length - 1;
+                if (c.orbit && c.orbit.left && !alike) continue;   // (one that waits beside the mouth is not in the way)
+                if (Math.hypot(c.position.x - b.position.x, c.position.y - b.position.y) < b.currentRadius + c.currentRadius) { if (alike) like = like || c; else hit = hit || c; }
+                if (c.position.y + c.currentRadius > b.position.y - b.currentRadius) more = true;   // (it has not passed this one yet)
+            }
+            const far = Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) + b.currentRadius, inside = far < SWIRL.ring - 2;
+            if (like) { landed(b, SWIRL.drop); mergeGems(b, like); }
+            else if (hit || (inside && !more) || (!inside && b.position.y > SWIRL.y)) { landed(b, hit ? SWIRL.drop : 3); there.push(b); }
+            else Body.setVelocity(b, { x: 0, y: SWIRL.drop });
+        }
     }
+    const inJar = inWorld().filter(b => !b.isDropping);
+    // the law: from the old one to the new one after a merge, with no jolt at either end (6u^5 - 15u^4 + 10u^3)
     if (swirlMerges !== figure) { figureWas = figure < 0 ? swirlMerges : figure; figure = swirlMerges; figureSince = swirlStep; }
-    // from the old pattern to the new one, with no jolt at either end (6u^5 - 15u^4 + 10u^3)
-    const u = Math.min(1, (swirlStep - figureSince) / SWIRL.blend), mix = figureWas === figure ? 1 : u * u * u * (u * (6 * u - 15) + 10);
-    const push = 1 / (STEP * STEP);   // (a force that changes the speed by 1 px a step)
-    const [stage, order, fig, , way] = patternOf(figure);
-    // soft, like candy: unlike gems that come near push each other off gently before they touch, so they glide
-    // round each other in place of knocking (alike ones are let through: they are to meet and merge)
-    if (SWIRL.shove) for (let i = 0; i < gems.length; i++) {
-        const a = gems[i];
-        if (a.isDropping) continue;
-        for (let j = i + 1; j < gems.length; j++) {
-            const b = gems[j];
-            if (b.isDropping || b.tier === a.tier) continue;
-            const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y, d = Math.hypot(dx, dy) || 1;
-            const gap = d - a.currentRadius - b.currentRadius;
-            if (gap >= SWIRL.apart) continue;
-            const f = SWIRL.shove * Math.min(1, 1 - gap / SWIRL.apart) * a.mass * b.mass / (a.mass + b.mass) * push;
-            a.force.x -= f * dx / d; a.force.y -= f * dy / d;
-            b.force.x += f * dx / d; b.force.y += f * dy / d;
+    const u = Math.min(1, (swirlStep - figureSince) / SWIRL.blend);
+    swirlMix = figureWas === figure ? 1 : u * u * u * (u * (6 * u - 15) + 10);
+    const [order, law, turned] = patternOf(figure), [, lawWas, turnedWas] = patternOf(figureWas), given = swirlDrops();
+    // who circles whom: worked out again whenever the items in the jar change
+    const seen = inJar.map(b => b.id).sort((p, q) => p - q).join() + '/' + given;
+    if (seen !== swirlSeen) {
+        swirlSeen = seen;
+        if (inJar.length) swirlPlan(inJar);
+        else { swirlOrder = []; swirlRings = []; swirlLeft = 0; board.classList.remove('full'); }
+    }
+    // along each orbit: the items spread out evenly, and those that are to meet close up
+    for (const ring of swirlRings) {
+        const n = ring.length;
+        if (n < 2) continue;
+        ring.sort((p, q) => norm(p.orbit.at) - norm(q.orbit.at));
+        const free = ring.map((b, i) => { const c = ring[(i + 1) % n]; return (i === n - 1 ? 2 * Math.PI - norm(b.orbit.at) + norm(c.orbit.at) : norm(c.orbit.at) - norm(b.orbit.at)) - (b.orbit.wide + c.orbit.wide) / 2; });
+        const closes = ring.map((b, i) => { const c = ring[(i + 1) % n]; return c.tier === b.tier && b.tier < TIERS.length - 1 && (b.tier >= given || b.orbit.meet === c || c.orbit.meet === b); });
+        if (closes.every(x => x)) closes[free.indexOf(Math.max(...free))] = false;   // (alike all the way round: not across their widest gap)
+        const turn = ring.map((b, i) => {
+            let from = i, to = i, k = 0;   // the run of items closing up that it is in: the gaps behind and ahead of the whole run
+            while (closes[(from + n - 1) % n] && k++ < n) from = (from + n - 1) % n;
+            for (k = 0; closes[to] && k++ < n;) to = (to + 1) % n;
+            const close = SWIRL.close;
+            return SWIRL.spread * (free[to] - free[(from + n - 1) % n]) / 2 + (closes[i] ? close : 0) - (closes[(i + n - 1) % n] ? close : 0);
+        });
+        ring.forEach((b, i) => { b.orbit.at += turn[i]; });
+    }
+    // every item to its place: the one it circles first
+    for (const b of swirlOrder) {
+        const o = b.orbit, c = o.come || o.round, p = o.round ? o.round.orbit : null;
+        if (o.left || o.come || o.lone) o.wa = o.wb = 0;
+        else {
+            o.wa = swirlTurn(LAWS[law], turned, o, p ? p.wa : 0);
+            o.wb = swirlMix < 1 ? swirlTurn(LAWS[lawWas], turnedWas, o, p ? p.wb : 0) : o.wa;
+            o.at += (o.wb + (o.wa - o.wb) * swirlMix) * order;   // (it goes round; while the orbits are wild, slower)
+        }
+        const [px, py] = swirlPlace(b, c ? c.orbit.nx : SWIRL.x, c ? c.orbit.ny : SWIRL.y);
+        const d = Math.hypot(o.ex, o.ey);   // not at its place yet: a part of the way each step, never in a rush
+        if (d > 0) { const go = Math.min(d, Math.max(0.5, Math.min(SWIRL.hold * d, SWIRL.reach))); o.ex *= 1 - go / d; o.ey *= 1 - go / d; }
+        o.nx = px + o.ex; o.ny = py + o.ey;
+        const vx = o.nx - b.position.x, vy = o.ny - b.position.y, v = Math.hypot(vx, vy);
+        Body.setVelocity(b, { x: vx, y: vy });
+        // it leans the way it goes; the one in the middle turns on the spot, and breathes (its picture swells and
+        // shrinks a little; its outline stays as it is)
+        const mid = o.lone && order === 1;
+        if (mid) Body.setAngularVelocity(b, turned * 0.01);
+        else { const lean = v > 0.2 ? 0.26 * vx / v : 0; Body.setAngularVelocity(b, Math.atan2(Math.sin(lean - b.angle), Math.cos(lean - b.angle)) * 0.12); }
+        if (SWIRL.breath && !b.isGrowing && (mid || b.breathes)) {
+            b.breathes = mid;
+            b.render.sprite.xScale = b.render.sprite.yScale = spriteScale(b.currentRadius) * (mid ? 1 + SWIRL.breath * Math.sin(swirlStep * 0.045) : 1);
         }
     }
-    const given = swirlDrops();   // (levels below this are dropped: theirs is the player's work)
-    for (const b of gems) {
-        // the one in the middle breathes (its picture swells and shrinks a little; its outline stays as it is)
-        if (SWIRL.breath && !b.isGrowing && !b.isDropping) {
-            const mid = b.tier === top && order === 1;
-            if (mid || b.breathes) {
-                b.breathes = mid;
-                b.render.sprite.xScale = b.render.sprite.yScale = spriteScale(b.currentRadius) * (mid ? 1 + SWIRL.breath * Math.sin(swirlStep * 0.045) : 1);
-            }
+    // alike items that touch merge
+    if (!isGameOver) for (let i = 0; i < inJar.length; i++) {
+        const a = inJar[i];
+        if (a.isMerging || a.tier >= TIERS.length - 1) continue;
+        for (let j = i + 1; j < inJar.length; j++) {
+            const b = inJar[j];
+            if (b.tier !== a.tier || b.isMerging) continue;
+            if (Math.hypot(a.position.x - b.position.x, a.position.y - b.position.y) < (a.currentRadius + b.currentRadius) * SWIRL.touch) { mergeGems(a, b); break; }
         }
-        let vx = 0, vy = SWIRL.drop, gain = 0.3;
-        if (!b.isDropping) {
-            [vx, vy] = swirlAt(figure, b, top, swirlStep);
-            if (mix < 1) { const [ox, oy] = swirlAt(figureWas, b, top, swirlStep); vx = ox + (vx - ox) * mix; vy = oy + (vy - oy) * mix; }
-            // drawn to its like: a level that is not dropped, always; any level while the swirl is wild (the less the calmer it is)
-            const draw = SWIRL.gather * (b.tier >= given ? 1 : 1 - order);
-            if (draw > 0) {
-                let like = null, near = Infinity;
-                for (const o of gems) {
-                    if (o === b || o.tier !== b.tier || o.isDropping) continue;
-                    const d = Math.hypot(o.position.x - b.position.x, o.position.y - b.position.y);
-                    if (d < near) { near = d; like = o; }
-                }
-                if (like) {
-                    // straight to it while there are no rings yet; along its ring once there are (round the middle
-                    // gem, not through it: the shorter way, and the two agree which when it is the same either way)
-                    const sx = (like.position.x - b.position.x) / (near || 1), sy = (like.position.y - b.position.y) / (near || 1);
-                    const dx = b.position.x - SWIRL.x, dy = b.position.y - SWIRL.y, r = Math.hypot(dx, dy) || 1;
-                    let turn = Math.atan2(like.position.y - SWIRL.y, like.position.x - SWIRL.x) - Math.atan2(dy, dx);
-                    turn = Math.atan2(Math.sin(turn), Math.cos(turn));
-                    const side = Math.abs(turn) > 3.05 ? (b.id < like.id ? 1 : -1) : Math.sign(turn) || 1;
-                    const along = stage === 0 || b.tier === top ? 0 : 0.65;
-                    vx += draw * ((1 - along) * sx - along * side * dy / r);
-                    vy += draw * ((1 - along) * sy + along * side * dx / r);
-                }
-            }
-            const v = Math.hypot(vx, vy);
-            if (v > 7) { vx *= 7 / v; vy *= 7 / v; }
-            gain = SWIRL.steer;
-            // it leans the way it goes; the one in the middle turns on the spot
-            const lean = b.tier === top && order === 1 ? null : 0.26 * vx / (v || 1);
-            if (lean === null) Body.setAngularVelocity(b, way * (fig < 0 ? 0.01 : SWIRL_SPIN[fig]));
-            else Body.setAngularVelocity(b, Math.atan2(Math.sin(lean - b.angle), Math.cos(lean - b.angle)) * 0.12);
-        }
-        b.force.x += b.mass * gain * (vx - b.velocity.x) * push;
-        b.force.y += b.mass * gain * (vy - b.velocity.y) * push;
-        if (!b.isDropping) {   // past the rim: drawn back in, harder the further (a pattern alone never puts a gem out of the ring: only a full one does)
-            const dx = b.position.x - SWIRL.x, dy = b.position.y - SWIRL.y, r = Math.hypot(dx, dy) || 1, far = r + b.currentRadius - SWIRL.rim;
-            if (far > 0) { b.force.x -= b.mass * 0.012 * far * dx / r * push; b.force.y -= b.mass * 0.012 * far * dy / r * push; }
-        }
-        if (b.speed > 9) Body.setVelocity(b, { x: b.velocity.x * 9 / b.speed, y: b.velocity.y * 9 / b.speed });   // (a gem knocked hard in a crowd: no wild flights)
     }
 });
+if (SWIRL && SWIRL.trail) FX.trails(() => Composite.allBodies(engine.world).filter(b => b.tier !== undefined && !b.isMerging && !b.isDropping && b.orbit && !b.orbit.left)
+    .map(b => [b.id, b.position.x, b.position.y, b.tier]), SWIRL.trail);
 
 // --- THE BEAT --- (a set with beat in GAME.skins, the Neon Nights)
 // The jar pulses to a beat: the music's own when a song plays (Sound.beat knows each song's), a steady one of
@@ -2057,10 +2184,11 @@ function spawnItem(x, y, tier, animateGrowth) {
         chamfer: { radius: startRadius * BLOCKS.side * 0.05 }, render: { sprite: { texture: SPRITES[tier], xScale: scale, yScale: scale } }, tier
     }) : Bodies.fromVertices(x, y, [outline.map(p => ({ x: p.x * scale, y: p.y * scale }))], {
         restitution: bounceOf(tier),   // heavier gems bounce less (see WEIGHT)
-        friction: SWIRL ? 0.02 : 0.5,  // (in a swirl they slip past each other)
-        frictionAir: SWIRL ? 0 : 0.01,
+        friction: 0.5,
+        frictionAir: SWIRL ? 0 : 0.01,   // (a swirl: THE SWIRL sets every speed itself)
         density: 0.001 * (tier + 1) * weightOf(tier),
         slop: 0.01,
+        collisionFilter: SWIRL ? { group: -1, category: 1, mask: 0 } : { group: 0, category: 1, mask: 0xFFFFFFFF },   // (in a swirl nothing pushes anything: THE SWIRL moves the items and sees what touches)
         render: { sprite: { texture: SPRITES[tier], xScale: scale, yScale: scale } },
         tier: tier
     });
@@ -2166,7 +2294,7 @@ function revive() {
     revives++;
     lastDrop = null;   // (nothing to undo: the drop that filled the jar is gone)
     const clearAbove = DANGER_Y + 130;   // everything reaching into the top part of the jar (floating: the bottom part)
-    const inThere = b => SWIRL ? Math.hypot(b.position.x - SWIRL.x, b.position.y - SWIRL.y) + (b.currentRadius || 0) > SWIRL.ring * 0.72   // (a swirl: its outer part)
+    const inThere = b => SWIRL ? b.position.y < SWIRL.y - SWIRL.ring * 0.3   // (a round jar: all whose middle is in its top part, and the ones left out beside the mouth)
         : FLOAT ? b.bounds.max.y > GAME_HEIGHT - clearAbove : b.bounds.min.y < clearAbove;
     Composite.allBodies(engine.world).filter(b => (b.tier !== undefined || b.crate || b.cinder) && inThere(b)).forEach(b => {
         if (b.crate) { Mine.breakCrate(b); return; }   // (a Gem Mine crate up there counts as broken)
@@ -2255,7 +2383,7 @@ function loadGame() {
     if (SWIRL) {   // (a game saved before the swirl kept count: it has long been through its first patterns)
         const top = Math.max(0, ...data.items.map(it => it[0] | 0).filter(okTier));
         if (Array.isArray(data.swirl)) { swirlMerges = Math.max(0, data.swirl[0] | 0); swirlTop = Math.max(top, Math.min(TIERS.length - 1, data.swirl[1] | 0)); }
-        else if (data.items.length) { swirlMerges = SWIRL.chaos + SWIRL.orderly; swirlTop = Math.max(top, SWIRL.twos - 1); }
+        else if (data.items.length) { swirlMerges = SWIRL.chaos + 2; swirlTop = Math.max(top, SWIRL.twos - 1); }
     }
     if (TWINS) {   // (a game saved in another set, or before the pairs: new mates for the gems it has)
         currentMate = okTier(data.mate) && data.mate < DROPS && (TWINS.same || data.mate !== currentTier) ? data.mate : mateFor(currentTier);
@@ -2757,7 +2885,7 @@ function renderSets() {
             sk.rubber && '🏀 Rubber (not in the Gem Mine): everything bounces a few times before it lies still',
             sk.blocks && '🧱 Blocks (not in the Gem Mine): square blocks that fall straight down and never roll',
             sk.glitch && '👾 Glitch (not in the Gem Mine): at every merge a gem vanishes and comes back somewhere else, at random',
-            sk.swirl && '🌀 The swirl (not in the Gem Mine): no pile: it starts wild, then the gems circle the biggest one, and every merge changes the pattern; small gems first',
+            sk.swirl && '🌀 The swirl (not in the Gem Mine): a round jar with no pile: each one circles a bigger one, orbits within orbits, and every merge changes how; nothing is drawn together; small ones first',
             sk.wires && '⚡ Wired (not in the Gem Mine): a gem that lands sends a spark through the gems it touches to its like, and the two merge',
             sk.beat && '🎵 The beat (not in the Gem Mine): on every beat alike gems hop together if you let go on the beat (and its merge counts double), apart if you let go off it',
             sk.twins && (sk.twins.same ? '♛ Royal twins (not in the Gem Mine): every gem falls as a pair, mirrored left and right'

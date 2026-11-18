@@ -124,13 +124,25 @@
             content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 0; z-index: 9; pointer-events: none;
             border-left: 2px dotted rgba(255, 214, 110, 0.3); transform: translateX(-1px);
         }
-        /* a swirl set (game.js THE SWIRL, the Spiral Atoms): no line; a ring round the swirl, which it has to stay in
-           (its place and size are set by the game) */
+        /* a swirl set (game.js THE SWIRL, the Spiral Atoms): the jar itself is round, and open at the top. The board
+           shows nothing of its own: the jar is drawn in its place (where and how big is set by the game), with the
+           board's floor and grid inside it and the board's edge as its wall, left out over the mouth. The trails the
+           items leave are on a canvas of their own, over the jar's floor and under the items. */
+        #board.swirl { background: none; border-color: transparent; box-shadow: none; isolation: isolate; }
         #board.swirl .danger-line { display: none; }
         #board.swirl::before {
             content: ''; position: absolute; left: var(--ring-x, 0); top: var(--ring-y, 30%); width: var(--ring-w, 100%); aspect-ratio: 1;
-            box-sizing: border-box; border-radius: 50%; border: 3px dashed rgba(255, 99, 99, 0.5); z-index: 9; pointer-events: none;
+            box-sizing: content-box; margin: -4px; border-radius: 50%; border: 4px solid var(--board-edge); border-top-color: transparent;
+            background-color: var(--board);
+            background-image: linear-gradient(var(--grid) 2px, transparent 2px), linear-gradient(90deg, var(--grid) 2px, transparent 2px);
+            background-size: 12.66% 12.66%; background-clip: padding-box;
+            box-shadow: inset 0 0 26px rgba(160, 130, 255, 0.28);
+            z-index: -1; pointer-events: none;
         }
+        .trail-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+        /* ...and its wall glows red while an item is left out (no room for it in the jar) */
+        #board.swirl.full::before { border-color: #ff6b6b; border-top-color: transparent; animation: jar-full 0.45s ease-in-out infinite alternate; }
+        @keyframes jar-full { from { box-shadow: inset 0 0 26px rgba(255, 90, 90, 0.35); } to { box-shadow: inset 0 0 46px rgba(255, 90, 90, 0.8); } }
         #board.swirl #toast { top: 12%; }
         /* a beat set (game.js THE BEAT, the Neon Nights): the jar glows on every beat (--pulse: 1 on the beat, then
            fading) and a ring closes in on the gem in hand (--ring: 1 just after a beat, 0 on the next); the ring is
