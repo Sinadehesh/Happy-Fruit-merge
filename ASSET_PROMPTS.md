@@ -578,6 +578,8 @@ AVOID: text, labels, numbers, logos, watermarks, faces, grid lines, shadows on t
 
 ### Fix 8. Spiral Atoms, the whole set again: from a quark to a living cell
 
+Done, in the game: the sheet came back with 11 items (it left the atom out). Used from it: the quark, the pion, the proton, the helium nucleus, water, glucose, DNA, the virus, the bacterium and the amoeba. The atom (level 5) and the living cell (level 11) are the first set's, kept because they were liked. The sheet's carbon nucleus is not used (it looked too much like the helium nucleus); it is still on `assets/atoms/source_sheet_3.webp`. The first set's pictures are in `assets/atoms/first_set`.
+
 The first atom set was not in a true order (an electron after a quark, a crystal and a mini sun after a living cell). This one is physically correct: twelve real things, each really bigger than the one before, from the smallest thing there is to a single-celled organism. Quarks make a pion and a proton; protons and neutrons make a helium nucleus; helium nuclei make a carbon nucleus (that is how stars make carbon); the nucleus takes electrons and is an atom; atoms make water and sugar; then DNA, a virus, a bacterium and an amoeba. Real sizes, for the record: a quark has no size anyone has measured (under a thousandth of a proton), pion 0.0000013 nm across, proton 0.0000017 nm, helium nucleus 0.0000034 nm, carbon nucleus 0.000005 nm, carbon atom 0.15 nm, water 0.3 nm, glucose 1 nm, DNA 2 nm wide, virus 100 nm, bacterium 2000 nm, amoeba 300000 nm.
 
 ```
@@ -605,8 +607,6 @@ ITEMS, from the smallest to the biggest, left to right, top to bottom:
 
 AVOID: text, labels, letters, numbers, plus and minus signs, arrows, formulas, logos, watermarks, faces, eyes, grid lines, shadows on the background, gradients or textures in the background, a dark or starry background, sparkles or dust floating around or touching the items (sparkles only inside them), glowing halos around items 1 to 11, orbit rings or electrons outside the atom's ball, thin lines, thin sticks between balls, long thin tails or hairs, a microscope photo look, a realistic 3D render or textbook diagram look, dull or desaturated colors, grey or brown tones, flat matte surfaces, thin outlines, sketchy lines, holes through an item, a wrong number of balls, two items with the same shape or the same main color, items touching each other, items cut off at the edges.
 ```
-
-When the sheet is back: cut it with `tools/cut_sets.py` (one 3x4 sheet; file names `01_quark`, `02_pion`, `03_proton`, `04_helium_nucleus`, `05_carbon_nucleus`, `06_carbon_atom`, `07_water`, `08_glucose`, `09_dna`, `10_virus`, `11_bacterium`, `12_amoeba`), put the names in `MODES.atoms` in `game.js`, and make the outlines again with `tools/make_shapes.py`.
 
 ## Blast animation (merge burst, frame by frame)
 

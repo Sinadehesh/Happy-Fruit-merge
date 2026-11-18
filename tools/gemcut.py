@@ -38,16 +38,19 @@ def biggest(m):
 
 
 def find_items(sheet, rows, cols):
-    """boxes (x0, y0, x1, y1) of the rows x cols items on a white sheet, in reading order"""
+    """boxes (x0, y0, x1, y1) of the rows x cols items on a white sheet, in reading order
+    (cols: how many in every row, or a list with how many in each row, for a sheet whose rows are not alike)"""
+    per_row = list(cols) if isinstance(cols, (list, tuple)) else [cols] * rows
+    assert len(per_row) == rows, (rows, cols)
     a = np.asarray(sheet.convert('RGB')).astype(int)
     ink = (a.min(axis=2) < 238) | (a.max(axis=2) - a.min(axis=2) > 18)
     lab, n = ndimage.label(ndimage.binary_dilation(ink, iterations=3))   # an item with its glow as one piece
     sizes = ndimage.sum(ink, lab, range(1, n + 1))
-    keep = sorted(range(1, n + 1), key=lambda i: -sizes[i - 1])[:rows * cols]
+    keep = sorted(range(1, n + 1), key=lambda i: -sizes[i - 1])[:sum(per_row)]
     boxes = sorted((ndimage.find_objects(lab)[i - 1] for i in keep), key=lambda b: (b[0].start + b[0].stop) / 2)
     out = []
     for r in range(rows):
-        out += sorted(boxes[r * cols:(r + 1) * cols], key=lambda b: b[1].start)
+        out += sorted(boxes[sum(per_row[:r]):sum(per_row[:r + 1])], key=lambda b: b[1].start)
     H, Wd = a.shape[:2]
     pad = 6
     return [(max(0, b[1].start - pad), max(0, b[0].start - pad), min(Wd, b[1].stop + pad), min(H, b[0].stop + pad)) for b in out]

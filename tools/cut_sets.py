@@ -1,7 +1,7 @@
 # Cuts every gem set's 12 gems from the sheets they were made on (kept in assets/<set>/ and assets/fixes/), with
 # the clean cut in tools/gemcut.py (nothing of the sheet's white left), into assets/<set>/01_<name>.png ... 12_<name>.png
-# (256 x 256). Each set lists where its gems come from: a sheet, its layout (rows x columns) and which of its
-# items to take, so gems that were made again on their own (assets/fixes) replace the ones that came out wrong;
+# (256 x 256). Each set lists where its gems come from: a sheet, its layout (rows x columns, or rows and a list of
+# how many in each row) and which of its items to take, so gems that were made again on their own (assets/fixes) replace the ones that came out wrong;
 # glow: glowing gems (a see-through halo), pale_glow: a pale one whose edge melts into its glow, outline: gems drawn
 # inside a dark outline all round with light marks outside it, cut to the outline, holes: gems with real gaps through
 # them ({gem: the smallest enclosed white area, in px, that is a gap and not a highlight}).
@@ -54,13 +54,16 @@ SETS = {
                  take=[('neon/source_sheet.webp', 3, 4, list(range(1, 9))), ('fixes/fix4_neon_9_12.webp', 2, 2, [1, 2, 3, 4])], glow=[12]),
     'pets': dict(names='bunny chick duckling piglet frog hamster fox kitten whale lion_cub unicorn baby_dragon',
                  take=[('pets/source_sheet.webp', 3, 4, ALL)], glow=[]),
-    # from the smallest thing there is to a little sun. The first six came on two sheets (1a, 1b), the best of each
-    # pair is taken: the quark, the proton and the atom of 1a, the electron, the neutron and the nucleus of 1b.
-    # The electron's orbit, the two atoms' orbits and the helix have gaps through them.
-    'atoms': dict(names='quark electron proton neutron nucleus atom complex_atom molecule double_helix living_cell crystal_cluster mini_sun',
-                  take=[('atoms/source_sheet_1a.webp', 2, 3, [1]), ('atoms/source_sheet_1b.webp', 2, 3, [2]), ('atoms/source_sheet_1a.webp', 2, 3, [3]),
-                        ('atoms/source_sheet_1b.webp', 2, 3, [4, 5]), ('atoms/source_sheet_1a.webp', 2, 3, [6]), ('atoms/source_sheet_2.webp', 2, 3, [1, 2, 3, 4, 5, 6])],
-                  glow=[1, 12], holes={2: 250, 6: (100, 300), 7: 40, 9: 120}),   # (the atom's highlight is bigger than its gaps)
+    # made again in the true order of size, from a quark to a one-celled animal (the first set, quark to mini sun:
+    # atoms/first_set). The new sheet (3) has 11 items in rows of 4, 3 and 4: it left the atom out. Its carbon
+    # nucleus (its 5th) is not used: it looked too much like the helium nucleus. The atom and the living cell are
+    # the first set's 7th and 10th, kept because they were liked (sheet 2, its 1st and 4th).
+    # The atom's orbits and the helix have gaps through them.
+    'atoms': dict(names='quark pion proton helium_nucleus atom water glucose dna virus bacterium living_cell amoeba',
+                  take=[('atoms/source_sheet_3.webp', 3, [4, 3, 4], [1, 2, 3, 4]), ('atoms/source_sheet_2.webp', 2, 3, [1]),
+                        ('atoms/source_sheet_3.webp', 3, [4, 3, 4], [6, 7, 8, 9, 10]), ('atoms/source_sheet_2.webp', 2, 3, [4]),
+                        ('atoms/source_sheet_3.webp', 3, [4, 3, 4], [11])],
+                  glow=[], holes={5: 40, 8: 60}),
 }
 
 sheets, boxes = {}, {}

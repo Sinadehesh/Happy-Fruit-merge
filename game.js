@@ -140,12 +140,14 @@ const MODES = {
         sprites: ['01_bunny', '02_chick', '03_duckling', '04_piglet', '05_frog', '06_hamster', '07_fox', '08_kitten',
             '09_whale', '10_lion_cub', '11_unicorn', '12_baby_dragon'].map(n => `assets/pets/${n}.png`)
     },
-    // Gem Jar's set that opens with a level (GAME.skins level): from a quark to a little sun
+    // Gem Jar's set that opens with a level (GAME.skins level): real things in their true order of size, from a
+    // quark to a one-celled animal (a quark, two quarks, a proton, a helium nucleus, an atom, water, sugar, DNA, a
+    // virus, a bacterium, a cell with a nucleus, an amoeba)
     'atoms': {
         background: '#f4ecf7',
         tiers: [20, 28, 37, 48, 60, 73, 87, 102, 118, 136, 156, 178],
-        sprites: ['01_quark', '02_electron', '03_proton', '04_neutron', '05_nucleus', '06_atom', '07_complex_atom', '08_molecule',
-            '09_double_helix', '10_living_cell', '11_crystal_cluster', '12_mini_sun'].map(n => `assets/atoms/${n}.png`)
+        sprites: ['01_quark', '02_pion', '03_proton', '04_helium_nucleus', '05_atom', '06_water', '07_glucose', '08_dna',
+            '09_virus', '10_bacterium', '11_living_cell', '12_amoeba'].map(n => `assets/atoms/${n}.png`)
     },
     'sweets': {
         background: '#fdf2f8',
@@ -338,8 +340,11 @@ let inTune = true;   // (THE BEAT) the last gem was let go on the beat (or none 
 // one, in orbits within orbits, by a law that every merge changes, see THE SWIRL below. Not in the Gem Mine.
 // (swirl: true, or an object that changes these numbers)
 const SWIRL = SKIN && SKIN.swirl && !MINE && !FLOAT ? Object.assign({
-    small: 16, big: 120,  // the sizes of the items, px: from the first level to the last, each the same number of times the one before
-                      // (1.2: a gentler ladder than the other sets' 20 to 178, so that orbits within orbits fit in the jar)
+    // the sizes of the items, px, from the first level to the last: a gentler ladder than the other sets' 20 to 178,
+    // so that orbits within orbits fit in the jar, and gentler still at the top, so that every level can be made:
+    // two of a level fit beside the one in the middle that is a level bigger, up to the last but one
+    // (76 + 6 + 2 x 68 = 218, inside the wall at 219; two of the last but one meet in the middle)
+    sizes: [16, 19, 23, 28, 34, 40, 48, 56, 62, 68, 76, 86],
     x: 225, y: 416,   // the middle of the jar
     ring: 222,        // the jar: round, this big (the inside of its wall); it touches the sides and the bottom of the board
     mouth: 45,        // ...and open at the top, this many degrees either side of straight up: items are let go through there
@@ -422,7 +427,7 @@ function reverseTiers(count) {
         Math.round(REVERSE_LARGEST * Math.pow(REVERSE_SMALLEST / REVERSE_LARGEST, i / (count - 1))));
 }
 const TIERS = REVERSE ? reverseTiers(MODES[MODE].tiers.length)
-    : SWIRL ? MODES[MODE].tiers.map((r, i, all) => Math.round(SWIRL.small * Math.pow(SWIRL.big / SWIRL.small, i / (all.length - 1)))) : MODES[MODE].tiers;
+    : SWIRL ? MODES[MODE].tiers.map((r, i) => SWIRL.sizes[i] || Math.round(r * 0.5)) : MODES[MODE].tiers;
 const SPRITE_SIZE = 256;   // px, every sprite is a 256x256 square
 const SPRITE_FIT = 1.08;   // draw slightly bigger than the collider so art touches neighbours
 SPRITES.forEach(src => { const img = new Image(); img.src = src; }); // preload
@@ -1929,7 +1934,10 @@ function swirlOut(b) {
 // the place of item b (px), given where the item it circles (or is coming to) is
 function swirlPlace(b, cx, cy) {
     const o = b.orbit;
-    if (o.left) return [o.slot % 2 ? GAME_WIDTH - SWIRL.wait : SWIRL.wait, 96 + Math.floor(o.slot / 2) * 84];   // left out: beside the mouth, left and right in turn
+    if (o.left) {   // left out: beside the mouth, left and right in turn (a big one: far enough in to be seen)
+        const side = Math.max(SWIRL.wait, TIERS[b.tier] + 6);
+        return [o.slot % 2 ? GAME_WIDTH - side : side, Math.max(96, TIERS[b.tier] + 8) + Math.floor(o.slot / 2) * 84];
+    }
     if (o.come) return [cx, cy];
     let x = SWIRL.x, y = SWIRL.y;
     if (!o.lone) { const far = o.near * swirlOut(b); x = cx + far * Math.cos(o.at); y = cy + far * Math.sin(o.at); }
